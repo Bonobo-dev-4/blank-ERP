@@ -1,4 +1,4 @@
-# DASH AND DOT — Manufacturing & Inventory Control ERP
+Manufacturing & Inventory Control ERP
 
 A manufacturing ERP for a premium Indian fashion brand. It connects commercial
 demand to the factory floor and back:
