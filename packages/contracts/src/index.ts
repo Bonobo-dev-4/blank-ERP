@@ -18,3 +18,5 @@ export * from './modules/purchasing';
 export * from './modules/bom';
 export * from './modules/manufacturing';
 export * from './modules/production';
+export * from './modules/quality';
+export * from './modules/cutting';

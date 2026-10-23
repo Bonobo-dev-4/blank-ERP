@@ -9,7 +9,7 @@ import {
 } from '@dnd/domain';
 import type {
   AuthenticatedUser, CreateBatchesRequest, ForwardStageRequest, RecordScanRequest,
-  SplitBatchRequest, StageOutcomeRequest,
+  SplitBatchRequest, StageOutcomeRequest, UpsertRouteRequest, UpsertStageRequest,
 } from '@dnd/contracts';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/services/audit.service';
@@ -504,10 +504,11 @@ export class ProductionService {
   /** Record what a stage did with the garments it holds. */
   async recordOutcome(
     organizationId: string,
-    actorUserId: string,
+    user: AuthenticatedUser,
     stageTaskId: string,
     body: StageOutcomeRequest,
   ) {
+    const actorUserId = user.id;
     const { result } = await this.idempotency.execute(
       {
         organizationId,
@@ -519,6 +520,7 @@ export class ProductionService {
       () =>
         this.prisma.inTransaction(async (tx) => {
           const { batch, task } = await this.loadTaskForWrite(tx, organizationId, stageTaskId);
+          this.assertMayRecordAtStage(task, user);
 
           const isLastStep = task.sequence === Math.max(...batch.stageTasks.map((t) => t.sequence));
           const outcome = {
@@ -578,6 +580,7 @@ export class ProductionService {
       () =>
         this.prisma.inTransaction(async (tx) => {
           const { batch, task } = await this.loadTaskForWrite(tx, organizationId, stageTaskId);
+          this.assertMayRecordAtStage(task, user);
 
           const target = body.toStageTaskId
             ? batch.stageTasks.find((t) => t.id === body.toStageTaskId)
@@ -944,6 +947,7 @@ export class ProductionService {
 
         if (body.eventType !== 'LOOKUP') {
           const { batch, task } = await this.loadTaskForWrite(tx, organizationId, stageTaskId!);
+          this.assertMayRecordAtStage(task, user);
           if (batch.id !== identifier.productionBatchId) {
             throw new BadRequestException({
               code: 'SCAN_BATCH_MISMATCH',
@@ -1158,6 +1162,181 @@ export class ProductionService {
     );
   }
 
+  /**
+   * May this person record work at this route step?
+   *
+   * The narrowing on top of the permission layer (roadmap 3.13, shape decided
+   * in decisions.md §28). It reads the **assignment on the work**, not a
+   * department on the user: a stitching supervisor covering cutting for a
+   * shift is an ordinary occurrence, and making that an administrative change
+   * is how the restriction gets switched off and never switched back on.
+   *
+   * Unassigned work stays open to anyone holding `production.record_stage` —
+   * most of a factory's work is never assigned to a named person, and
+   * refusing it would make the floor unusable.
+   */
+  private assertMayRecordAtStage(
+    task: { id: string; assignedUserId: string | null; assignedJobWorkerId: string | null;
+      productionStage: { code: string; name: string } },
+    user: { id: string; permissions: readonly string[] },
+  ): void {
+    if (!task.assignedUserId && !task.assignedJobWorkerId) return;
+
+    // Whoever can assign the work can also record it — that is what a
+    // supervisor covering an absence does.
+    if (user.permissions.includes('production.assign')) return;
+    if (user.permissions.includes('production.override_stage')) return;
+
+    if (task.assignedJobWorkerId) {
+      throw new ConflictException({
+        code: 'STAGE_ASSIGNED_TO_JOB_WORKER',
+        message: `${task.productionStage.name} is out with a job worker. Record it by receiving the job work order, so the pieces and the charge stay together.`,
+        details: { stageTaskId: task.id, stageCode: task.productionStage.code },
+      });
+    }
+
+    if (task.assignedUserId !== user.id) {
+      throw new ConflictException({
+        code: 'STAGE_ASSIGNED_TO_ANOTHER_OPERATOR',
+        message: `${task.productionStage.name} is assigned to someone else. A supervisor can reassign it or record it on their behalf.`,
+        details: {
+          stageTaskId: task.id,
+          stageCode: task.productionStage.code,
+          requiredPermission: 'production.assign',
+        },
+      });
+    }
+  }
+
+  /** Assign a route step to an operator or a job worker. */
+  async assignStageTask(
+    organizationId: string,
+    actorUserId: string,
+    stageTaskId: string,
+    body: {
+      assignedUserId?: string | null; assignedJobWorkerId?: string | null;
+      plannedStartAt?: string | null; plannedEndAt?: string | null;
+    },
+  ) {
+    return this.prisma.inTransaction(async (tx) => {
+      const task = await tx.productionStageTask.findFirst({
+        where: { id: stageTaskId, organizationId },
+        include: { productionStage: { select: { code: true, name: true, allowsJobWork: true } } },
+      });
+      if (!task) throw new NotFoundException({ code: 'STAGE_TASK_NOT_FOUND', message: 'Route step not found' });
+
+      if (body.assignedUserId && body.assignedJobWorkerId) {
+        throw new BadRequestException({
+          code: 'DOUBLE_ASSIGNMENT',
+          message: 'A route step is done in-house or by a job worker, not both',
+        });
+      }
+      if (body.assignedJobWorkerId && !task.productionStage.allowsJobWork) {
+        throw new BadRequestException({
+          code: 'STAGE_DOES_NOT_ALLOW_JOB_WORK',
+          message: `${task.productionStage.name} is not configured to be done by a job worker`,
+          details: { stageCode: task.productionStage.code },
+        });
+      }
+
+      await tx.productionStageTask.update({
+        where: { id: stageTaskId },
+        data: {
+          assignedUserId: body.assignedUserId ?? null,
+          assignedJobWorkerId: body.assignedJobWorkerId ?? null,
+          plannedStartAt: body.plannedStartAt ? new Date(body.plannedStartAt) : null,
+          plannedEndAt: body.plannedEndAt ? new Date(body.plannedEndAt) : null,
+        },
+      });
+
+      await this.audit.record(
+        {
+          organizationId, actorUserId, action: 'UPDATE',
+          entityType: 'ProductionStageTask', entityId: stageTaskId,
+          context: {
+            stageCode: task.productionStage.code,
+            assignedUserId: body.assignedUserId ?? null,
+            assignedJobWorkerId: body.assignedJobWorkerId ?? null,
+          },
+        },
+        tx,
+      );
+
+      return this.presentBatch(tx, organizationId, task.productionBatchId);
+    });
+  }
+
+  // =========================================================================
+  // transitions applied inside another module's transaction
+  // =========================================================================
+
+  /**
+   * Apply a stage outcome on a caller's transaction.
+   *
+   * Quality inspections and job-work receipts move the same counters as a
+   * shop-floor scan, and they must move them the same way. Exposing this
+   * rather than letting those modules write `production_stage_tasks`
+   * themselves is what keeps one writer for stage quantities — the same rule
+   * `LedgerService` holds for stock.
+   *
+   * The caller owns the transaction and the idempotency; this only plans and
+   * applies.
+   */
+  async applyStageOutcomeWithin(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    stageTaskId: string,
+    outcome: { completedQty?: string; rejectedQty?: string; reworkQty?: string },
+    meta: { actorUserId: string; movementKey: string; remarks?: string | null },
+  ): Promise<void> {
+    const { batch, task } = await this.loadTaskForWrite(tx, organizationId, stageTaskId);
+    const isLast = task.sequence === Math.max(...batch.stageTasks.map((t) => t.sequence));
+
+    const plan = isLast
+      ? planFinalStageCompletion(this.toBatchState(batch), this.toTaskState(task), outcome)
+      : planStageOutcome(this.toTaskState(task), outcome);
+
+    await this.applyPlan(tx, organizationId, batch, plan, {
+      actorUserId: meta.actorUserId,
+      fromStageTaskId: task.id,
+      toStageTaskId: null,
+      remarks: meta.remarks,
+      movementKey: meta.movementKey,
+    });
+  }
+
+  /** Bring reworked quantity back to its stage, on a caller's transaction. */
+  async applyReworkReturnWithin(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    stageTaskId: string,
+    returnQty: string,
+    meta: { actorUserId: string; movementKey: string; remarks?: string | null },
+  ): Promise<void> {
+    const { batch, task } = await this.loadTaskForWrite(tx, organizationId, stageTaskId);
+    const plan = planReturnFromRework(this.toTaskState(task), returnQty);
+    await this.applyPlan(tx, organizationId, batch, plan, {
+      actorUserId: meta.actorUserId,
+      fromStageTaskId: task.id,
+      toStageTaskId: null,
+      remarks: meta.remarks,
+      movementKey: meta.movementKey,
+    });
+  }
+
+  /** The route step a batch is at for a given stage, if the route has one. */
+  async stageTaskFor(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    productionBatchId: string,
+    productionStageId: string,
+  ): Promise<{ id: string; sequence: number } | null> {
+    return tx.productionStageTask.findFirst({
+      where: { organizationId, productionBatchId, productionStageId },
+      select: { id: true, sequence: true },
+    });
+  }
+
   // =========================================================================
   // routes and stages (read-only master data)
   // =========================================================================
@@ -1180,6 +1359,159 @@ export class ProductionService {
       },
     });
     return { data: stages, page: 1, pageSize: stages.length, total: stages.length, totalPages: 1 };
+  }
+
+  /**
+   * Create or update a stage.
+   *
+   * Stages are master data that route steps and BOM lines point at, so the
+   * code is the stable identity and an existing one is updated rather than
+   * duplicated.
+   */
+  async upsertStage(organizationId: string, actorUserId: string, body: UpsertStageRequest) {
+    return this.prisma.inTransaction(async (tx) => {
+      const existing = await tx.productionStage.findFirst({
+        where: { organizationId, code: body.code },
+        select: { id: true },
+      });
+
+      const data = {
+        name: body.name,
+        sequenceHint: body.sequenceHint,
+        defaultLocationId: body.defaultLocationId ?? null,
+        consumesMaterial: body.consumesMaterial,
+        allowsJobWork: body.allowsJobWork,
+        requiresQc: body.requiresQc,
+        serialisesUnits: body.serialisesUnits,
+      };
+
+      const stage = existing
+        ? await tx.productionStage.update({ where: { id: existing.id }, data, select: { id: true, code: true } })
+        : await tx.productionStage.create({
+            data: { organizationId, code: body.code, ...data },
+            select: { id: true, code: true },
+          });
+
+      await this.audit.record(
+        {
+          organizationId, actorUserId, action: existing ? 'UPDATE' : 'CREATE',
+          entityType: 'ProductionStage', entityId: stage.id,
+          context: { code: stage.code, name: body.name },
+        },
+        tx,
+      );
+      return stage;
+    });
+  }
+
+  /**
+   * Create or update a route.
+   *
+   * Steps are replaced wholesale, because a route's meaning IS the sequence.
+   * Existing batches keep the steps they were created with — their tasks were
+   * written at batch creation and are not touched here, so changing a route
+   * cannot reorder work already on the floor.
+   */
+  async upsertRoute(organizationId: string, actorUserId: string, body: UpsertRouteRequest) {
+    return this.prisma.inTransaction(async (tx) => {
+      const stages = await tx.productionStage.findMany({
+        where: { id: { in: body.steps.map((s) => s.productionStageId) }, organizationId },
+        select: { id: true },
+      });
+      if (stages.length !== body.steps.length) {
+        const found = new Set(stages.map((s) => s.id));
+        throw new BadRequestException({
+          code: 'STAGE_NOT_FOUND',
+          message: 'One or more steps name a stage that does not exist',
+          details: { missingIds: body.steps.map((s) => s.productionStageId).filter((id) => !found.has(id)) },
+        });
+      }
+
+      const existing = await tx.productionRoute.findFirst({
+        where: { organizationId, code: body.code },
+        select: { id: true },
+      });
+
+      // Exactly one default, so "the route for a style with none of its own"
+      // always resolves.
+      if (body.isDefault) {
+        await tx.productionRoute.updateMany({
+          where: { organizationId, isDefault: true, ...(existing ? { id: { not: existing.id } } : {}) },
+          data: { isDefault: false },
+        });
+      }
+
+      const routeId = existing
+        ? (await tx.productionRoute.update({
+            where: { id: existing.id },
+            data: { name: body.name, description: body.description ?? null, isDefault: body.isDefault },
+            select: { id: true },
+          })).id
+        : (await tx.productionRoute.create({
+            data: {
+              organizationId, code: body.code, name: body.name,
+              description: body.description ?? null, isDefault: body.isDefault,
+            },
+            select: { id: true },
+          })).id;
+
+      if (existing) {
+        // Steps already carrying batch tasks cannot be removed: the task rows
+        // reference them, and a batch mid-route must keep its own history.
+        const inUse = await tx.productionRouteStep.findMany({
+          where: { routeId, stageTasks: { some: {} } },
+          select: { id: true, sequence: true, productionStage: { select: { code: true } } },
+        });
+        const keeping = new Set(
+          body.steps.map((s) => inUse.find((u) => u.sequence === s.sequence)?.id).filter(Boolean) as string[],
+        );
+        const orphaned = inUse.filter((u) => !keeping.has(u.id));
+        if (orphaned.length > 0) {
+          throw new ConflictException({
+            code: 'ROUTE_STEP_IN_USE',
+            message:
+              'Some steps are carrying batches that are part-way through the route. Finish or cancel those batches before removing their steps.',
+            details: {
+              steps: orphaned.map((o) => ({ sequence: o.sequence, stageCode: o.productionStage.code })),
+            },
+          });
+        }
+        await tx.productionRouteStep.deleteMany({ where: { routeId } });
+      }
+
+      for (const step of body.steps) {
+        await tx.productionRouteStep.create({
+          data: {
+            routeId,
+            productionStageId: step.productionStageId,
+            sequence: step.sequence,
+            isOptional: step.isOptional,
+            standardMinutes: step.standardMinutes ? new Prisma.Decimal(step.standardMinutes) : null,
+            slaHours: step.slaHours ? new Prisma.Decimal(step.slaHours) : null,
+            defaultJobWorkerId: step.defaultJobWorkerId ?? null,
+          },
+        });
+      }
+
+      await this.audit.record(
+        {
+          organizationId, actorUserId, action: existing ? 'UPDATE' : 'CREATE',
+          entityType: 'ProductionRoute', entityId: routeId,
+          context: { code: body.code, name: body.name, stepCount: body.steps.length, isDefault: body.isDefault },
+        },
+        tx,
+      );
+
+      return tx.productionRoute.findUniqueOrThrow({
+        where: { id: routeId },
+        include: {
+          steps: {
+            orderBy: { sequence: 'asc' },
+            include: { productionStage: { select: { id: true, code: true, name: true } } },
+          },
+        },
+      });
+    });
   }
 
   async listRoutes(organizationId: string) {

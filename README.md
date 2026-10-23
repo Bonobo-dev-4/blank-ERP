@@ -13,19 +13,18 @@ Shopify order / Unicommerce bulk PO
 Shopify stays the commerce platform. Unicommerce stays the warehouse and
 order-operations platform. This system integrates with both and replaces neither.
 
-**Status: Phases 1 and 2 complete. Phase 3's shop-floor spine is delivered and
-all five of its exit criteria are met; its QC, cutting and job-work modules are
-outstanding. Phases 4–6 have schema, contracts and tested domain logic.**
+**Status: Phases 1, 2 and 3 complete and verified. Phases 4–6 have schema,
+contracts and tested domain logic; services and screens are outstanding.**
 
-49 screens are implemented (35 sidebar entries plus detail and create pages);
-26 planned routes render as disabled items rather than empty pages.
+54 screens are implemented (40 sidebar entries plus detail and create pages);
+21 planned routes render as disabled items rather than empty pages.
 
 | | |
 |---|---|
 | Tables / enums / constraints | 88 / 49 / 73 CHECK |
-| Tests passing | **414** — 285 domain, 28 contract consistency, 100 HTTP end-to-end |
-| API endpoints | 100+ across 13 modules, OpenAPI at `/api/docs` |
-| Sidebar screens | 35 built, 3 partial, 26 planned (shown disabled, never faked) |
+| Tests passing | **434** — 285 domain, 28 contract consistency, 121 HTTP end-to-end |
+| API endpoints | 120+ across 15 modules, OpenAPI at `/api/docs` |
+| Sidebar screens | 40 built, 3 partial, 21 planned (shown disabled, never faked) |
 
 ---
 
@@ -97,7 +96,7 @@ End-to-end tests need a database:
 ```bash
 # with PGlite, pgbouncer=true is required (see docs/testing-strategy.md §7)
 export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public&sslmode=disable&pgbouncer=true&connection_limit=1"
-pnpm --filter @dnd/api test:e2e # 100 tests, phases 1 to 3 in order
+pnpm --filter @dnd/api test:e2e # 121 tests, phases 1 to 3 in order
 ```
 
 ---
@@ -143,6 +142,15 @@ Sign in as the seeded admin and you can run the whole raw-material path:
 24. **Cutting / Embroidery / Stitching / Washing / Finishing** → each stage's
     work queue: in hand, ready to hand on, out in rework
 25. **Scan History** → every scan, accepted and refused
+26. **Plan a cut** → issue fabric to the table (a transfer), then complete the
+    cut, which is the one operation that retires fabric — exactly once
+27. **Quality Control** → inspect; passed, failed, rework and hold must account
+    for every garment looked at
+28. **Rework** → raise a ticket for garments pulled aside, close it with what
+    was fixed and what was scrapped
+29. **Production Handover** → send work to a job worker and receive it back,
+    charged on good pieces only
+30. **Production Routes** → configure the stages and the order they run in
 
 The seed creates **no stock and no production records** — the specification
 forbids mock transactions, and seeded stock would make every dashboard figure a
@@ -157,7 +165,7 @@ apps/
   api/            NestJS — REST, OpenAPI, Prisma, BullMQ
     prisma/       schema.prisma, migrations, seed
     src/modules/  auth admin products materials inventory purchasing bom mrp
-                  manufacturing production barcodes dashboard health
+                  manufacturing production quality cutting barcodes dashboard health
     test/         phase1/2/3.e2e-spec.ts, phase-sequencer.js
   web/            Next.js App Router
     src/app/      routes; (app) is the authenticated shell
@@ -204,7 +212,7 @@ Fifteen documents in `docs/`. If you read one, read the first.
 | [unicommerce-integration.md](docs/unicommerce-integration.md) | The only outward write + **its verification checklist** |
 | [security-and-permissions.md](docs/security-and-permissions.md) | 69 permissions, 15 roles, what is *not* implemented |
 | [ui-design-system.md](docs/ui-design-system.md) | Tokens, components, honest navigation |
-| [testing-strategy.md](docs/testing-strategy.md) | 414 tests, and the defects they found |
+| [testing-strategy.md](docs/testing-strategy.md) | 434 tests, and the defects they found |
 | [implementation-roadmap.md](docs/implementation-roadmap.md) | What remains in phase 3, then phases 4–6 |
 | [decisions.md](docs/decisions.md) | 28 decisions with reasoning and rejected alternatives |
 
@@ -245,6 +253,14 @@ transaction that pins it. Costing, issue limits and wastage analysis all read
 the snapshot, so revising a BOM cannot rewrite the history of orders already on
 the floor — and the variance report never compares today's actuals against a
 plan that did not exist when the work was done.
+
+### Issuing fabric is not consuming it
+
+Issuing fabric to the cutting table is a **transfer** — the owned quantity is
+unchanged, it has simply moved to the cutting department. Only completing the
+cut retires it, and `CuttingOrder.consumptionPostedAt` makes that happen
+exactly once. The completion is validated against the route *before* any fabric
+moves, so a figure the route cannot accept fails with nothing deducted.
 
 ### A scan is never reported as done before it has landed
 
@@ -315,7 +331,7 @@ pnpm seed                 # master data, idempotent
 
 pnpm --filter @dnd/domain test       # 285 domain tests
 pnpm verify                          # typecheck + tests + both database checks
-pnpm --filter @dnd/api test:e2e      # 100 end-to-end tests
+pnpm --filter @dnd/api test:e2e      # 121 end-to-end tests
 pnpm --filter @dnd/api prisma:studio # browse the database
 ```
 

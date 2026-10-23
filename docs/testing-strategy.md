@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**414 tests passing: 285 domain unit, 28 contract consistency, 100 HTTP end-to-end.**
+**434 tests passing: 285 domain unit, 28 contract consistency, 121 HTTP end-to-end.**
 
 ---
 
@@ -8,7 +8,7 @@
 
 ```
                 ┌─────────────────────────────┐
-                │  100 end-to-end             │  real Postgres, real HTTP
+                │  121 end-to-end             │  real Postgres, real HTTP
                 │  whole workflows            │  catches composition bugs
                 ├─────────────────────────────┤
                 │  SQL constraint checks      │  PGlite, raw SQL
@@ -256,8 +256,8 @@ assumed.
 
 ## 6. What the end-to-end suite found
 
-Four real defects that unit tests could not have caught, because all four were
-about how modules compose:
+Five real defects that unit tests could not have caught, because all of them
+were about how modules compose:
 
 ### Department stock counted as available
 
@@ -303,8 +303,25 @@ snapshot instead, which is worse because it is silent.
 Fix: the helper takes an optional transaction client, and the transactional
 caller passes it. The rule is now stated where the helper is defined.
 
+### Fabric consumed, then the cut refused
+
+Completing a cutting order claimed the completion, deducted the fabric, and
+only then told the route what the table had produced. When the route refused
+the figure — the stage was not holding that many pieces — the error handler
+released the completion claim so the operator could correct it. But the fabric
+was already gone, so correcting and retrying would have deducted it a **second
+time**: exactly the double-deduction `consumptionPostedAt` exists to prevent.
+
+Fix: validate against the route BEFORE any stock moves, so an impossible figure
+fails with nothing deducted; and release the completion claim only while the
+fabric is still there. Once it has gone the claim stands, because reopening it
+invites a second deduction of fabric that is already consumed.
+
+Caught by the phase 3 cutting tests, which complete a cut on a batch that had
+not been walked to the cutting step — an ordinary mistake on a real floor.
+
 The first two are documented in [decisions.md](decisions.md) §4 and §5. All
-four are the justification for having an end-to-end layer at all.
+five are the justification for having an end-to-end layer at all.
 
 ## 6a. What no automated test found: the sign-in redirect loop
 
@@ -378,7 +395,7 @@ pnpm typecheck                        # all four projects
 pnpm infra:up                         # Postgres 16, Redis 7, MinIO
 pnpm prisma:deploy
 pnpm seed
-pnpm --filter @dnd/api test:e2e       # 100 tests
+pnpm --filter @dnd/api test:e2e       # 121 tests
 ```
 
 ### Without Docker

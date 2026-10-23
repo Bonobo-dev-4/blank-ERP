@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  idempotencyKey, nonNegativeQty, optionalText, paginationQuery,
+  decimalString, idempotencyKey, nonNegativeQty, optionalText, paginationQuery,
   positiveQty, shortText, uuid,
 } from '../common';
 
@@ -201,3 +201,67 @@ export const scanHistoryQuery = paginationQuery.extend({
   status: z.enum(['ACCEPTED', 'REJECTED_VALIDATION', 'DUPLICATE_IGNORED']).optional(),
   since: z.string().datetime({ offset: true }).optional(),
 });
+
+// =============================================================================
+// Routes and stages (administration)
+// =============================================================================
+
+export const upsertStageRequest = z.object({
+  code: shortText(50),
+  name: shortText(150),
+  sequenceHint: z.coerce.number().int().min(0).max(999).default(0),
+  defaultLocationId: uuid.nullish(),
+  /** The stage physically consumes material, so it may post consumption. */
+  consumesMaterial: z.boolean().default(false),
+  allowsJobWork: z.boolean().default(false),
+  requiresQc: z.boolean().default(false),
+  serialisesUnits: z.boolean().default(false),
+});
+export type UpsertStageRequest = z.infer<typeof upsertStageRequest>;
+
+/**
+ * A route is an ordered list of stages.
+ *
+ * Steps are replaced wholesale rather than patched: a route's meaning is the
+ * sequence, and reconciling partial edits against an older client view is how
+ * a step quietly ends up in the wrong place.
+ */
+export const upsertRouteRequest = z.object({
+  code: shortText(50),
+  name: shortText(150),
+  description: optionalText(500),
+  isDefault: z.boolean().default(false),
+  steps: z
+    .array(
+      z.object({
+        productionStageId: uuid,
+        sequence: z.coerce.number().int().min(1).max(99),
+        isOptional: z.boolean().default(false),
+        standardMinutes: decimalString().nullish(),
+        slaHours: decimalString().nullish(),
+        defaultJobWorkerId: uuid.nullish(),
+      }),
+    )
+    .min(1)
+    .max(40)
+    .superRefine((steps, ctx) => {
+      const seenSeq = new Set<number>();
+      const seenStage = new Set<string>();
+      for (const [i, step] of steps.entries()) {
+        if (seenSeq.has(step.sequence)) {
+          ctx.addIssue({ code: 'custom', path: [i, 'sequence'], message: `Duplicate sequence ${step.sequence}` });
+        }
+        seenSeq.add(step.sequence);
+        // A stage twice in one route makes "the next step" ambiguous, and the
+        // stage ledger moves quantity by sequence.
+        if (seenStage.has(step.productionStageId)) {
+          ctx.addIssue({
+            code: 'custom', path: [i, 'productionStageId'],
+            message: 'This stage is already a step on this route',
+          });
+        }
+        seenStage.add(step.productionStageId);
+      }
+    }),
+});
+export type UpsertRouteRequest = z.infer<typeof upsertRouteRequest>;

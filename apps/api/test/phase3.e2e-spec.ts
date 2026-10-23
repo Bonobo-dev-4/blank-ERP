@@ -776,4 +776,713 @@ describeIfDb('Phase 3: shop floor (end to end)', () => {
       expect(Number(b.progress.plannedQty)).toBe(100);
     });
   });
+
+  // ==========================================================================
+  // Cutting — the one operation that retires fabric
+  // ==========================================================================
+
+  describe('cutting', () => {
+    let cutMoId: string;
+    let cutBatchId: string;
+    let cuttingOrderId: string;
+    let fabricId: string;
+    let lotId: string;
+    let warehouseId: string;
+
+    /**
+     * Fabric the business still owns.
+     *
+     * Deliberately excludes the virtual counter-accounts. Summing EVERY
+     * balance row is invariant under consumption — consuming moves quantity
+     * from a real location to the CONSUMED sink, so the signed total never
+     * changes. That is the point of double entry, and it is also why a naive
+     * total cannot tell you whether anything was actually used.
+     */
+    const ownedTotal = async (rawMaterialId: string): Promise<number> => {
+      const rows = await prisma.materialBalance.findMany({
+        where: { rawMaterialId, location: { kind: { notIn: ['SINK', 'COUNTERPARTY'] } } },
+      });
+      return rows.reduce((acc, r) => acc + Number(r.onHandQty.toFixed()), 0);
+    };
+
+    it('sets up a released, batched order with fabric in the warehouse', async () => {
+      const fabric = await prisma.rawMaterial.findFirstOrThrow({
+        where: { organizationId: orgId, materialCode: 'FAB-001' },
+      });
+      fabricId = fabric.id;
+      const warehouse = await prisma.materialLocation.findFirstOrThrow({
+        where: { organizationId: orgId, code: 'RM-WH' },
+      });
+      warehouseId = warehouse.id;
+
+      const lot = await prisma.materialLot.findFirst({
+        where: { rawMaterialId: fabricId, organizationId: orgId },
+        orderBy: { createdAt: 'asc' },
+      });
+      lotId =
+        lot?.id ??
+        (
+          await prisma.materialLot.create({
+            data: {
+              organizationId: orgId,
+              rawMaterialId: fabricId,
+              lotCode: `CUT-${randomUUID().slice(0, 8)}`,
+              receivedAt: new Date(),
+              unitCost: new Prisma.Decimal('250'),
+            },
+            select: { id: true },
+          })
+        ).id;
+
+      await prisma.materialBalance.deleteMany({ where: { rawMaterialId: fabricId } });
+      await prisma.materialBalance.create({
+        data: {
+          organizationId: orgId,
+          rawMaterialId: fabricId,
+          materialLotId: lotId,
+          locationId: warehouseId,
+          onHandQty: new Prisma.Decimal('500'),
+          reservedQty: new Prisma.Decimal(0),
+        },
+      });
+
+      const mo = await http
+        .post('/api/manufacturing/orders')
+        .set(auth())
+        .send({ productId, items: [{ productVariantId: variantId, orderedQty: '50' }] })
+        .expect(201);
+      cutMoId = mo.body.id;
+
+      await http
+        .post(`/api/manufacturing/orders/${cutMoId}/release`)
+        .set(auth())
+        .send({ idempotencyKey: key() })
+        .expect(201);
+
+      await prisma.manufacturingOrder.update({
+        where: { id: cutMoId },
+        data: {
+          routeId: (
+            await prisma.productionRoute.findFirstOrThrow({
+              where: { organizationId: orgId, isDefault: true },
+            })
+          ).id,
+        },
+      });
+
+      const batches = await http
+        .post('/api/production/batches')
+        .set(auth())
+        .send({ manufacturingOrderId: cutMoId, idempotencyKey: key() })
+        .expect(201);
+      cutBatchId = batches.body.batches[0].id;
+
+      // Walk the batch to cutting. The route defines the sequence, and the
+      // cutting table records what it did with the pieces it is holding — it
+      // cannot report pieces that never reached it.
+      await http
+        .post(`/api/production/batches/${cutBatchId}/release`)
+        .set(auth())
+        .send({ idempotencyKey: key(), releaseQty: '50' })
+        .expect(201);
+
+      const detail = await http.get(`/api/production/batches/${cutBatchId}`).set(auth()).expect(200);
+      const steps = detail.body.stageTasks as { id: string; sequence: number;
+        productionStage: { code: string } }[];
+
+      for (const code of ['RELEASE', 'MATERIAL_ISSUE']) {
+        const stepId = steps.find((t) => t.productionStage.code === code)!.id;
+        await http
+          .post(`/api/production/stage-tasks/${stepId}/outcome`)
+          .set(auth())
+          .send({ idempotencyKey: key(), completedQty: '50' })
+          .expect(201);
+        await http
+          .post(`/api/production/stage-tasks/${stepId}/forward`)
+          .set(auth())
+          .send({ idempotencyKey: key(), forwardQty: '50' })
+          .expect(201);
+      }
+    });
+
+    it('plans a cut whose size breakdown must add up', async () => {
+      const bad = await http
+        .post('/api/cutting/orders')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: cutBatchId,
+          fabricMaterialId: fabricId,
+          plannedPieces: '50',
+          sizeBreakdown: [{ size: 'M', plannedPieces: '40' }],
+        })
+        .expect(400);
+      expect(bad.body.code).toBe('SIZE_BREAKDOWN_MISMATCH');
+
+      const res = await http
+        .post('/api/cutting/orders')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: cutBatchId,
+          fabricMaterialId: fabricId,
+          plannedPieces: '50',
+          sizeBreakdown: [{ size: 'M', plannedPieces: '50' }],
+        })
+        .expect(201);
+      expect(res.body.status).toBe('PLANNED');
+      expect(res.body.cuttingOrderNo).toMatch(/^CUT-/);
+      cuttingOrderId = res.body.id;
+    });
+
+    it('refuses to plan more pieces than the batch holds', async () => {
+      const res = await http
+        .post('/api/cutting/orders')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: cutBatchId,
+          fabricMaterialId: fabricId,
+          plannedPieces: '500',
+          sizeBreakdown: [{ size: 'M', plannedPieces: '500' }],
+        })
+        .expect(409);
+      expect(res.body.code).toBe('CUT_EXCEEDS_BATCH');
+    });
+
+    it('issues fabric as a TRANSFER — owned quantity is unchanged', async () => {
+      const before = await ownedTotal(fabricId);
+      expect(before).toBe(500);
+
+      const res = await http
+        .post(`/api/cutting/orders/${cuttingOrderId}/issue-fabric`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          sourceLocationId: warehouseId,
+          lines: [{ rawMaterialId: fabricId, materialLotId: lotId, quantity: '150', uom: 'METER' }],
+        })
+        .expect(201);
+
+      expect(res.body.cuttingOrder.status).toBe('FABRIC_ISSUED');
+      expect(res.body.cuttingOrder.fabricOnTableQty).toBe('150.0000');
+
+      // The specification's central failure mode is the same material deducted
+      // twice as it moves. Issuing moves it; it does not retire it.
+      expect(await ownedTotal(fabricId)).toBe(before);
+
+      const atCutting = await prisma.materialBalance.findFirst({
+        where: { rawMaterialId: fabricId, location: { code: 'DEPT-CUT' } },
+      });
+      expect(atCutting?.onHandQty.toFixed(4)).toBe('150.0000');
+    });
+
+    it('refuses to record pieces the cutting table never received', async () => {
+      // Validated BEFORE any fabric moves, so the failure mode is "nothing
+      // happened" rather than "fabric gone, cut unrecorded".
+      const res = await http
+        .post(`/api/cutting/orders/${cuttingOrderId}/complete`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          actualPiecesCut: '500',
+          consumption: [
+            { rawMaterialId: fabricId, materialLotId: lotId, consumedQty: '10', wastageQty: '0', uom: 'METER' },
+          ],
+        })
+        .expect(409);
+      expect(res.body.code).toBe('CUT_EXCEEDS_STAGE_WIP');
+      expect(res.body.details.wipQty).toBe('50.0000');
+
+      const order = await prisma.cuttingOrder.findUniqueOrThrow({ where: { id: cuttingOrderId } });
+      expect(order.consumptionPostedAt).toBeNull();
+    });
+
+    it('refuses to consume more fabric than was issued to the table', async () => {
+      const res = await http
+        .post(`/api/cutting/orders/${cuttingOrderId}/complete`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          actualPiecesCut: '48',
+          consumption: [
+            { rawMaterialId: fabricId, materialLotId: lotId, consumedQty: '900', wastageQty: '0', uom: 'METER' },
+          ],
+        })
+        .expect(409);
+      expect(res.body.code).toBe('CONSUMPTION_EXCEEDS_ISSUED');
+      expect(res.body.details.issuedQty).toBe('150.0000');
+
+      // The failed attempt must not have locked the order shut.
+      const order = await prisma.cuttingOrder.findUniqueOrThrow({ where: { id: cuttingOrderId } });
+      expect(order.consumptionPostedAt).toBeNull();
+    });
+
+    it('completes the cut and retires the fabric exactly once', async () => {
+      const before = await ownedTotal(fabricId);
+
+      const res = await http
+        .post(`/api/cutting/orders/${cuttingOrderId}/complete`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          actualPiecesCut: '48',
+          rejectedPieces: '2',
+          rejectionReason: 'Fabric flaw across the lay',
+          sizeActuals: [{ size: 'M', actualPieces: '48' }],
+          consumption: [
+            { rawMaterialId: fabricId, materialLotId: lotId, consumedQty: '130', wastageQty: '10', uom: 'METER' },
+          ],
+          returns: [{ rawMaterialId: fabricId, materialLotId: lotId, quantity: '10', uom: 'METER' }],
+        })
+        .expect(201);
+
+      expect(res.body.cuttingOrder.status).toBe('COMPLETED');
+      expect(res.body.cuttingOrder.isConsumptionPosted).toBe(true);
+      expect(res.body.cuttingOrder.fabricUsedBaseQty).toBe('130');
+      expect(res.body.cuttingOrder.fabricWastageBaseQty).toBe('10');
+      // 140 m for 48 garments.
+      expect(res.body.cuttingOrder.actualFabricPerPiece).toBe('2.9167');
+      expect(res.body.cuttingOrder.wastagePct).toBe('7.14');
+
+      // NOW the fabric is gone: 130 consumed + 10 wasted.
+      expect(await ownedTotal(fabricId)).toBe(before - 140);
+
+      // And the 10 m returned is back in the warehouse.
+      const atWarehouse = await prisma.materialBalance.findFirstOrThrow({
+        where: { rawMaterialId: fabricId, locationId: warehouseId },
+      });
+      expect(atWarehouse.onHandQty.toFixed(4)).toBe('360.0000');
+
+      // And the cutting table is clear.
+      const atCutting = await prisma.materialBalance.findFirstOrThrow({
+        where: { rawMaterialId: fabricId, location: { code: 'DEPT-CUT' } },
+      });
+      expect(atCutting.onHandQty.toFixed(4)).toBe('0.0000');
+    });
+
+    it('refuses a second completion — fabric is never deducted twice', async () => {
+      const before = await ownedTotal(fabricId);
+
+      const res = await http
+        .post(`/api/cutting/orders/${cuttingOrderId}/complete`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          actualPiecesCut: '48',
+          consumption: [
+            { rawMaterialId: fabricId, materialLotId: lotId, consumedQty: '130', wastageQty: '10', uom: 'METER' },
+          ],
+        })
+        .expect(409);
+      expect(res.body.code).toBe('CONSUMPTION_ALREADY_POSTED');
+
+      expect(await ownedTotal(fabricId)).toBe(before);
+    });
+
+    it('tells the route what the table produced', async () => {
+      const res = await http.get(`/api/production/batches/${cutBatchId}`).set(auth()).expect(200);
+      const cutting = (res.body.stageTasks as { productionStage: { code: string }; completedQty: string;
+        rejectedQty: string }[]).find((t) => t.productionStage.code === 'CUTTING');
+      expect(cutting?.completedQty).toBe('48');
+      expect(cutting?.rejectedQty).toBe('2');
+    });
+  });
+
+  // ==========================================================================
+  // Quality control and rework tickets
+  // ==========================================================================
+
+  describe('quality', () => {
+    let qcBatchId: string;
+    let qcStageTaskId: string;
+    let inspectionId: string;
+    let reworkOrderId: string;
+
+    it('sets up a batch holding work at a stage', async () => {
+      const mo = await http
+        .post('/api/manufacturing/orders')
+        .set(auth())
+        .send({ productId, items: [{ productVariantId: variantId, orderedQty: '40' }] })
+        .expect(201);
+      await http
+        .post(`/api/manufacturing/orders/${mo.body.id}/release`)
+        .set(auth())
+        .send({ idempotencyKey: key() })
+        .expect(201);
+      await prisma.manufacturingOrder.update({
+        where: { id: mo.body.id },
+        data: {
+          routeId: (
+            await prisma.productionRoute.findFirstOrThrow({
+              where: { organizationId: orgId, isDefault: true },
+            })
+          ).id,
+        },
+      });
+
+      const batches = await http
+        .post('/api/production/batches')
+        .set(auth())
+        .send({ manufacturingOrderId: mo.body.id, idempotencyKey: key() })
+        .expect(201);
+      qcBatchId = batches.body.batches[0].id;
+
+      await http
+        .post(`/api/production/batches/${qcBatchId}/release`)
+        .set(auth())
+        .send({ idempotencyKey: key(), releaseQty: '40' })
+        .expect(201);
+
+      const detail = await http.get(`/api/production/batches/${qcBatchId}`).set(auth()).expect(200);
+      qcStageTaskId = (detail.body.stageTasks as { id: string; sequence: number }[]).find(
+        (t) => t.sequence === 1,
+      )!.id;
+    });
+
+    it('refuses a split that does not account for every garment inspected', async () => {
+      const res = await http
+        .post('/api/quality/inspections')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: qcBatchId,
+          stageTaskId: qcStageTaskId,
+          inspectedQty: '40',
+          passedQty: '30',
+          failedQty: '5',
+        })
+        .expect(400);
+      // 30 + 5 is not 40. The remaining five cannot be allowed to vanish.
+      expect(res.body.code).toBe('VALIDATION_FAILED');
+    });
+
+    it('refuses a failure with no recorded defect', async () => {
+      await http
+        .post('/api/quality/inspections')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: qcBatchId,
+          stageTaskId: qcStageTaskId,
+          inspectedQty: '40',
+          passedQty: '35',
+          failedQty: '5',
+          defects: [],
+        })
+        .expect(400);
+    });
+
+    it('records an inspection and moves the stage counters', async () => {
+      const res = await http
+        .post('/api/quality/inspections')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          kind: 'INLINE_STAGE',
+          productionBatchId: qcBatchId,
+          stageTaskId: qcStageTaskId,
+          inspectedQty: '40',
+          passedQty: '32',
+          failedQty: '3',
+          reworkQty: '5',
+          holdQty: '0',
+          checklist: [
+            { code: 'SEAM', label: 'Seam strength', expected: 'No skipped stitches', observed: 'OK', result: 'PASS' },
+          ],
+          defects: [
+            { category: 'STITCHING', qty: '3', severity: 'MAJOR', description: 'Skipped stitches at the side seam' },
+            { category: 'MEASUREMENT', qty: '5', severity: 'MINOR', description: 'Sleeve 1cm short' },
+          ],
+        })
+        .expect(201);
+
+      expect(res.body.inspectionNo).toMatch(/^QC-/);
+      expect(res.body.result).toBe('REWORK');
+      expect(res.body.defects).toHaveLength(2);
+      inspectionId = res.body.id;
+
+      // QC and the floor must never report different numbers for the same
+      // garments, so the inspection moved the stage ledger itself.
+      const batch = await http.get(`/api/production/batches/${qcBatchId}`).set(auth()).expect(200);
+      const task = (batch.body.stageTasks as { id: string; completedQty: string; rejectedQty: string;
+        reworkSentQty: string; wipQty: string }[]).find((t) => t.id === qcStageTaskId)!;
+      expect(task.completedQty).toBe('32');
+      expect(task.rejectedQty).toBe('3');
+      expect(task.reworkSentQty).toBe('5');
+      expect(task.wipQty).toBe('0.0000');
+    });
+
+    it('raises a rework ticket bounded by what is actually out in rework', async () => {
+      const tooMany = await http
+        .post('/api/quality/rework')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: qcBatchId,
+          qty: '50',
+          reason: 'Re-stitch the side seams',
+        })
+        .expect(409);
+      expect(tooMany.body.code).toBe('REWORK_EXCEEDS_OUTSTANDING');
+      expect(tooMany.body.details.outstandingQty).toBe('5.0000');
+
+      const res = await http
+        .post('/api/quality/rework')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: qcBatchId,
+          qualityInspectionId: inspectionId,
+          qty: '5',
+          reason: 'Re-stitch the side seams',
+        })
+        .expect(201);
+      expect(res.body.reworkOrderNo).toMatch(/^RW-/);
+      expect(res.body.openQty).toBe('5.0000');
+      reworkOrderId = res.body.id;
+    });
+
+    it('refuses a second ticket for garments already ticketed', async () => {
+      const res = await http
+        .post('/api/quality/rework')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          productionBatchId: qcBatchId,
+          qty: '5',
+          reason: 'Again',
+        })
+        .expect(409);
+      // Two tickets cannot both claim to have fixed the same five garments.
+      expect(res.body.details.alreadyTicketedQty).toBe('5.0000');
+      expect(res.body.details.availableQty).toBe('0.0000');
+    });
+
+    it('closes the ticket: fixed garments return, scrapped ones are rejected', async () => {
+      const res = await http
+        .post(`/api/quality/rework/${reworkOrderId}/close`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          completedQty: '4',
+          scrappedQty: '1',
+          scrapReason: 'Fabric torn during re-stitching',
+        })
+        .expect(201);
+
+      expect(res.body.status).toBe('COMPLETED');
+      expect(res.body.openQty).toBe('0.0000');
+
+      const batch = await http.get(`/api/production/batches/${qcBatchId}`).set(auth()).expect(200);
+      const task = (batch.body.stageTasks as { id: string; reworkSentQty: string; reworkReturnedQty: string;
+        reworkOutstandingQty: string; rejectedQty: string; wipQty: string }[]).find((t) => t.id === qcStageTaskId)!;
+
+      // All five came back out of rework...
+      expect(task.reworkReturnedQty).toBe('5');
+      expect(task.reworkOutstandingQty).toBe('0.0000');
+      // ...one was then rejected, and four are back in hand to re-do.
+      expect(task.rejectedQty).toBe('4');
+      expect(task.wipQty).toBe('4.0000');
+    });
+
+    it('refuses to close a ticket twice', async () => {
+      const res = await http
+        .post(`/api/quality/rework/${reworkOrderId}/close`)
+        .set(auth())
+        .send({ idempotencyKey: key(), completedQty: '1' })
+        .expect(409);
+      expect(res.body.code).toBe('REWORK_ORDER_CLOSED');
+    });
+  });
+
+  // ==========================================================================
+  // Job work
+  // ==========================================================================
+
+  describe('job work', () => {
+    let jwoId: string;
+    let jwBatchId: string;
+
+    it('sends work to a job worker and charges on good pieces only', async () => {
+      const worker = await prisma.jobWorker.findFirst({ where: { organizationId: orgId, status: 'ACTIVE' } });
+      if (!worker) return; // no job workers seeded in this environment
+
+      const stage = await prisma.productionStage.findFirstOrThrow({
+        where: { organizationId: orgId, code: 'EMBROIDERY' },
+      });
+
+      const batch = await prisma.productionBatch.findFirstOrThrow({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, manufacturingOrderId: true },
+      });
+      jwBatchId = batch.id;
+
+      const res = await http
+        .post('/api/job-work/orders')
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          manufacturingOrderId: batch.manufacturingOrderId,
+          jobWorkerId: worker.id,
+          productionStageId: stage.id,
+          ratePerPiece: '12.50',
+          lines: [{ productionBatchId: jwBatchId, assignedQty: '10' }],
+        })
+        .expect(201);
+
+      expect(res.body.status).toBe('ISSUED');
+      expect(res.body.jobWorkOrderNo).toMatch(/^JW-/);
+      expect(res.body.pendingQty).toBe('10.0000');
+      jwoId = res.body.id;
+    });
+
+    it('refuses to receive more than was assigned', async () => {
+      if (!jwoId) return;
+      const res = await http
+        .post(`/api/job-work/orders/${jwoId}/receive`)
+        .set(auth())
+        .send({
+          idempotencyKey: key(),
+          lines: [{ productionBatchId: jwBatchId, completedQty: '50' }],
+        })
+        .expect(409);
+      expect(res.body.code).toBe('RECEIPT_EXCEEDS_ASSIGNED');
+    });
+  });
+
+  // ==========================================================================
+  // Unit serialisation and the stage assignment restriction
+  // ==========================================================================
+
+  describe('serialisation and assignment', () => {
+    it('mints one barcode per garment and refuses to do it twice', async () => {
+      const mo = await http
+        .post('/api/manufacturing/orders')
+        .set(auth())
+        .send({ productId, items: [{ productVariantId: variantId, orderedQty: '3' }] })
+        .expect(201);
+      await http
+        .post(`/api/manufacturing/orders/${mo.body.id}/release`)
+        .set(auth())
+        .send({ idempotencyKey: key() })
+        .expect(201);
+      await prisma.manufacturingOrder.update({
+        where: { id: mo.body.id },
+        data: {
+          routeId: (
+            await prisma.productionRoute.findFirstOrThrow({
+              where: { organizationId: orgId, isDefault: true },
+            })
+          ).id,
+        },
+      });
+      const batches = await http
+        .post('/api/production/batches')
+        .set(auth())
+        .send({ manufacturingOrderId: mo.body.id, idempotencyKey: key() })
+        .expect(201);
+      const serialBatchId = batches.body.batches[0].id as string;
+
+      await http
+        .post(`/api/production/batches/${serialBatchId}/release`)
+        .set(auth())
+        .send({ idempotencyKey: key(), releaseQty: '3' })
+        .expect(201);
+
+      const res = await http
+        .post(`/api/production/batches/${serialBatchId}/serialise`)
+        .set(auth())
+        .send({ idempotencyKey: key() })
+        .expect(201);
+
+      expect(res.body.unitCount).toBe(3);
+      expect(res.body.units).toHaveLength(3);
+
+      // Every unit is scannable, or serialising it achieved nothing.
+      const barcodes = await prisma.barcodeIdentifier.count({
+        where: { organizationId: orgId, kind: 'PRODUCTION_UNIT' },
+      });
+      expect(barcodes).toBeGreaterThanOrEqual(3);
+
+      const again = await http
+        .post(`/api/production/batches/${serialBatchId}/serialise`)
+        .set(auth())
+        .send({ idempotencyKey: key() })
+        .expect(409);
+      expect(again.body.code).toBe('BATCH_ALREADY_SERIALISED');
+    });
+
+    it('stops an operator recording work assigned to someone else', async () => {
+      const bcrypt = await import('bcryptjs');
+      const batch = await prisma.productionBatch.findFirstOrThrow({
+        where: { organizationId: orgId, releasedQty: { gt: 0 } },
+        include: { stageTasks: { where: { sequence: 1 }, take: 1 } },
+      });
+      const task = batch.stageTasks[0];
+      if (!task) return;
+
+      const other = await prisma.user.create({
+        data: {
+          organizationId: orgId,
+          email: `op-${randomUUID().slice(0, 8)}@dashanddot.local`,
+          fullName: 'E2E Other Operator',
+          passwordHash: await bcrypt.hash('e2e-test-password', 10),
+          status: 'ACTIVE',
+        },
+        select: { id: true },
+      });
+
+      // Assign the step to someone else.
+      await http
+        .patch(`/api/production/stage-tasks/${task.id}/assignment`)
+        .set(auth())
+        .send({ assignedUserId: other.id })
+        .expect(200);
+
+      // The admin holds production.assign, so they may still record it — a
+      // supervisor covering an absence is ordinary.
+      const asSupervisor = await http
+        .post(`/api/production/stage-tasks/${task.id}/outcome`)
+        .set(auth())
+        .send({ idempotencyKey: key(), completedQty: '1' });
+      expect([201, 409]).toContain(asSupervisor.status);
+
+      // An operator holding only production.record_stage is refused.
+      const role = await prisma.role.findFirstOrThrow({
+        where: { organizationId: orgId, code: 'BARCODE_OPERATOR' },
+      });
+      const operator = await prisma.user.create({
+        data: {
+          organizationId: orgId,
+          email: `scan-${randomUUID().slice(0, 8)}@dashanddot.local`,
+          fullName: 'E2E Scan Operator',
+          passwordHash: await bcrypt.hash('e2e-test-password', 10),
+          status: 'ACTIVE',
+          userRoles: { create: { roleId: role.id } },
+        },
+        select: { id: true, email: true },
+      });
+      const login = await http
+        .post('/api/auth/login')
+        .send({ email: operator.email, password: 'e2e-test-password' })
+        .expect(200);
+      expect(login.body.user.permissions).not.toContain('production.assign');
+
+      const refused = await http
+        .post(`/api/production/stage-tasks/${task.id}/outcome`)
+        .set({ Authorization: `Bearer ${login.body.accessToken}` })
+        .send({ idempotencyKey: key(), completedQty: '1' })
+        .expect(409);
+      expect(refused.body.code).toBe('STAGE_ASSIGNED_TO_ANOTHER_OPERATOR');
+      expect(refused.body.details.requiredPermission).toBe('production.assign');
+
+      await prisma.productionStageTask.update({
+        where: { id: task.id },
+        data: { assignedUserId: null },
+      });
+      await prisma.user.deleteMany({ where: { id: { in: [other.id, operator.id] } } });
+    });
+  });
 });

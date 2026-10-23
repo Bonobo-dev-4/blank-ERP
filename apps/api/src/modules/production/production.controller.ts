@@ -1,9 +1,10 @@
 import { Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  batchListQuery, createBatchesRequest, forwardStageRequest, recordScanRequest,
-  releaseBatchRequest, resolveScanRequest, returnFromReworkRequest, scanHistoryQuery,
-  splitBatchRequest, stageOutcomeRequest, stageTaskListQuery, type AuthenticatedUser,
+  assignStageTaskRequest, batchListQuery, createBatchesRequest, forwardStageRequest,
+  recordScanRequest, releaseBatchRequest, resolveScanRequest, returnFromReworkRequest,
+  scanHistoryQuery, splitBatchRequest, stageOutcomeRequest, stageTaskListQuery,
+  upsertRouteRequest, upsertStageRequest, type AuthenticatedUser,
 } from '@dnd/contracts';
 import { z } from 'zod';
 import { RequirePermissions } from '../../common/auth/guards';
@@ -34,6 +35,34 @@ export class ProductionController {
   @ApiOperation({ summary: 'Production routes with their ordered steps' })
   listRoutes(@OrgId() orgId: string) {
     return this.production.listRoutes(orgId);
+  }
+
+  @Post('stages')
+  @RequirePermissions('admin.manage_routes')
+  @ApiOperation({ summary: 'Create or update a production stage' })
+  @ApiZodBody(upsertStageRequest)
+  upsertStage(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ZodBody(upsertStageRequest) body: z.infer<typeof upsertStageRequest>,
+  ) {
+    return this.production.upsertStage(orgId, user.id, body);
+  }
+
+  @Post('routes')
+  @RequirePermissions('admin.manage_routes')
+  @ApiOperation({
+    summary: 'Create or update a production route',
+    description:
+      'Steps are replaced wholesale, because a route\'s meaning is the sequence. Batches already part-way through keep the steps they were created with, so changing a route cannot reorder work on the floor.',
+  })
+  @ApiZodBody(upsertRouteRequest)
+  upsertRoute(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ZodBody(upsertRouteRequest) body: z.infer<typeof upsertRouteRequest>,
+  ) {
+    return this.production.upsertRoute(orgId, user.id, body);
   }
 
   // --- batches ------------------------------------------------------------
@@ -130,7 +159,7 @@ export class ProductionController {
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(stageOutcomeRequest) body: z.infer<typeof stageOutcomeRequest>,
   ) {
-    return this.production.recordOutcome(orgId, user.id, id, body);
+    return this.production.recordOutcome(orgId, user, id, body);
   }
 
   @Post('stage-tasks/:id/forward')
@@ -148,6 +177,23 @@ export class ProductionController {
     @ZodBody(forwardStageRequest) body: z.infer<typeof forwardStageRequest>,
   ) {
     return this.production.forward(orgId, user, id, body);
+  }
+
+  @Patch('stage-tasks/:id/assignment')
+  @RequirePermissions('production.assign')
+  @ApiOperation({
+    summary: 'Assign a route step to an operator or job worker',
+    description:
+      'Assigned work can only be recorded by the person it is assigned to, or by someone who can assign it. Unassigned work stays open to anyone who can record a stage.',
+  })
+  @ApiZodBody(assignStageTaskRequest)
+  assign(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(assignStageTaskRequest) body: z.infer<typeof assignStageTaskRequest>,
+  ) {
+    return this.production.assignStageTask(orgId, user.id, id, body);
   }
 
   @Post('stage-tasks/:id/rework/send')

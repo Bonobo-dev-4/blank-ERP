@@ -11,6 +11,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BarcodesModule } from './modules/barcodes/barcodes.module';
 import { BomModule } from './modules/bom/bom.module';
+import { CuttingModule } from './modules/cutting/cutting.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -20,6 +21,7 @@ import { MrpModule } from './modules/mrp/mrp.module';
 import { ProductionModule } from './modules/production/production.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PurchasingModule } from './modules/purchasing/purchasing.module';
+import { QualityModule } from './modules/quality/quality.module';
 
 /**
  * Modular monolith root.
@@ -47,6 +49,8 @@ import { PurchasingModule } from './modules/purchasing/purchasing.module';
     MrpModule,
     ManufacturingModule,
     ProductionModule,
+    QualityModule,
+    CuttingModule,
     BarcodesModule,
     DashboardModule,
     HealthModule,

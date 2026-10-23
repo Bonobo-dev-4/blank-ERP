@@ -1,8 +1,7 @@
 # Implementation Roadmap
 
-**Phases 1 and 2 complete. Phase 3's spine is delivered and its exit criteria
-are met; its quality, cutting and job-work modules are outstanding. Phases 4–6
-are specified with contracts and schema in place.**
+**Phases 1, 2 and 3 complete. Phases 4–6 are specified with contracts and
+schema in place; phases 4 and 5 are blocked on integration API verification.**
 
 ---
 
@@ -12,7 +11,7 @@ are specified with contracts and schema in place.**
 |---|---|---|
 | **1** | Auth, products, raw materials, fabric rolls, locations, stock ledger, POs, GRN | **Complete** |
 | **2** | BOM, MRP, reservations, manufacturing orders | **Complete** — see §3 for what was deliberately left |
-| **3** | Batches, stage transitions, scan station, tracking | **Spine delivered**, all 5 exit criteria met. QC, rework tickets, cutting and job work outstanding — see §4 |
+| **3** | Shop floor: batches, scanning, cutting, QC, rework, job work | **Complete** — all 5 exit criteria met; see §4 |
 | 4 | Shopify orders, Unicommerce availability, demand routing, bulk PO, dedup | Domain logic done; **connectors need API verification first** |
 | 5 | FG inward, GRN, Unicommerce push, reconciliation | Domain logic done; **needs API verification first** |
 | 6 | Forecasting, alerts, costing, analytics, performance | Domain logic done; services and UI outstanding |
@@ -117,25 +116,25 @@ released order.
   works per order; there is no single screen showing who holds what
 - BOM alternatives are stored and validated but have no substitution UI
 
-## 4. Phase 3 — spine delivered
+## 4. Phase 3 — complete
 
 **Prerequisite: phase 2** (batches come from manufacturing orders). Met.
 
 | # | Deliverable | Status |
 |---|---|---|
 | 3.1 | Batch barcode minting | **Done** — minted with the batch, in the same transaction |
-| 3.2 | Unit serialisation service | **Not done** — `planSerialisation()` is tested; batches are the tracked unit today |
+| 3.2 | Unit serialisation service | **Done** — opt-in per batch; batches stay the default tracked unit |
 | 3.3 | Stage transition service | **Done** — wraps all five `plan*` functions with row locks |
 | 3.4 | **Scan station UI** | **Done** — resolve-then-record, offline queue, explicit pending state |
 | 3.5 | Scan history | **Done** — accepted and refused scans, by operator and device |
-| 3.6 | Cutting module | **Not done** — fabric issue, cut plan and consumption posting |
-| 3.7 | Embroidery / stitching / washing / finishing | **Done** as stage queues; job work is outstanding |
-| 3.8 | Job work orders | **Not done** |
-| 3.9 | QC module | **Not done** — verdicts and defect codes are tested in the domain |
-| 3.10 | Rework | **Partly** — send and return work on every stage queue; tickets and reinspection outstanding |
+| 3.6 | Cutting module | **Done** — cut plan, fabric issue as a transfer, consumption posted exactly once |
+| 3.7 | Embroidery / stitching / washing / finishing | **Done** — one stage-queue component, five screens |
+| 3.8 | Job work orders | **Done** — issue, receive per batch, charged on good pieces only |
+| 3.9 | QC module | **Done** — checklists, defect codes with attribution, verdicts that move the stage ledger |
+| 3.10 | Rework | **Done** — tickets bounded by outstanding rework; closing returns or scraps |
 | 3.11 | Batch tracking UI | **Done** — route position, counters, movement history |
-| 3.12 | Production routes admin | **Not done** — readable through the API, not editable in the app |
-| 3.13 | **Department and location restriction** | **Not done** — shape decided in decisions.md §28 |
+| 3.12 | Production routes admin | **Done** — stages and ordered route steps, editable |
+| 3.13 | **Department and location restriction** | **Done** — by assignment on the work, per decisions.md §28 |
 
 ### Delivered
 
@@ -155,8 +154,10 @@ confirms it; the idempotency key is minted at the moment of the physical scan;
 and **displayed stage counters come from the server only**, so a queued scan
 never moves a number that might later be refused.
 
-**3.6 is not built**, so the "post consumption exactly once" risk is still
-ahead. `CuttingOrder.consumptionPostedAt` exists for it.
+**3.6's risk — posting consumption exactly once — is handled** by
+`CuttingOrder.consumptionPostedAt`, claimed conditionally so a concurrent
+second completion updates zero rows and stops. Building it also surfaced a real
+partial-application bug; see testing-strategy.md §6.
 
 ### Exit criteria — all met
 
@@ -168,16 +169,17 @@ ahead. `CuttingOrder.consumptionPostedAt` exists for it.
 | A garment reworked twice is still one garment | `phase3.e2e-spec.ts` "a garment reworked twice is still one garment" |
 | Cutting, stitching, embroidery and finishing quantities reconcile | `phase3.e2e-spec.ts` "keeps cutting, embroidery and stitching quantities reconciled" |
 
-### What has to come before phase 3 can be called finished
+### Not delivered in phase 3
 
-1. **QC module (3.9)** — the route's QC step records outcomes like any other
-   stage today; checklists, defect codes and photos are not there.
-2. **Cutting module (3.6)** — fabric issue and consumption against the batch.
-   Until this exists, stage quantities move but fabric is not deducted by
-   production.
-3. **Job work (3.8)** — stages are flagged `allowsJobWork`; nothing uses it.
-4. **Unit serialisation (3.2)** and **routes admin (3.12)**.
-5. **Department restriction (3.13)** — decisions.md §28 settles the shape.
+- **Reinspection flow.** `QualityInspection.reinspectionOfId` is modelled and
+  accepted by the API, but nothing in the UI walks a failed batch back to a
+  second inspection.
+- **Photos on inspections and defects.** The columns accept URLs; there is no
+  upload (object storage is configured, no UI).
+- **Operator productivity reporting.** Every scan records operator, device and
+  timestamp, so the data is there; the report is phase 6.
+- **Per-unit stage movement.** Units are minted and tracked, but stage
+  transitions still move batch quantities rather than individual garments.
 
 ### Known limitation: the scan station needs the network to look a code up
 

@@ -3,9 +3,9 @@
 Every screen, its API, its permission and its build status. Source of truth for
 navigation: `packages/contracts/src/navigation.ts`.
 
-**64 sidebar entries: 35 built, 3 partial, 26 planned.**
+**64 sidebar entries: 40 built, 3 partial, 21 planned.**
 
-49 page files are implemented — the 27 built sidebar entries plus detail and
+54 page files are implemented — the 27 built sidebar entries plus detail and
 create pages (`/materials/[id]`, `/purchasing/orders/[id]`,
 `/purchasing/orders/new`, `/purchasing/receipts/[id]`, `/bom/new`, `/bom/[id]`,
 `/mrp/[id]`, `/manufacturing/new`, `/manufacturing/[id]`,
@@ -163,7 +163,7 @@ available, reserved elsewhere, incoming, short — and how many garments current
 stock actually covers. After release it shows the **frozen BOM snapshot**
 instead, labelled as such, because that is what the order is costed against.
 
-## 8. Shop floor — *phase 3, spine built*
+## 8. Shop floor — *phase 3, built*
 
 | Screen | Route | API | Permission | Status |
 |---|---|---|---|---|
@@ -179,6 +179,40 @@ would drift apart within a release.
 
 Each shows three queues — *in hand*, *ready to hand on*, *out in rework* — and
 every quantity is bounded by what that stage actually holds.
+
+`/production/cutting` carries a second panel the others do not: **cutting
+orders**, where fabric is issued to the table (a transfer) and the cut is
+completed (the one operation that retires fabric, exactly once).
+
+### Quality, rework and job work — *phase 3, built*
+
+| Screen | Route | API | Permission | Status |
+|---|---|---|---|---|
+| Quality Control | `/quality` | `GET/POST /quality/inspections` | `quality.read` / `quality.inspect` | Built |
+| Rework | `/quality/rework` | `GET/POST /quality/rework` | `quality.manage_rework` | Built |
+| Production Handover | `/production/handover` | `GET /job-work/orders`, `POST …/receive` | `production.record_stage` | Built |
+| Unit Tracking | `/barcodes/units` | `GET /production/units` | `manufacturing.read` | Built |
+| Production Routes | `/admin/routes` | `GET/POST /production/{stages,routes}` | `admin.manage_routes` | Built |
+
+Three invariants these screens enforce, each refused by the server independently:
+
+- **An inspection accounts for every garment it looked at.** Passed, failed,
+  rework and hold must add up to exactly the inspected quantity, and the
+  verdict moves the stage counters itself — so QC and the floor can never
+  report different numbers for the same garments.
+- **Two rework tickets cannot claim the same garments.** A ticket is bounded by
+  what is actually out in rework, less whatever open tickets already cover.
+- **A job worker is paid for good pieces.** Receiving 90 good and 10 rejected
+  charges for 90.
+
+### Stage access
+
+Assigned work can only be recorded by the person it is assigned to, or by
+someone holding `production.assign` — a supervisor covering an absence. Work
+out with a job worker must be recorded by receiving its job work order, so the
+pieces and the charge stay together. Unassigned work stays open to anyone who
+can record a stage, because most of a factory's work is never assigned to a
+named person. See [decisions.md](decisions.md) §28.
 
 
 
