@@ -19,6 +19,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { ManufacturingModule } from './modules/manufacturing/manufacturing.module';
 import { MaterialsModule } from './modules/materials/materials.module';
 import { MrpModule } from './modules/mrp/mrp.module';
+import { FulfilmentModule } from './modules/fulfilment/fulfilment.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { FinishedGoodsModule } from './modules/finished-goods/finished-goods.module';
 import { DemandModule } from './modules/demand/demand.module';
@@ -60,6 +61,7 @@ import { QualityModule } from './modules/quality/quality.module';
     DemandModule,
     FinishedGoodsModule,
     SyncModule,
+    FulfilmentModule,
     QualityModule,
     CuttingModule,
     IntegrationsModule,

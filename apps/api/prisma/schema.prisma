@@ -1498,6 +1498,16 @@ model ManufacturingDemand {
   /// collapse the same demand arriving through different systems.
   dedupeFingerprint   String
   decisionReason      String?
+  /// An operator looked at a line that COULD be dispatched from stock and sent
+  /// it to production anyway - damaged stock, a customisation, a shade that
+  /// will not match. A human decision outranks the arithmetic, so routing
+  /// honours this over available inventory.
+  isRejectedForDispatch Boolean       @default(false)
+  rejectedReason      String?
+  rejectedByUserId    String?       @db.Uuid
+  rejectedAt          DateTime?
+  /// Facility the line is routed to ship from, once decided.
+  routedFacilityCode  String?
   approvedByUserId    String?       @db.Uuid
   approvedAt          DateTime?
   notes               String?
