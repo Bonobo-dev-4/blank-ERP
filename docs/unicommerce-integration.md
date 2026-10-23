@@ -334,6 +334,94 @@ be found by the id that was sent rather than by guesswork.
 dispute handling. When Unicommerce and the ERP disagree about what was sent,
 both sides of the conversation are on record.
 
+## 8a. Facility master — supplied, not yet verified against the API
+
+Seventeen facilities, supplied by the business on 23 Oct 2026. **Codes below are
+inferred** from a "Code and Name" column where the two run together, so every
+one must be confirmed against the facility endpoint before a push is enabled.
+A wrong facility code on an inventory push puts stock in the wrong building.
+
+| Inferred code | Name | Operational type | Status |
+|---|---|---|---|
+| `dashanddot` ⚠️ | WarehouseII | WAREHOUSE | Enabled — **default** |
+| `WH_Noida_3` | Online DashAndDot | WAREHOUSE | Enabled |
+| `WH_Noida` | Production | WAREHOUSE | Enabled |
+| `International_Warehouse` | International Warehouse | WAREHOUSE | Enabled |
+| `CWH` | CWH | WAREHOUSE | **Disabled** |
+| `Coords_Warehouse` | Coords Warehouse | WAREHOUSE | **Disabled** |
+| `ST_Dhanmill` | The Dhan mill | STORE | Enabled |
+| `ST_Pacific_DEL` | Pacific Mall Tagore Garden | STORE | Enabled |
+| `ST_Mmchandigarh_CH` | MM Chandigarh | STORE | Enabled |
+| `ST_dlfpromenade_DL` | DLF Promenade | STORE | Enabled |
+| `ST_dlfavenue_DL` | DLF Avenue | STORE | Enabled |
+| `ST_Zora_Mall` | Zora The Mall | STORE | Enabled |
+| `ST_KGF_Mumbai` | Kala Ghoda Fort | STORE | Enabled |
+| `ST_Exibition_NO` | Exibition | STORE | Enabled |
+| `WH_Second_Floor` ⚠️ | Second Floor | **STORE** | Enabled |
+| `MBO` | MBO | STORE | Enabled |
+| `ST_PhoenixPalladium` ⚠️ | Phoenix Palladium Mumbai | unknown | unknown |
+
+### Three traps in this list
+
+**The default facility's code is ambiguous.** "dashanddot WarehouseII" does not
+split the way every other row does (`WH_Noida_3` + `Online DashAndDot`). Since
+this is the *default* push destination, it is the single most important code to
+confirm.
+
+**`WH_Second_Floor` is operationally a STORE despite its `WH_` prefix.** Any
+logic that reads the prefix to decide warehouse-versus-store will put it in the
+wrong bucket. Read `operationalType`, never the code.
+
+**Two facilities are Disabled.** `ExternalFacility.status` must reflect that, and
+`isPushEnabled` must stay false for them regardless — pushing finished goods
+into a disabled facility is a silent failure.
+
+### What this list means for the system
+
+Eleven of the seventeen are retail stores. That is what makes "switch facility
+if the piece is available somewhere else" an *omnichannel routing* question
+rather than a warehouse one, and it is why `sync.change_facility` is a separate
+elevated permission: moving a push from the production warehouse to a shop in
+Chandigarh is a commercial decision, not a clerical one.
+
+## 8b. Network constraint: Unicommerce requires a whitelisted IP
+
+The business's existing integration (a Google Apps Script poller) reaches
+Unicommerce through a fixed-IP proxy because **Unicommerce whitelists source
+IPs**. That is a hard constraint on where this ERP can run:
+
+- A development machine on a domestic connection will be refused.
+- A container on a platform with rotating egress addresses will be refused
+  intermittently, which is worse — it will look like a flaky API.
+
+Either the ERP's egress IP is whitelisted, or it routes through the same proxy.
+The decision belongs in deployment, but it has to be made before the connector
+is written, because "works locally, fails in staging" is the expensive way to
+discover it.
+
+**The existing proxy is not reusable as-is:** it is plain HTTP on a bare IP, so
+the Unicommerce credentials cross the public internet in cleartext, and it
+authenticates with a shared static secret. A replacement needs TLS and
+credentials that are not a person's login — see §8c.
+
+## 8c. Credentials: a service account, not a person's login
+
+The existing integration signs in with a named employee's email and password.
+That must not carry over, for three reasons that have nothing to do with
+secrecy:
+
+1. **It breaks when that person changes their password**, and the failure
+   surfaces as a sync outage with no obvious cause.
+2. **It breaks when that person leaves.** The integration's access is tied to
+   employment.
+3. **It inherits that person's permissions.** A human admin can do far more in
+   Uniware than an inventory push needs, so a bug in the connector has the blast
+   radius of a senior user rather than of a narrowly scoped client.
+
+What to ask Unicommerce for: API client credentials (`UNICOMMERCE_CLIENT_ID` /
+`UNICOMMERCE_CLIENT_SECRET`) scoped to the operations in §2, for a service
+account that is not a mailbox.
+
 ## 9. Implementation checklist
 
 Phase 4:
@@ -341,6 +429,9 @@ Phase 4:
 - [ ] Confirm the tenant base URL and the authentication scheme
 - [ ] **Confirm which document type carries bulk manufacturing demand**
 - [ ] Confirm facility master endpoint and the exact facility codes
+      (**17 supplied in §8a; every code is inferred and unverified**)
+- [ ] Confirm the egress IP the ERP will call from, and get it whitelisted (§8b)
+- [ ] Obtain API client credentials for a service account, not a person (§8c)
 - [ ] Confirm the inventory availability endpoint and whether its figures are
       live or cached
 - [ ] Confirm rate limits and pagination
