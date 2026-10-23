@@ -19,6 +19,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { ManufacturingModule } from './modules/manufacturing/manufacturing.module';
 import { MaterialsModule } from './modules/materials/materials.module';
 import { MrpModule } from './modules/mrp/mrp.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { ProductionModule } from './modules/production/production.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PurchasingModule } from './modules/purchasing/purchasing.module';
@@ -50,6 +51,7 @@ import { QualityModule } from './modules/quality/quality.module';
     MrpModule,
     ManufacturingModule,
     ProductionModule,
+    ReportsModule,
     QualityModule,
     CuttingModule,
     IntegrationsModule,
