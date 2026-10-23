@@ -39,3 +39,5 @@ export * from './integrations/push';
 export * from './costing/rollup';
 export * from './forecasting/replenishment';
 export * from './integrations/unicommerce';
+export * from './integrations/shopify-product';
+export * from './fulfilment/route';

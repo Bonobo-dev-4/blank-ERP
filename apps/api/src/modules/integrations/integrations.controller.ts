@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { importShopifyOrdersRequest, shopifyOrderListQuery, type AuthenticatedUser } from '@dnd/contracts';
 import { z } from 'zod';
@@ -6,11 +6,15 @@ import { RequirePermissions } from '../../common/auth/guards';
 import { CurrentUser, OrgId } from '../../common/decorators/current-user.decorator';
 import { ApiZodBody, ApiZodQuery, ZodBody, ZodQuery } from '../../common/zod/zod.decorators';
 import { ShopifyService } from './shopify.service';
+import { ShopifyProductService } from './shopify-product.service';
 
 @ApiTags('Integrations')
 @Controller('integrations/shopify')
 export class IntegrationsController {
-  constructor(private readonly shopify: ShopifyService) {}
+  constructor(
+    private readonly shopify: ShopifyService,
+    private readonly shopifyProducts: ShopifyProductService,
+  ) {}
 
   @Get('status')
   @RequirePermissions('admin.manage_integrations')
@@ -58,5 +62,30 @@ export class IntegrationsController {
     @ZodQuery(shopifyOrderListQuery) query: z.infer<typeof shopifyOrderListQuery>,
   ) {
     return this.shopify.listOrders(orgId, query);
+  }
+
+  @Post('products/import')
+  @RequirePermissions('products.import')
+  @ApiOperation({
+    summary: 'Pull the catalogue from Shopify',
+    description:
+      'Shopify is where a garment is created, so the ERP mirrors it rather than keeping a second catalogue in step by hand. Every variant gets an external mapping, which is what makes an imported ORDER line resolve to a real product.',
+  })
+  importProducts(
+    @OrgId() orgId: string,
+    @Body() body: { idempotencyKey: string; limit?: number; activeOnly?: boolean },
+  ) {
+    return this.shopifyProducts.importProducts(orgId, body);
+  }
+
+  @Post('products/relink-orders')
+  @RequirePermissions('products.manage_mappings')
+  @ApiOperation({
+    summary: 'Attach already-imported order lines to products',
+    description:
+      'Order lines imported before the catalogue existed sit unmapped and nothing else goes back to fix them. Matched on SKU, which Shopify and Unicommerce share.',
+  })
+  relinkOrders(@OrgId() orgId: string) {
+    return this.shopifyProducts.relinkOrderLines(orgId);
   }
 }

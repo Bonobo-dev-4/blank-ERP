@@ -19,3 +19,4 @@ apps/api/prisma/generated/
 
 # Local PGlite data directory
 .pgdata/
+.devlogs/
