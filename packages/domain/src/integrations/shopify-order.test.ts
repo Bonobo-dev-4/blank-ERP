@@ -66,6 +66,64 @@ describe('channel classification', () => {
     expect(classifyShopifyOrder({ sourceName: 'web', tags: ['vip', 'gift'] }).channel).toBe('ONLINE');
   });
 
+  it('recognises both spellings the live store uses for bespoke', () => {
+    // The store tags the same order "Custom" AND "Custom Order". Honouring one
+    // but not the other would make the result depend on which of two
+    // interchangeable tags a human happened to type.
+    for (const tag of ['Custom', 'Custom Order', 'custom-order', 'Made to Measure', 'Bespoke']) {
+      const c = classifyShopifyOrder({ sourceName: 'web', tags: [tag] });
+      expect(c.channel, tag).toBe('CUSTOM');
+      expect(c.isCustomised, tag).toBe(true);
+    }
+  });
+
+  it('records customisation separately from the channel it chose', () => {
+    // A made-to-measure garment sold at Kala Ghoda Fort is honestly both POS
+    // and CUSTOM, and DemandChannel holds one value. Neither fact is lost:
+    // store sales can read the location, production can read isCustomised.
+    const c = classifyShopifyOrder({
+      retailLocationId: 'gid://shopify/Location/42',
+      retailLocationName: 'Kala Ghoda Fort',
+      sourceName: 'pos',
+      tags: ['Point of Sale', 'Custom', 'Custom Order'],
+    });
+    expect(c.channel).toBe('CUSTOM');
+    expect(c.isCustomised).toBe(true);
+    expect(c.customTag).toBe('custom');
+    expect(c.posLocationName).toBe('Kala Ghoda Fort');
+  });
+
+  it('leaves a plain store sale uncustomised', () => {
+    const c = classifyShopifyOrder({
+      retailLocationId: 'gid://shopify/Location/42',
+      tags: ['Point of Sale', 'unicommerce complete'],
+    });
+    expect(c.channel).toBe('POS');
+    expect(c.isCustomised).toBe(false);
+    expect(c.customTag).toBeNull();
+  });
+
+  it('does not read a product handle in the tags as a channel signal', () => {
+    // The live store tags orders with product handles and with integration
+    // state. Matching tags by substring would turn merchandising metadata
+    // into a production instruction.
+    const c = classifyShopifyOrder({
+      sourceName: 'web',
+      tags: ['off-shoulder-sequin-gown-47751089193130', 'unicommerce complete', 'customer-vip'],
+    });
+    expect(c.channel).toBe('ONLINE');
+    expect(c.isCustomised).toBe(false);
+  });
+
+  it('classifies an unidentified numeric sales channel as ONLINE', () => {
+    // 402708955137 is 42% of this store's recent orders and the API never
+    // names it. ONLINE is the safe landing: it does not credit a shop that
+    // never saw the order.
+    const c = classifyShopifyOrder({ sourceName: '402708955137' });
+    expect(c.channel).toBe('ONLINE');
+    expect(c.posLocationId).toBeNull();
+  });
+
   it('classifies an order with nothing to go on as ONLINE', () => {
     const c = classifyShopifyOrder({});
     expect(c.channel).toBe('ONLINE');

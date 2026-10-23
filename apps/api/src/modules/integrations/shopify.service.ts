@@ -454,6 +454,8 @@ export class ShopifyService {
         orderNumber: node.name.replace(/^#/, ''),
         orderName: node.name,
         channel: classification.channel as DbDemandChannel,
+        channelBasis: classification.basis,
+        isCustomised: classification.isCustomised,
         posLocationId: classification.posLocationId,
         posLocationName: classification.posLocationName,
         orderedAt: new Date(node.processedAt ?? node.createdAt),

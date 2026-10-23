@@ -40,13 +40,41 @@ export interface ChannelClassification {
    * structured field. Worth surfacing: it is the case most likely to be wrong.
    */
   readonly isHeuristic: boolean;
+  /**
+   * Whether the order is bespoke, independently of `channel`.
+   *
+   * A garment sold at a shop and made to measure is honestly both POS and
+   * CUSTOM, and `DemandChannel` holds one value. Reporting customisation
+   * separately means the single-channel choice does not destroy the other
+   * fact: store-level sales can read `posLocationId` on a CUSTOM order, and
+   * production can route off `isCustomised` whichever way the channel falls.
+   */
+  readonly isCustomised: boolean;
+  /** The tag that marked it bespoke, so the rule can be audited. */
+  readonly customTag: string | null;
 }
 
 /** Source names Shopify itself documents as point-of-sale. */
 const POS_SOURCE_NAMES = new Set(['pos', 'shopify_pos', 'point_of_sale']);
 
-/** Tags that mark an order as bespoke rather than stock production. */
-const CUSTOM_TAGS = new Set(['custom', 'bespoke', 'made-to-measure', 'mto', 'customised', 'customized']);
+/**
+ * Tags that mark an order as bespoke rather than stock production.
+ *
+ * Matched whole, never by substring: the live store also uses tags for product
+ * handles (`off-shoulder-sequin-gown-47751089193130`) and for integration state
+ * (`unicommerce complete`), so a substring rule would classify merchandising
+ * metadata as a production instruction.
+ *
+ * Both spellings the store actually uses are here. `Custom` and `Custom Order`
+ * appear on the same orders, and recognising one but not the other would make
+ * the result depend on which of two interchangeable tags a human happened to
+ * type.
+ */
+const CUSTOM_TAGS = new Set([
+  'custom', 'custom order', 'custom-order',
+  'bespoke', 'made-to-measure', 'made to measure', 'mto',
+  'customised', 'customized',
+]);
 
 /**
  * Decide which channel an order came from.
@@ -62,16 +90,22 @@ const CUSTOM_TAGS = new Set(['custom', 'bespoke', 'made-to-measure', 'mto', 'cus
  */
 export function classifyShopifyOrder(input: ShopifyOrderChannelInput): ChannelClassification {
   const tags = (input.tags ?? []).map((t) => t.trim().toLowerCase());
+  const customTag = tags.find((t) => CUSTOM_TAGS.has(t)) ?? null;
+  const bespoke = { isCustomised: customTag !== null, customTag };
 
   // A bespoke order is bespoke wherever it was taken, so the tag wins over the
-  // channel: it changes what production has to do, not just where it came from.
-  if (tags.some((t) => CUSTOM_TAGS.has(t))) {
+  // channel: it changes what production has to DO, not merely where it came
+  // from. The store it was taken at is still recorded, and `isCustomised`
+  // carries the same fact independently, so the losing half of this choice is
+  // never thrown away.
+  if (customTag !== null) {
     return {
       channel: 'CUSTOM',
       posLocationId: input.retailLocationId ?? null,
       posLocationName: input.retailLocationName ?? null,
       basis: 'TAG',
       isHeuristic: false,
+      ...bespoke,
     };
   }
 
@@ -82,6 +116,7 @@ export function classifyShopifyOrder(input: ShopifyOrderChannelInput): ChannelCl
       posLocationName: input.retailLocationName ?? null,
       basis: 'RETAIL_LOCATION',
       isHeuristic: false,
+      ...bespoke,
     };
   }
 
@@ -95,6 +130,7 @@ export function classifyShopifyOrder(input: ShopifyOrderChannelInput): ChannelCl
       posLocationName: null,
       basis: 'SOURCE_NAME',
       isHeuristic: true,
+      ...bespoke,
     };
   }
 
@@ -104,6 +140,7 @@ export function classifyShopifyOrder(input: ShopifyOrderChannelInput): ChannelCl
     posLocationName: null,
     basis: source ? 'SOURCE_NAME' : 'DEFAULT',
     isHeuristic: false,
+    ...bespoke,
   };
 }
 

@@ -2940,6 +2940,14 @@ model ShopifyOrder {
   orderName          String?
   /// ONLINE / POS / CUSTOM / DRAFT - classified on import.
   channel            DemandChannel
+  /// How `channel` was decided: RETAIL_LOCATION / SOURCE_NAME / TAG / DEFAULT.
+  /// Kept so a wrong classification can be traced to the rule that made it
+  /// rather than re-derived from a payload that may since have changed.
+  channelBasis       String?
+  /// Bespoke, independently of `channel`. A made-to-measure garment sold in a
+  /// shop is both POS and CUSTOM, and `channel` holds one value; this keeps
+  /// the other half of that fact without unnesting `tags` on every query.
+  isCustomised       Boolean             @default(false)
   posLocationId      String?
   posLocationName    String?
   orderedAt          DateTime
@@ -2965,6 +2973,7 @@ model ShopifyOrder {
   @@unique([organizationId, externalId])
   @@index([organizationId, channel, orderedAt])
   @@index([organizationId, status])
+  @@index([organizationId, isCustomised, orderedAt])
   @@map("shopify_orders")
 }
 
