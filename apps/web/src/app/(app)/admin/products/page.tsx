@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/primitives';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/app/auth-context';
 
 interface ProductRow {
@@ -27,6 +28,7 @@ interface ProductRow {
 export default function ProductsPage() {
   const { can } = useAuth();
   const state = useListState({ sortBy: 'styleCode', sortDir: 'asc' });
+  const router = useRouter();
   const { data, isLoading, isFetching, error, refetch } = useListQuery<ProductRow>(
     'products', '/products', state,
   );
@@ -103,6 +105,7 @@ export default function ProductsPage() {
         pagination={paginationProps(data, state)}
         search={{ value: state.search, onChange: state.setSearch, placeholder: 'Style code, name, collection' }}
         exportFileName="products"
+        onRowClick={(row) => router.push(`/admin/products/${row.id}`)}
         emptyTitle="No products"
         toolbar={
           <NativeSelect

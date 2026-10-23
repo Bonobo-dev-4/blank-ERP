@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { importShopifyOrdersRequest, shopifyOrderListQuery, type AuthenticatedUser } from '@dnd/contracts';
 import { z } from 'zod';
@@ -87,5 +87,16 @@ export class IntegrationsController {
   })
   relinkOrders(@OrgId() orgId: string) {
     return this.shopifyProducts.relinkOrderLines(orgId);
+  }
+
+  @Get('orders/:id')
+  @RequirePermissions('demand.read')
+  @ApiOperation({
+    summary: 'One order, with every line and where it has got to',
+    description:
+      'What was bought, what is still owed, and how far production has taken it — the three questions an operator asks in sequence, on one screen. Stage figures are per stage and never summed.',
+  })
+  getOrder(@OrgId() orgId: string, @Param('id') id: string) {
+    return this.shopify.getOrder(orgId, id);
   }
 }

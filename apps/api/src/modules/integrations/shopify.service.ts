@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   type DemandChannel as DbDemandChannel,
   type ExternalOrderStatus as DbExternalOrderStatus,
 } from '@prisma/client';
 import {
-  classifyShopifyOrder, isStaleOrderVersion, shopifyLineQuantities, qty,
+  Decimal, classifyShopifyOrder, dec, isStaleOrderVersion, shopifyLineQuantities, qty,
 } from '@dnd/domain';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/services/audit.service';
@@ -589,6 +589,169 @@ export class ShopifyService {
       total,
       query,
     );
+  }
+
+  /**
+   * One order, with everything known about each line.
+   *
+   * Pulls together the three things an operator asks in sequence — what did
+   * they buy, is any of it owed, and where has it got to — so the answer is
+   * one screen rather than three. The production figures come from the stage
+   * tasks of whatever manufacturing order covers the line's demand.
+   */
+  async getOrder(organizationId: string, id: string) {
+    const order = await this.prisma.shopifyOrder.findFirst({
+      where: { organizationId, OR: [{ id }, { externalId: id }, { orderNumber: id }] },
+      include: { lines: true },
+    });
+    if (!order) {
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    }
+
+    // ShopifyOrderLine carries productVariantId but no relation to follow, so
+    // the variants come back in one extra query rather than N.
+    const variantIds = order.lines
+      .map((l) => l.productVariantId)
+      .filter((v): v is string => v !== null);
+    const variants = variantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: variantIds } },
+          select: {
+            id: true, sku: true, size: true, color: true, imageUrl: true,
+            product: { select: { id: true, name: true, styleCode: true } },
+          },
+        })
+      : [];
+    const variantById = new Map(variants.map((v) => [v.id, v] as const));
+
+    // Demand raised from this order's lines, and whatever is making it.
+    const demands = await this.prisma.demandSourceMapping.findMany({
+      where: { organizationId, sourceSystem: 'SHOPIFY', sourceDocType: 'ORDER', sourceDocId: order.id },
+      select: {
+        sourceLineId: true,
+        manufacturingDemand: {
+          select: {
+            id: true, demandNo: true, status: true, manufacturingQty: true, allocatedQty: true,
+            isRejectedForDispatch: true, rejectedReason: true,
+            allocations: {
+              select: {
+                allocatedQty: true,
+                manufacturingOrder: {
+                  select: {
+                    id: true, moNo: true, status: true,
+                    batches: {
+                      select: {
+                        stageTasks: {
+                          select: {
+                            sequence: true, receivedQty: true, completedQty: true,
+                            forwardedQty: true, rejectedQty: true,
+                            productionStage: { select: { code: true, name: true, sequenceHint: true } },
+                          },
+                          orderBy: { sequence: 'asc' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const demandByLine = new Map(demands.map((d) => [d.sourceLineId, d.manufacturingDemand]));
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      orderName: order.orderName,
+      channel: order.channel,
+      channelBasis: order.channelBasis,
+      isCustomised: order.isCustomised,
+      posLocationName: order.posLocationName,
+      status: order.status,
+      financialStatus: order.financialStatus,
+      fulfillmentStatus: order.fulfillmentStatus,
+      currency: order.currency,
+      totalAmount: order.totalAmount?.toFixed() ?? null,
+      customerRef: order.customerRef,
+      note: order.note,
+      tags: order.tags,
+      orderedAt: order.orderedAt.toISOString(),
+      cancelledAt: order.cancelledAt?.toISOString() ?? null,
+      importedAt: order.importedAt.toISOString(),
+      lines: order.lines.map((l) => {
+        const demand = demandByLine.get(l.id) ?? null;
+        const variant = l.productVariantId ? variantById.get(l.productVariantId) ?? null : null;
+
+        // Stage progress for this line, if something is being made for it.
+        // Figures are per stage and never summed - a garment passes through
+        // every stage, so adding them counts it once per stage.
+        const stages = (demand?.allocations ?? [])
+          .flatMap((a) => a.manufacturingOrder?.batches ?? [])
+          .flatMap((b) => b.stageTasks)
+          .reduce<Map<string, { name: string; sequence: number; received: Decimal; completed: Decimal; forwarded: Decimal; rejected: Decimal }>>(
+            (acc, t) => {
+              const key = t.productionStage.code;
+              const row = acc.get(key) ?? {
+                name: t.productionStage.name,
+                sequence: t.productionStage.sequenceHint,
+                received: new Decimal(0), completed: new Decimal(0),
+                forwarded: new Decimal(0), rejected: new Decimal(0),
+              };
+              row.received = row.received.plus(dec(t.receivedQty.toFixed()));
+              row.completed = row.completed.plus(dec(t.completedQty.toFixed()));
+              row.forwarded = row.forwarded.plus(dec(t.forwardedQty.toFixed()));
+              row.rejected = row.rejected.plus(dec(t.rejectedQty.toFixed()));
+              acc.set(key, row);
+              return acc;
+            },
+            new Map(),
+          );
+
+        const mo = demand?.allocations?.[0]?.manufacturingOrder ?? null;
+
+        return {
+          id: l.id,
+          externalSku: l.externalSku,
+          title: l.title,
+          size: l.size,
+          color: l.color,
+          productVariantId: l.productVariantId,
+          sku: variant?.sku ?? l.externalSku,
+          productId: variant?.product?.id ?? null,
+          productName: variant?.product?.name ?? null,
+          styleCode: variant?.product?.styleCode ?? null,
+          imageUrl: variant?.imageUrl ?? null,
+          isMapped: l.productVariantId !== null,
+          orderedQty: l.orderedQty.toFixed(),
+          cancelledQty: l.cancelledQty.toFixed(),
+          fulfilledQty: l.fulfilledQty.toFixed(),
+          manufacturingQty: l.manufacturingQty.toFixed(),
+          availabilityStatus: l.availabilityStatus,
+          demand: demand
+            ? {
+                demandNo: demand.demandNo,
+                status: demand.status,
+                manufacturingQty: demand.manufacturingQty.toFixed(),
+                allocatedQty: demand.allocatedQty.toFixed(),
+                isRejectedForDispatch: demand.isRejectedForDispatch,
+                rejectedReason: demand.rejectedReason,
+              }
+            : null,
+          manufacturingOrder: mo ? { id: mo.id, moNo: mo.moNo, status: mo.status } : null,
+          stages: [...stages.entries()]
+            .map(([code, r]) => ({
+              code, name: r.name, sequence: r.sequence,
+              receivedQty: r.received.toFixed(),
+              completedQty: r.completed.toFixed(),
+              forwardedQty: r.forwarded.toFixed(),
+              rejectedQty: r.rejected.toFixed(),
+            }))
+            .sort((a, b) => a.sequence - b.sequence),
+        };
+      }),
+    };
   }
 }
 

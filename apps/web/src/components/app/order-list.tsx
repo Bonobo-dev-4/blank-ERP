@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { fmtDateTime, fmtMoneyCompact, fmtQty, humanise } from '@/lib/utils';
 import {
@@ -37,6 +38,7 @@ export function OrderList({
 }: {
   title: string; description: string; channel?: 'ONLINE' | 'POS' | 'CUSTOM';
 }) {
+  const router = useRouter();
   const [page, setPage] = React.useState(1);
   const qs = new URLSearchParams({ page: String(page), pageSize: '25', ...(channel ? { channel } : {}) });
 
@@ -114,9 +116,19 @@ export function OrderList({
                     </thead>
                     <tbody>
                       {data.data.map((o) => (
-                        <tr key={o.id} className="border-b border-line last:border-0">
+                        <tr
+                          key={o.id}
+                          onClick={() => router.push(`/orders/${o.id}`)}
+                          className="cursor-pointer border-b border-line last:border-0 transition-colors hover:bg-surface-muted"
+                        >
                           <td className="px-3 py-1.5">
-                            <span className="font-mono text-[11.5px]">{o.orderName ?? o.orderNumber}</span>
+                            <Link
+                              href={`/orders/${o.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-mono text-[11.5px] font-medium underline-offset-2 hover:underline"
+                            >
+                              {o.orderName ?? o.orderNumber}
+                            </Link>
                             {o.isCustomised ? <Badge tone="info" className="ml-2">bespoke</Badge> : null}
                           </td>
                           <td className="px-3 py-1.5">
