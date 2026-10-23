@@ -41,12 +41,14 @@ export const NAVIGATION: readonly NavGroup[] = [
   {
     label: 'Orders & Demand',
     items: [
-      { label: 'All Orders', href: '/orders', icon: 'ShoppingCart', permission: 'demand.read', status: 'PLANNED', phase: 4 },
-      { label: 'Shopify Orders', href: '/orders/shopify', icon: 'Store', permission: 'demand.read', status: 'PLANNED', phase: 4 },
-      { label: 'POS Orders', href: '/orders/pos', icon: 'Receipt', permission: 'demand.read', status: 'PLANNED', phase: 4 },
-      { label: 'Unicommerce Bulk POs', href: '/orders/bulk-po', icon: 'FileStack', permission: 'demand.read', status: 'PLANNED', phase: 4 },
-      { label: 'Stock Availability', href: '/orders/availability', icon: 'PackageSearch', permission: 'demand.read', status: 'PLANNED', phase: 4 },
-      { label: 'Manufacturing Demand', href: '/demand', icon: 'ListChecks', permission: 'demand.read', status: 'PLANNED', phase: 4 },
+      { label: 'All Orders', href: '/orders', icon: 'ShoppingCart', permission: 'demand.read', status: 'BUILT', phase: 4 },
+      { label: 'Shopify Orders', href: '/orders/shopify', icon: 'Store', permission: 'demand.read', status: 'BUILT', phase: 4 },
+      { label: 'POS Orders', href: '/orders/pos', icon: 'Receipt', permission: 'demand.read', status: 'BUILT', phase: 4 },
+      { label: 'Unicommerce Bulk POs', href: '/orders/bulk-po', icon: 'FileStack', permission: 'demand.read', status: 'PARTIAL', phase: 4,
+        description:
+          'Unicommerce exposes no purchase-order READ endpoint to this service account - six documented paths were probed live and all returned 404 while create responded. The screen explains the block rather than showing an empty table, which would read as "no bulk orders exist".' },
+      { label: 'Stock Availability', href: '/orders/availability', icon: 'PackageSearch', permission: 'demand.read', status: 'BUILT', phase: 4 },
+      { label: 'Manufacturing Demand', href: '/demand', icon: 'ListChecks', permission: 'demand.read', status: 'BUILT', phase: 4 },
       { label: 'Demand Forecast', href: '/demand/forecast', icon: 'TrendingUp', permission: 'reports.read', status: 'BUILT', phase: 6 },
     ],
   },
@@ -147,7 +149,7 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Locations', href: '/admin/locations', icon: 'MapPin', permission: 'admin.manage_locations', status: 'BUILT', phase: 1 },
       { label: 'Production Routes', href: '/admin/routes', icon: 'Route', permission: 'admin.manage_routes', status: 'BUILT', phase: 3 },
       { label: 'Approvals', href: '/admin/approvals', icon: 'Stamp', permission: 'admin.manage_approvals', status: 'BUILT', phase: 6 },
-      { label: 'Integrations', href: '/admin/integrations', icon: 'Plug', permission: 'admin.manage_integrations', status: 'PARTIAL', phase: 4,
+      { label: 'Integrations', href: '/admin/integrations', icon: 'Plug', permission: 'admin.manage_integrations', status: 'BUILT', phase: 4,
         description: 'Connection status and contracts; live connectors land in phase 4' },
       { label: 'Settings', href: '/admin/settings', icon: 'Settings', permission: 'admin.manage_settings', status: 'BUILT', phase: 1 },
       { label: 'Audit Logs', href: '/admin/audit', icon: 'ScrollText', permission: 'admin.view_audit_log', status: 'BUILT', phase: 1 },
@@ -186,7 +188,7 @@ export const PHASE_DEPENDENCIES: Readonly<Record<number, readonly number[]>> = {
   6: [3],
 };
 
-export const DELIVERED_PHASES = [1, 2, 3, 6] as const;
+export const DELIVERED_PHASES = [1, 2, 3, 4, 6] as const;
 
 /** Flat list of every navigable screen. */
 export const ALL_NAV_ITEMS: readonly NavItem[] = NAVIGATION.flatMap((g) => g.items);

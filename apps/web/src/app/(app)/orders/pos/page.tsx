@@ -1,5 +1,11 @@
-import { NotBuiltYet } from '@/components/app/not-built';
+import { OrderList } from '@/components/app/order-list';
 
 export default function Page() {
-  return <NotBuiltYet href="/orders/pos" />;
+  return (
+    <OrderList
+      title="POS orders"
+      description="Orders taken in a shop. The store is recorded on the order, so sales stay attributable by branch."
+      channel="POS"
+    />
+  );
 }

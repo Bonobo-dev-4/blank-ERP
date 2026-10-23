@@ -1,5 +1,10 @@
-import { NotBuiltYet } from '@/components/app/not-built';
+import { OrderList } from '@/components/app/order-list';
 
 export default function Page() {
-  return <NotBuiltYet href="/orders" />;
+  return (
+    <OrderList
+      title="All orders"
+      description="Everything imported from Shopify, across every channel."
+    />
+  );
 }

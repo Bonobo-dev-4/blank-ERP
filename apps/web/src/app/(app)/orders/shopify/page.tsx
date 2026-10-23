@@ -1,5 +1,11 @@
-import { NotBuiltYet } from '@/components/app/not-built';
+import { OrderList } from '@/components/app/order-list';
 
 export default function Page() {
-  return <NotBuiltYet href="/orders/shopify" />;
+  return (
+    <OrderList
+      title="Shopify orders"
+      description="Orders placed online. Demand is driven by what is still owed to the customer, not by what was originally ordered."
+      channel="ONLINE"
+    />
+  );
 }

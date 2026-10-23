@@ -529,6 +529,32 @@ These are also **stage counters**: allocated, inProcess and completed describe
 the same garment at different points, so summing them double-counts exactly as
 summing cutting + stitching + finishing would internally.
 
+## 8g. Purchase orders cannot be read on this tenant
+
+Probed against the live API on 23 Oct 2026. Six documented paths for reading
+purchase orders all returned **404**:
+
+```
+/services/rest/v1/purchase/purchaseOrder/search
+/services/rest/v1/purchase/purchaseOrder/get
+/services/rest/v1/purchase/searchPurchaseOrder
+/services/rest/v1/oms/purchaseOrder/search
+/services/rest/v1/purchase/purchaseOrder/list
+/services/rest/v1/inventory/purchaseOrder/search
+```
+
+Meanwhile `POST /services/rest/v1/purchase/purchaseOrder/create` responds
+normally (it asks for `vendorCode`). So the module is present and the account
+can write, but **reading purchase orders is either unavailable or not
+permitted** for this service account.
+
+That settles what the Bulk POs screen can be. It states the block rather than
+rendering an empty grid, because an empty grid reads as *no bulk orders exist*
+— a different and false claim from *this system cannot be asked*.
+
+It also narrows, without closing, the open question about where bulk
+manufacturing demand comes from. It is not reachable through this API today.
+
 ## 9. Implementation checklist
 
 Phase 4 — **done, verified against the live tenant 23 Oct 2026**:
@@ -549,7 +575,8 @@ Phase 4 — **done, verified against the live tenant 23 Oct 2026**:
 Still open, and none of it is code:
 
 - [ ] **Confirm which document type carries bulk manufacturing demand.**
-      Narrowed but not closed: marketplace orders (§8e) are retail, not bulk.
+      Narrowed twice and still open: marketplace orders (§8e) are retail, not
+      bulk, and purchase orders cannot be read at all (§8g).
 - [ ] Confirm the egress IP the ERP will call from, and get it whitelisted (§8b)
 - [ ] Obtain API client credentials for a service account, not a person (§8c)
       — now **urgent**: the token this account receives carries `write` scope
