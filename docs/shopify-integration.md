@@ -333,20 +333,85 @@ Schema facts are store-independent; these are not:
 `POST /api/integrations/shopify/verify` answers all four against the live store
 and writes the result to the connection record. It is read-only.
 
+## 9b. Live store probe — 23 Oct 2026
+
+Run against `dash-and-dot.myshopify.com` (**Shopify Plus**, INR, Asia/Kolkata)
+over the 50 most recently updated orders. All five checks passed:
+authentication, order read access, historical orders (`read_all_orders` is
+granted), and a 1000 points/second cost budget.
+
+### What the store actually emits
+
+| `sourceName` | Orders | Classified |
+|---|---|---|
+| `web` | 23 | ONLINE ×22, CUSTOM ×1 |
+| `402708955137` | 21 | ONLINE ×21 |
+| `pos` | 3 | POS ×2, CUSTOM ×1 |
+| `shopify_draft_order` | 2 | ONLINE ×2 |
+| `4388981` | 1 | ONLINE ×1 |
+
+Retail orders resolved to real shops — **Kala Ghoda Fort (2)**, **DLF
+Promenade (1)** — which confirms `retailLocation` identifies POS *by store*,
+exactly as the design needs.
+
+### Four things this changed
+
+**1. 42% of orders come from an unidentified numeric channel.**
+`402708955137` is a sales-channel app id, not a name. It is the second largest
+source and nothing in the API says what it is. It currently falls through to
+ONLINE, which is probably right but is a default, not a decision. **Needs
+naming before demand is trusted.**
+
+**2. `shopify_draft_order` exists.** Draft orders are the usual route for
+wholesale and manually-keyed B2B. If bulk demand reaches this business at all,
+this is the likeliest place it arrives — see the open question in
+unicommerce-integration.md about where manufacturing demand comes from.
+
+**3. Unicommerce writes back to Shopify.** Every retail order carried the tag
+`unicommerce complete`. That is a fulfilment signal the ERP can read without
+calling Unicommerce at all, and it means Shopify tags are part of the
+integration surface, not just merchandising metadata.
+
+**4. A store sale can also be a custom order.** One `pos` order carried
+`Custom` and `Custom Order` tags and classified as CUSTOM rather than POS. The
+store is still recorded on it, but the channel is not.
+
+### The open question this raises
+
+`DemandChannel` allows one value, and a bespoke garment sold at Kala Ghoda Fort
+is honestly both. The current rule puts bespoke first, because it changes what
+production has to *do* rather than merely where the order came from — but the
+consequence is that POS counts under-report by however many store sales are
+also custom.
+
+Two coherent answers, and the business has to pick:
+
+- **Keep CUSTOM winning.** Production routing stays correct; store-level sales
+  reporting needs to read `posLocationName`, which is populated either way.
+- **Make POS win and record customisation separately** on the line
+  (`ShopifyOrderLine.customization` already exists for this). Channel then
+  means "where it came from" consistently, and bespoke becomes an attribute.
+
+Tags are also used for product handles — one order carried
+`off-shoulder-sequin-gown-47751089193130` — so any tag-driven rule has to match
+exactly rather than by substring. The current implementation does.
+
 ## 10. Implementation checklist
 
 Before writing the connector:
 
 - [x] Confirm the pinned Admin API version is supported and not near expiry
-- [ ] Confirm granted scopes cover orders, products, inventory and locations
-      — **run `/integrations/shopify/verify`**
+- [x] Confirm granted scopes cover orders, products, inventory and locations
+      — verified 23 Oct 2026, see §9b
 - [x] **Confirm the POS / online / custom discriminator** — see §9a; it is
       `retailLocation`, not a single boolean, and the legacy field is deprecated
 - [x] Confirm the correct cancelled and refunded quantity fields — `currentQuantity`
 - [ ] Confirm webhook topic names and payload shapes — polling first
 - [x] Confirm the rate-limit model and the throttle fields to read — cost-based
-- [ ] Confirm whether reading historical orders needs an extra scope
-      — **run `/integrations/shopify/verify`**
+- [x] Confirm whether reading historical orders needs an extra scope
+      — `read_all_orders` IS granted, see §9b
+- [ ] **Name the `402708955137` sales channel** — 42% of recent orders
+- [ ] **Decide whether CUSTOM or POS wins** for a bespoke in-store sale
 - [ ] Decide the inventory-availability source: Shopify inventory levels, or
       Unicommerce facility stock. **They will disagree**, and the ERP must name
       one of them as authoritative for the manufacturing decision.

@@ -188,11 +188,16 @@ export class ShopifyService {
       }
     } catch (error) {
       checks.push({ name: 'Authentication', ok: false, detail: errorText(error) });
-      return { ok: false, configured: true, shop: null, checks, sourceNames: [], message: null };
+      return {
+        ok: false, configured: true, shop: null, checks,
+        sourceNames: [], retailLocations: [], tagsOnRetailOrders: [], message: null,
+      };
     }
 
     // Can it read orders at all? A missing scope shows up here, not at login.
     let sourceNames: { value: string; count: number; classifiedAs: string }[] = [];
+    let retailLocations: { name: string; count: number }[] = [];
+    let tagsOnRetailOrders: { tag: string; count: number }[] = [];
     try {
       const probe = await this.client.query<{ orders: { edges: { node: OrderNode }[] } }>(
         ORDER_PROBE_QUERY,
@@ -207,7 +212,13 @@ export class ShopifyService {
       });
 
       // THE thing the schema could not tell us: what this shop actually emits.
-      const tally = new Map<string, { count: number; classifiedAs: string }>();
+      // Reported as a CROSS-TAB, not one label per source: a single source can
+      // classify several ways, and collapsing that to the last one seen hides
+      // exactly the disagreements worth looking at.
+      const tally = new Map<string, Map<string, number>>();
+      const tagsOnRetail = new Map<string, number>();
+      const retailStores = new Map<string, number>();
+
       for (const n of nodes) {
         const key = n.sourceName ?? '(null)';
         const classification = classifyShopifyOrder({
@@ -216,14 +227,36 @@ export class ShopifyService {
           sourceName: n.sourceName,
           tags: n.tags,
         });
-        const existing = tally.get(key);
-        tally.set(key, {
-          count: (existing?.count ?? 0) + 1,
-          classifiedAs: classification.channel,
-        });
+        const byChannel = tally.get(key) ?? new Map<string, number>();
+        byChannel.set(classification.channel, (byChannel.get(classification.channel) ?? 0) + 1);
+        tally.set(key, byChannel);
+
+        if (n.retailLocation) {
+          retailStores.set(n.retailLocation.name, (retailStores.get(n.retailLocation.name) ?? 0) + 1);
+          // Tags on retail orders are what can override a POS classification,
+          // so they are surfaced to make a collision visible.
+          for (const tag of n.tags ?? []) {
+            tagsOnRetail.set(tag, (tagsOnRetail.get(tag) ?? 0) + 1);
+          }
+        }
       }
+
       sourceNames = [...tally.entries()]
-        .map(([value, v]) => ({ value, count: v.count, classifiedAs: v.classifiedAs }))
+        .map(([value, byChannel]) => ({
+          value,
+          count: [...byChannel.values()].reduce((a, b) => a + b, 0),
+          classifiedAs: [...byChannel.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([channel, n]) => `${channel}×${n}`)
+            .join(', '),
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      retailLocations = [...retailStores.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+      tagsOnRetailOrders = [...tagsOnRetail.entries()]
+        .map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count);
 
       const withRetail = nodes.filter((n) => n.retailLocation).length;
@@ -293,6 +326,14 @@ export class ShopifyService {
       checks,
       /** What this shop actually emits, and how the classifier reads it. */
       sourceNames,
+      /** Which shops POS orders came from, by name. */
+      retailLocations,
+      /**
+       * Tags present on retail orders. A tag here that the classifier treats
+       * as "bespoke" will override the POS classification, so this is where a
+       * collision becomes visible.
+       */
+      tagsOnRetailOrders,
       message: null,
     };
   }
