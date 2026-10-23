@@ -264,17 +264,89 @@ payloads, HTTP status, parsed business success, duration, attempt number, and
 `outcomeUncertain` for timeouts. Retained so an uncertain outcome can be
 investigated rather than guessed at.
 
+## 9a. API verification — done 23 Oct 2026
+
+Verified against the Admin GraphQL schema and the published documentation, not
+assumed. What changed as a result:
+
+### The channel discriminator is not one field
+
+The original design assumed a single "is this POS?" field. There are three, and
+they do not mean the same thing:
+
+| Field | What it says | Use |
+|---|---|---|
+| `Order.retailLocation` | The physical store a retail order was created at | **Primary POS test.** Non-null ⇒ POS |
+| `Order.sourceName` | The platform: `web`, `pos`, `mobile_app`, … | Secondary, and free-text |
+| `ChannelInformation.channelDefinition.handle` | Legacy channel handle | **Deprecated.** Do not build on it |
+
+`retailLocation` is the right primary test, and it is better than a boolean
+because it names *which* store — which is exactly what an eleven-store business
+needs in order to answer "is this piece available somewhere else?".
+
+**Documented exception:** draft POS orders completed with "mark as paid" in the
+admin return `null` here. Those fall back to `sourceName`, and a mis-classified
+draft is the one case where the fallback matters.
+
+### Use `currentQuantity`, never `quantity`
+
+| Field | Meaning |
+|---|---|
+| `LineItem.quantity` | Units originally ordered |
+| `LineItem.currentQuantity` | **Units ordered excluding refunded and removed units** |
+| `LineItem.unfulfilledQuantity` | Units not yet fulfilled |
+
+Demand must be driven by `currentQuantity`. Using `quantity` would keep
+manufacturing garments for lines the customer refunded — the exact class of
+error the specification's deduplication rules exist to prevent.
+
+### Rate limits are cost-based, not request-based
+
+A leaky bucket of *points*, per app-and-store combination, refilling
+continuously. Plan determines the rate: Standard 100/s, Advanced 200/s,
+Plus 1000/s. Connection cost is sized by `first`/`last`, so page size directly
+drives cost.
+
+The consequence for the connector: throttling cannot be "N requests per
+second". It has to read the cost the response reports and pace against the
+remaining budget. A fixed request rate would be both too slow and, on a large
+page, still too expensive.
+
+### Incremental import is possible
+
+The `orders` query supports `query: "updated_at:>..."` plus cursor pagination
+(`first` / `after`, `pageInfo { hasNextPage endCursor }`). So import is
+incremental by `updatedAt`, and `ShopifyOrder.externalUpdatedAt` is the
+stale-write guard against processing an older version of an order.
+
+### Still unverified — needs the real store
+
+Schema facts are store-independent; these are not:
+
+- [ ] **Which `sourceName` values this store actually emits.** The set is not
+      enumerable from the schema, and the POS fallback depends on it.
+- [ ] **Granted access scopes.** A missing `read_orders` or `read_locations`
+      surfaces as an empty result, not an error.
+- [ ] **Whether reading orders older than 60 days needs `read_all_orders`.**
+- [ ] **The store's plan**, which sets the rate budget.
+
+`POST /api/integrations/shopify/verify` answers all four against the live store
+and writes the result to the connection record. It is read-only.
+
 ## 10. Implementation checklist
 
 Before writing the connector:
 
-- [ ] Confirm the pinned Admin API version is supported and not near expiry
+- [x] Confirm the pinned Admin API version is supported and not near expiry
 - [ ] Confirm granted scopes cover orders, products, inventory and locations
-- [ ] **Confirm the POS / online / custom discriminator on real order data**
-- [ ] Confirm the correct cancelled and refunded quantity fields
-- [ ] Confirm webhook topic names and payload shapes
-- [ ] Confirm the rate-limit model and the throttle fields to read
+      — **run `/integrations/shopify/verify`**
+- [x] **Confirm the POS / online / custom discriminator** — see §9a; it is
+      `retailLocation`, not a single boolean, and the legacy field is deprecated
+- [x] Confirm the correct cancelled and refunded quantity fields — `currentQuantity`
+- [ ] Confirm webhook topic names and payload shapes — polling first
+- [x] Confirm the rate-limit model and the throttle fields to read — cost-based
 - [ ] Confirm whether reading historical orders needs an extra scope
+      — **run `/integrations/shopify/verify`**
 - [ ] Decide the inventory-availability source: Shopify inventory levels, or
       Unicommerce facility stock. **They will disagree**, and the ERP must name
       one of them as authoritative for the manufacturing decision.

@@ -33,6 +33,7 @@ export * from './quality/qc';
 export * from './finished-goods/inward';
 
 export * from './integrations/dedupe';
+export * from './integrations/shopify-order';
 export * from './integrations/push';
 
 export * from './costing/rollup';

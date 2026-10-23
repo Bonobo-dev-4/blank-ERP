@@ -14,6 +14,7 @@ import { BomModule } from './modules/bom/bom.module';
 import { CuttingModule } from './modules/cutting/cutting.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ManufacturingModule } from './modules/manufacturing/manufacturing.module';
 import { MaterialsModule } from './modules/materials/materials.module';
@@ -51,6 +52,7 @@ import { QualityModule } from './modules/quality/quality.module';
     ProductionModule,
     QualityModule,
     CuttingModule,
+    IntegrationsModule,
     BarcodesModule,
     DashboardModule,
     HealthModule,
