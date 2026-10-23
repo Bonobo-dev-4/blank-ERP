@@ -117,11 +117,13 @@ export const NAVIGATION: readonly NavGroup[] = [
   {
     label: 'Finished Goods',
     items: [
-      { label: 'Finished Stock', href: '/finished-goods', icon: 'PackageOpen', permission: 'finished_goods.read', status: 'PLANNED', phase: 5 },
-      { label: 'Finished Goods Inward', href: '/finished-goods/inward', icon: 'Import', permission: 'finished_goods.inward', status: 'PLANNED', phase: 5 },
-      { label: 'GRN Management', href: '/finished-goods/grn', icon: 'FileSpreadsheet', permission: 'finished_goods.read', status: 'PLANNED', phase: 5 },
-      { label: 'Unicommerce Inventory Push', href: '/sync/push', icon: 'CloudUpload', permission: 'sync.read', status: 'PLANNED', phase: 5 },
-      { label: 'External Reconciliation', href: '/sync/reconciliation', icon: 'Scale', permission: 'sync.reconcile', status: 'PLANNED', phase: 5 },
+      { label: 'Finished Stock', href: '/finished-goods', icon: 'PackageOpen', permission: 'finished_goods.read', status: 'BUILT', phase: 5 },
+      { label: 'Finished Goods Inward', href: '/finished-goods/inward', icon: 'Import', permission: 'finished_goods.inward', status: 'BUILT', phase: 5 },
+      { label: 'GRN Management', href: '/finished-goods/grn', icon: 'FileSpreadsheet', permission: 'finished_goods.read', status: 'BUILT', phase: 5 },
+      { label: 'Unicommerce Inventory Push', href: '/sync/push', icon: 'CloudUpload', permission: 'sync.read', status: 'PARTIAL', phase: 5,
+        description:
+          'The backlog of stock awaiting external sync is visible and accurate; executing the push is not enabled. It needs a service account, a transport that is not cleartext, and a sandbox facility to rehearse the uncertain-outcome path in.' },
+      { label: 'External Reconciliation', href: '/sync/reconciliation', icon: 'Scale', permission: 'sync.reconcile', status: 'BUILT', phase: 5 },
     ],
   },
   {
@@ -188,7 +190,7 @@ export const PHASE_DEPENDENCIES: Readonly<Record<number, readonly number[]>> = {
   6: [3],
 };
 
-export const DELIVERED_PHASES = [1, 2, 3, 4, 6] as const;
+export const DELIVERED_PHASES = [1, 2, 3, 4, 5, 6] as const;
 
 /** Flat list of every navigable screen. */
 export const ALL_NAV_ITEMS: readonly NavItem[] = NAVIGATION.flatMap((g) => g.items);

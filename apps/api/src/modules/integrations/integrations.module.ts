@@ -10,6 +10,6 @@ import { UnicommerceService } from './unicommerce.service';
 @Module({
   controllers: [IntegrationsController, UnicommerceController],
   providers: [ShopifyClient, ShopifyService, UnicommerceClient, UnicommerceService, AuditService],
-  exports: [ShopifyService, UnicommerceService],
+  exports: [ShopifyService, UnicommerceService, UnicommerceClient],
 })
 export class IntegrationsModule {}
