@@ -2,68 +2,83 @@
 @import 'tw-animate-css';
 
 /*
- * DASH AND DOT Manufacturing ERP - design tokens.
+ * DASH AND DOT Manufacturing ERP — design tokens.
  *
- * The palette is deliberately restrained. This interface is used for eight
- * hours at a stretch under factory lighting, often on a cheap tablet, so the
- * surfaces stay near-white and colour is reserved for meaning: a status, a
- * shortage, a rejection. Colour that decorates competes with colour that warns.
+ * Monochrome. Ink on paper, and nothing else.
+ *
+ * The earlier palette reserved colour for meaning — a status, a shortage, a
+ * rejection. Removing hue could have thrown that away, so severity moved into
+ * FORM instead: a solid black chip demands action, an outlined one waits, and
+ * plain graphite is the normal case. Every state also carries a WORD.
+ *
+ * That is stricter than colour-coding, not looser. A red chip is invisible to
+ * a colour-blind operator, washes out under factory lighting, and disappears
+ * on a cheap tablet with a bad panel. A filled black slab labelled "short"
+ * survives all three.
  */
 @theme {
   --font-sans: var(--font-body-face), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-display: var(--font-display-face), var(--font-body-face), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-face), ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
 
-  /* Neutral surfaces */
-  --color-canvas: oklch(0.985 0.002 250);
+  /* Paper */
+  --color-canvas: oklch(0.985 0 0);
   --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.972 0.003 250);
-  --color-line: oklch(0.915 0.005 250);
-  --color-line-strong: oklch(0.855 0.008 250);
+  --color-surface-muted: oklch(0.967 0 0);
+  --color-line: oklch(0.912 0 0);
+  --color-line-strong: oklch(0.72 0 0);
 
-  /* Text */
-  --color-ink: oklch(0.22 0.014 258);
-  --color-ink-muted: oklch(0.49 0.012 258);
-  --color-ink-subtle: oklch(0.62 0.011 258);
+  /* Ink */
+  --color-ink: oklch(0.145 0 0);
+  --color-ink-muted: oklch(0.47 0 0);
+  --color-ink-subtle: oklch(0.63 0 0);
 
-  /* The dark sidebar the specification asks for */
-  --color-rail: oklch(0.235 0.018 262);
-  --color-rail-hover: oklch(0.295 0.022 262);
-  --color-rail-active: oklch(0.355 0.03 262);
-  --color-rail-ink: oklch(0.88 0.008 262);
-  --color-rail-ink-muted: oklch(0.66 0.014 262);
-
-  /* Accent: a single brand ink, used sparingly */
-  --color-brand: oklch(0.47 0.14 262);
-  --color-brand-strong: oklch(0.40 0.15 262);
-  --color-brand-soft: oklch(0.955 0.02 262);
-
-  /* Semantic status colours */
-  --color-ok: oklch(0.52 0.13 150);
-  --color-ok-soft: oklch(0.96 0.03 150);
-  --color-warn: oklch(0.63 0.14 72);
-  --color-warn-soft: oklch(0.97 0.045 85);
-  --color-danger: oklch(0.54 0.19 20);
-  --color-danger-soft: oklch(0.96 0.03 20);
-  --color-info: oklch(0.55 0.11 230);
-  --color-info-soft: oklch(0.96 0.025 230);
-  --color-neutral-soft: oklch(0.955 0.003 250);
+  /* The rail, and any inverted surface */
+  --color-rail: oklch(0.145 0 0);
+  --color-rail-hover: oklch(0.225 0 0);
+  --color-rail-active: oklch(1 0 0);
+  --color-rail-ink: oklch(0.93 0 0);
+  --color-rail-ink-muted: oklch(0.64 0 0);
 
   /*
-   * The Line palette - the dye house, not a dashboard template.
-   *
-   * Used ONLY by the production line strip on the dashboard. Everything else
-   * stays on the near-white surfaces above, which are correct for an eight
-   * hour shift under factory lighting. Spending the colour in one place is
-   * what keeps it meaningful rather than decorative.
+   * "Brand" is ink. Kept as a token because the whole app references it, and
+   * one name for "the strongest mark on the page" is worth having.
    */
-  --color-vat: oklch(0.265 0.062 272);        /* indigo dye, deep but not black */
-  --color-vat-deep: oklch(0.205 0.055 272);
-  --color-vat-line: oklch(0.345 0.055 272);
-  --color-chalk: oklch(0.945 0.012 85);       /* tailor's chalk on dark cloth */
-  --color-chalk-muted: oklch(0.70 0.022 272);
-  --color-zari: oklch(0.775 0.125 85);        /* gold thread - the live stage */
-  --color-madder: oklch(0.62 0.155 32);       /* madder root - quantity lost */
+  --color-brand: oklch(0.145 0 0);
+  --color-brand-strong: oklch(0.08 0 0);
+  --color-brand-soft: oklch(0.955 0 0);
+
+  /*
+   * Semantic tokens survive so nothing breaks, but they are all ink now.
+   * Meaning is carried by fill and by a word — see the chip styles below.
+   */
+  --color-ok: oklch(0.47 0 0);
+  --color-ok-soft: oklch(0.967 0 0);
+  --color-warn: oklch(0.145 0 0);
+  --color-warn-soft: oklch(0.955 0 0);
+  --color-danger: oklch(0.145 0 0);
+  --color-danger-soft: oklch(0.93 0 0);
+  --color-info: oklch(0.47 0 0);
+  --color-info-soft: oklch(0.967 0 0);
+  --color-neutral-soft: oklch(0.967 0 0);
+
+  /*
+   * The Line — the one inverted surface in the system.
+   *
+   * In a monochrome palette an inverted panel is the loudest move available,
+   * so the production strip gets it and nothing else does. The live stage is
+   * marked in pure white; quantity lost is struck through rather than tinted,
+   * because there is no red left to spend.
+   */
+  --color-vat: oklch(0.145 0 0);              /* carbon — the production strip */
+  --color-vat-deep: oklch(0.08 0 0);
+  --color-vat-line: oklch(0.34 0 0);
+  --color-chalk: oklch(0.98 0 0);             /* tailor's chalk on dark cloth */
+  --color-chalk-muted: oklch(0.66 0 0);
+  /* The live stage is marked by WHITE, the brightest thing available here. */
+  --color-zari: oklch(1 0 0);
+  /* Loss is struck through rather than coloured — see .struck below. */
+  --color-madder: oklch(0.78 0 0);
 
   --radius-sm: 0.25rem;
   --radius: 0.375rem;
@@ -188,4 +203,82 @@ html, body {
   }
   /* The stitch is already sewn: a solid thread, not a half-drawn dashed one. */
   .stitch { stroke-dasharray: none !important; }
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Severity without hue
+ *
+ * Three levels, told apart by FILL rather than colour, and never by shape
+ * alone — each one always sits beside a word.
+ * ------------------------------------------------------------------------ */
+
+/* Needs action now. The strongest mark the page can make. */
+.sev-critical {
+  background: var(--color-ink);
+  color: var(--color-surface);
+  border-color: var(--color-ink);
+}
+
+/* Waiting on someone. Present, but not shouting. */
+.sev-attention {
+  background: transparent;
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+  border-width: 1.5px;
+  font-weight: 600;
+}
+
+/* Normal. Quiet on purpose — most rows are fine and should look it. */
+.sev-normal {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  border-color: transparent;
+}
+
+/* A row that needs attention earns a rule, not a tint. */
+.row-flag { box-shadow: inset 2px 0 0 0 var(--color-ink); }
+
+/* Quantity lost. Struck, because the palette has no red to spend. */
+.struck {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  opacity: 0.75;
+}
+
+/* ---------------------------------------------------------------------------
+ * The sliding slab
+ *
+ * One solid block marks what is active, and it MOVES between items rather than
+ * appearing and disappearing. Used by the navigation rail and by every tab
+ * strip, so the menu and the tabs read as one mechanism.
+ * ------------------------------------------------------------------------ */
+
+.slab-track { position: relative; }
+
+.slab {
+  position: absolute;
+  background: var(--color-ink);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+              width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+              height 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.slab-invert { background: var(--color-surface); }
+
+/* A ruled baseline with ticks, like the edge of a cutting table. */
+.ruled-baseline {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-line) 0 1px,
+    transparent 1px 8px
+  );
+  background-position: bottom;
+  background-repeat: repeat-x;
+  background-size: 100% 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slab { transition: none !important; }
 }

@@ -1,26 +1,29 @@
 import type { Metadata, Viewport } from 'next';
-import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { IBM_Plex_Mono, Instrument_Sans, Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/app/providers';
 import { AuthProvider } from '@/components/app/auth-context';
 
 /*
- * Three faces, three jobs.
+ * Three faces, three jobs — and with no colour in the system, type carries
+ * almost all of the hierarchy, so the pairing has to do real work.
  *
- * Archivo is an industrial grotesque with numerals that hold their shape at
- * display sizes - it carries the figures on the production line and nothing
- * else. IBM Plex Sans was drawn for dense technical interfaces at small sizes,
- * which is what eight hours of data tables actually is. Plex Mono takes SKUs,
- * GRN numbers and quantities, where a column has to line up to be read.
+ * Instrument Sans is a confident, slightly narrow grotesque: it holds a 40px
+ * figure without looking inflated and a 12px eyebrow without looking thin,
+ * which is the range a monochrome page asks of its display face.
+ *
+ * Inter takes the interface. At 13px across eight hours it is simply the right
+ * tool — a large x-height and real tabular figures matter more here than
+ * novelty. Plex Mono takes SKUs and quantities, where a column must line up.
  */
-const display = Archivo({
+const display = Instrument_Sans({
   subsets: ['latin'],
-  weight: ['600', '700'],
+  weight: ['500', '600', '700'],
   variable: '--font-display-face',
   display: 'swap',
 });
 
-const body = IBM_Plex_Sans({
+const body = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
   variable: '--font-body-face',

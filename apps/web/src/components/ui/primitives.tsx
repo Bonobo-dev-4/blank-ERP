@@ -13,14 +13,22 @@ const buttonVariants = cva(
     'disabled:pointer-events-none disabled:opacity-45 [&_svg]:shrink-0',
   {
     variants: {
+      /*
+       * Without hue, a destructive button cannot simply be "the red one".
+       * It is the only variant drawn as a heavy outline that INVERTS on
+       * hover — the moment of fill is the moment of pause, and it cannot be
+       * mistaken for `primary`, which is solid from the start.
+       */
       variant: {
-        primary: 'bg-brand text-white hover:bg-brand-strong',
-        default: 'bg-surface text-ink border border-line-strong hover:bg-surface-muted',
+        primary: 'bg-ink text-surface hover:bg-brand-strong',
+        default: 'bg-surface text-ink border border-line-strong hover:border-ink hover:bg-surface-muted',
         ghost: 'text-ink-muted hover:bg-surface-muted hover:text-ink',
-        danger: 'bg-danger text-white hover:brightness-90',
-        // For actions that create or destroy value. Visually distinct so an
-        // operator notices before clicking, not after.
-        elevated: 'bg-warn-soft text-ink border border-warn/40 hover:bg-warn/15',
+        danger:
+          'border-2 border-ink bg-surface font-semibold text-ink hover:bg-ink hover:text-surface',
+        // An unusual action, not a dangerous one: dashed, so it reads as
+        // deliberate without borrowing the destructive treatment.
+        elevated:
+          'border border-dashed border-ink bg-surface text-ink hover:bg-surface-muted',
       },
       size: {
         sm: 'h-7 px-2.5 text-[12px] [&_svg]:size-3.5',
@@ -221,14 +229,24 @@ export function CardBody({ className, children }: { className?: string; children
 const badgeVariants = cva(
   'inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium leading-tight whitespace-nowrap',
   {
+    /*
+     * Severity by FILL, since there is no hue to spend.
+     *
+     *   danger  solid ink      — act on this now
+     *   warn    outlined, bold — waiting on someone
+     *   ok      quiet grey     — nothing to do, and it should look like it
+     *
+     * Every badge sits beside a word, so the fill is reinforcement rather
+     * than the only signal.
+     */
     variants: {
       tone: {
-        neutral: 'bg-neutral-soft text-ink-muted',
-        brand: 'bg-brand-soft text-brand-strong',
-        ok: 'bg-ok-soft text-ok',
-        warn: 'bg-warn-soft text-warn',
-        danger: 'bg-danger-soft text-danger',
-        info: 'bg-info-soft text-info',
+        neutral: 'bg-surface-muted text-ink-muted',
+        brand: 'bg-ink text-surface',
+        ok: 'bg-surface-muted text-ink-muted',
+        warn: 'border-[1.5px] border-ink bg-transparent font-semibold text-ink',
+        danger: 'bg-ink font-semibold text-surface',
+        info: 'bg-surface-muted text-ink-muted',
         outline: 'border border-line-strong bg-surface text-ink-muted',
       },
     },
@@ -441,11 +459,13 @@ export function Stat({
   href?: string;
   icon?: React.ComponentType<{ className?: string }>;
 }) {
+  // A figure that needs attention gets WEIGHT, not colour. 'ok' is
+  // deliberately the quietest of the three: most numbers are fine.
   const toneClass =
-    tone === 'ok' ? 'text-ok'
-    : tone === 'warn' ? 'text-warn'
-    : tone === 'danger' ? 'text-danger'
-    : tone === 'info' ? 'text-info'
+    tone === 'ok' ? 'text-ink-muted'
+    : tone === 'warn' ? 'text-ink'
+    : tone === 'danger' ? 'text-ink'
+    : tone === 'info' ? 'text-ink-muted'
     : 'text-ink';
 
   const inner = (
@@ -454,22 +474,30 @@ export function Stat({
         <p className="truncate text-[11.5px] font-medium uppercase tracking-wide text-ink-subtle">{label}</p>
         {Icon ? <Icon className="size-3.5 shrink-0 text-ink-subtle" /> : null}
       </div>
-      <p className={cn('num mt-1 text-[22px] font-semibold leading-none tracking-tight', toneClass)}>{value}</p>
+      <p className={cn('num font-display mt-1.5 text-[26px] font-semibold leading-none tracking-tight', toneClass)}>
+        {value}
+      </p>
       {hint ? <p className="mt-1 text-[11.5px] text-ink-muted">{hint}</p> : null}
     </>
   );
 
+  // A tile that needs attention carries a solid rule down its edge. With no
+  // hue available this is what separates "look here" from "this is fine",
+  // and it survives a bad panel and a colour-blind reader alike.
+  const flagged = tone === 'danger' || tone === 'warn';
+  const shell = cn(
+    'rounded-lg border border-line bg-surface px-3.5 py-3',
+    flagged && 'row-flag',
+  );
+
   if (href) {
     return (
-      <a
-        href={href}
-        className="block rounded-lg border border-line bg-surface px-3.5 py-3 transition-colors hover:border-line-strong hover:bg-surface-muted"
-      >
+      <a href={href} className={cn(shell, 'block transition-colors hover:border-ink hover:bg-surface-muted')}>
         {inner}
       </a>
     );
   }
-  return <div className="rounded-lg border border-line bg-surface px-3.5 py-3">{inner}</div>;
+  return <div className={shell}>{inner}</div>;
 }
 
 export function Separator({ className }: { className?: string }) {

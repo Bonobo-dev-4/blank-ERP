@@ -62,8 +62,8 @@ export function ProductionLine({
       style={{
         backgroundImage:
           // A woven texture, at the threshold of visible. Cloth, not a gradient.
-          'repeating-linear-gradient(45deg, rgba(255,255,255,.022) 0 1px, transparent 1px 3px),' +
-          'repeating-linear-gradient(-45deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px)',
+          'repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px),' +
+          'repeating-linear-gradient(-45deg, rgba(255,255,255,.024) 0 1px, transparent 1px 3px)',
       }}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 pt-4 sm:px-5">
@@ -315,8 +315,12 @@ function StageCaption({ stage }: { stage: LineStage }) {
       </div>
       {rejected > 0 || rework > 0 ? (
         <div className="flex flex-wrap gap-x-2.5 text-[11px] text-madder">
-          {rejected > 0 ? <span className="num">&minus;{pieces(stage.rejectedQty)} rejected</span> : null}
-          {rework > 0 ? <span className="num">&minus;{pieces(stage.reworkOpenQty)} rework</span> : null}
+          {rejected > 0 ? (
+            <span className="num struck">{pieces(stage.rejectedQty)} rejected</span>
+          ) : null}
+          {rework > 0 ? (
+            <span className="num struck">{pieces(stage.reworkOpenQty)} rework</span>
+          ) : null}
         </div>
       ) : null}
     </div>

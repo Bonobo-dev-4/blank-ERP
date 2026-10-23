@@ -9,6 +9,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorPanel, Input,
   LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { Tabs } from '@/components/ui/tabs';
 
 type Route = 'DISPATCH' | 'SWITCH_FACILITY' | 'MANUFACTURE' | 'NEEDS_CHECK';
 
@@ -134,20 +135,14 @@ export default function FulfilmentBoardPage() {
               title={active.label}
               description={active.blurb}
               actions={
-                <div className="flex flex-wrap gap-1.5">
-                  {TABS.map((t) => (
-                    <button
-                      key={t.route}
-                      onClick={() => setTab(t.route)}
-                      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11.5px] font-medium transition-colors ${
-                        t.route === tab ? 'bg-brand text-white' : 'text-ink-muted hover:bg-surface-muted'
-                      }`}
-                    >
-                      <t.icon className="size-3.5" />
-                      {t.label} <span className="num opacity-70">{count(t.route)}</span>
-                    </button>
-                  ))}
-                </div>
+                <Tabs
+                  size="sm"
+                  value={tab}
+                  onChange={setTab}
+                  tabs={TABS.map((t) => ({
+                    value: t.route, label: t.label, icon: t.icon, count: count(t.route),
+                  }))}
+                />
               }
             />
 
@@ -182,8 +177,12 @@ export default function FulfilmentBoardPage() {
                   <tbody>
                     {lines.map((l) => (
                       <React.Fragment key={l.demandId}>
-                        <tr className="border-b border-line last:border-0">
-                          <td className="px-3 py-1.5">
+                        <tr
+                          className={`border-b border-line last:border-0 ${
+                            l.isProvisional || l.isRejectedForDispatch ? 'row-flag' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-1.5 pl-3.5">
                             <span className="font-mono text-[11.5px]">{l.orderRef ?? l.demandNo}</span>
                             <div className="text-[11px] text-ink-subtle">{humanise(l.channel)}</div>
                           </td>
@@ -198,7 +197,7 @@ export default function FulfilmentBoardPage() {
                             ) : null}
                           </td>
                           <td className="num px-3 py-1.5 text-right font-medium">{fmtQty(l.openQty, 0)}</td>
-                          <td className={`num px-3 py-1.5 text-right ${Number(l.homeAvailableQty) > 0 ? 'text-ok' : 'text-ink-subtle'}`}>
+                          <td className={`num px-3 py-1.5 text-right ${Number(l.homeAvailableQty) > 0 ? 'font-semibold text-ink' : 'text-ink-subtle'}`}>
                             {fmtQty(l.homeAvailableQty, 0)}
                           </td>
                           {tab === 'SWITCH_FACILITY' ? (
@@ -206,7 +205,7 @@ export default function FulfilmentBoardPage() {
                           ) : null}
                           <td className="px-3 py-1.5 text-[11.5px] text-ink-muted">
                             {l.isRejectedForDispatch ? (
-                              <span className="text-warn">Rejected: {l.rejectedReason}</span>
+                              <span className="font-medium text-ink">Rejected: {l.rejectedReason}</span>
                             ) : l.reason}
                           </td>
                           <td className="px-3 py-1.5 text-ink-muted">
