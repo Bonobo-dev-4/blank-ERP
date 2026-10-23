@@ -1,0 +1,33 @@
+{
+  "name": "dash-and-dot-erp",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.8.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm --filter @dnd/domain --filter @dnd/contracts build && pnpm --filter @dnd/api --filter @dnd/web build",
+    "build:packages": "pnpm --filter @dnd/domain --filter @dnd/contracts build",
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @dnd/api dev",
+    "dev:web": "pnpm --filter @dnd/web dev",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "prisma:generate": "pnpm --filter @dnd/api prisma:generate",
+    "prisma:migrate": "pnpm --filter @dnd/api prisma:migrate",
+    "prisma:deploy": "pnpm --filter @dnd/api prisma:deploy",
+    "seed": "pnpm --filter @dnd/api seed",
+    "infra:up": "docker compose -f docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f docker/docker-compose.yml down",
+    "verify": "pnpm typecheck && pnpm --filter @dnd/domain test && python3 scripts/verify-constraints.py && node scripts/apply-migrations-check.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite-socket": "^0.2.13",
+    "@types/node": "22.15.3",
+    "prettier": "3.6.2",
+    "typescript": "5.9.2"
+  }
+}

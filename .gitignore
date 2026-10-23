@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+.next/
+.next-dev/
+out/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+.DS_Store
+*.log
+apps/api/prisma/generated/
+.turbo/
+
+# Local PGlite data directory
+.pgdata/

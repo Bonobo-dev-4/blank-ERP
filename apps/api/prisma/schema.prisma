@@ -1,0 +1,3313 @@
+// =============================================================================
+// DASH AND DOT MANUFACTURING ERP - Prisma schema
+// -----------------------------------------------------------------------------
+// PRECISION CONVENTIONS (never float):
+//   quantity  -> Decimal(18,4)   stock & production quantities
+//   rate      -> Decimal(18,6)   per-unit costs / job rates
+//   amount    -> Decimal(18,2)   money totals
+//   percent   -> Decimal(9,4)    wastage / tolerance percentages
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UomCode {
+  METER
+  YARD
+  PIECE
+  KILOGRAM
+  GRAM
+  ROLL
+  PACKET
+  SET
+}
+
+enum MaterialCategory {
+  FABRIC
+  LINING
+  BUTTON
+  ZIPPER
+  THREAD
+  LACE
+  LABEL
+  TAG
+  EMBROIDERY_MATERIAL
+  PACKAGING
+  ACCESSORY
+  TRIM
+  OTHER
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  DISCONTINUED
+}
+
+enum ProductionType {
+  IN_HOUSE
+  JOB_WORK
+  HYBRID
+  OUTSOURCED
+}
+
+/// Logical nature of an inventory location. The ledger is strict double-entry:
+/// every movement debits one location and credits another, so the signed sum of
+/// all balances for a material is always exactly zero. COUNTERPARTY and SINK
+/// locations are the virtual counter-accounts that make that hold.
+enum LocationKind {
+  PHYSICAL /// real, countable, uncommitted stock (warehouse, fabric room, rack, bin)
+  /// A production department floor. Stock here is owned and countable but has
+  /// already been issued to an order, so it is NOT available to a new one.
+  PRODUCTION_FLOOR
+  JOB_WORKER /// stock physically with an external job worker but still owned
+  QUALITY_HOLD /// received but not yet accepted; not available to production
+  BLOCKED /// administratively blocked / damaged: owned but unusable
+  IN_TRANSIT /// moving between locations, owned but not countable at either end
+  SINK /// consumed / scrapped: owned stock permanently leaves here
+  COUNTERPARTY /// external world (supplier, adjustment authority, opening balance)
+}
+
+enum MovementType {
+  OPENING_BALANCE
+  PURCHASE_INWARD
+  QC_RELEASE
+  QC_REJECT
+  SUPPLIER_RETURN
+  ISSUE_TO_PRODUCTION
+  RETURN_FROM_PRODUCTION
+  TRANSFER
+  ISSUE_TO_JOB_WORKER
+  RETURN_FROM_JOB_WORKER
+  CONSUMPTION
+  WASTAGE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  STOCK_COUNT_GAIN
+  STOCK_COUNT_LOSS
+}
+
+enum ReservationStatus {
+  ACTIVE
+  PARTIALLY_CONSUMED
+  CONSUMED
+  RELEASED
+  CANCELLED
+}
+
+enum PurchaseRequisitionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CONVERTED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum ReceiptStatus {
+  DRAFT
+  PENDING_INSPECTION
+  INSPECTED
+  POSTED
+  CANCELLED
+}
+
+enum InspectionResult {
+  PASS
+  FAIL
+  REWORK
+  HOLD
+}
+
+enum BomStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SUPERSEDED
+  ARCHIVED
+}
+
+/// How a BOM line's wastage allowance is applied on top of base consumption.
+enum WastageBasis {
+  PERCENT_OF_CONSUMPTION
+  FIXED_PER_UNIT
+  FIXED_PER_ORDER
+  NONE
+}
+
+enum MrpRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum SourceSystem {
+  MANUAL
+  SHOPIFY
+  UNICOMMERCE
+}
+
+enum DemandChannel {
+  ONLINE
+  POS
+  CUSTOM
+  BULK_PO
+  REPLENISHMENT
+  MANUAL
+}
+
+enum DemandStatus {
+  NEW
+  NEEDS_MAPPING
+  PENDING_REVIEW
+  APPROVED_FOR_PRODUCTION
+  PARTIALLY_ALLOCATED
+  FULLY_ALLOCATED
+  NOT_REQUIRED
+  CANCELLED
+}
+
+enum ManufacturingOrderStatus {
+  DRAFT
+  PENDING_MATERIAL
+  MATERIAL_RESERVED
+  RELEASED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TrackingMode {
+  BATCH
+  UNIT
+}
+
+enum StageTaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  BLOCKED
+}
+
+enum ProductionUnitStatus {
+  CREATED
+  IN_PROGRESS
+  REWORK
+  REJECTED
+  QC_PASSED
+  INWARDED
+}
+
+/// Direction of a quantity event in the production ledger. Like the material
+/// ledger, stage quantities move between (stage x state) buckets so nothing is
+/// ever counted twice.
+enum StageMovementType {
+  RELEASE_TO_FIRST_STAGE
+  FORWARD /// accepted qty handed from one stage to the next
+  COMPLETE /// qty finished at the current stage
+  REJECT
+  SEND_TO_REWORK
+  RETURN_FROM_REWORK
+  CANCEL_RELEASE
+}
+
+enum BarcodeKind {
+  MATERIAL_LOT
+  FABRIC_ROLL
+  PRODUCTION_BATCH
+  PRODUCTION_UNIT
+  GOODS_RECEIPT
+  FG_CARTON
+}
+
+enum ScanEventType {
+  STAGE_RECEIVE
+  STAGE_COMPLETE
+  STAGE_REJECT
+  REWORK_SEND
+  REWORK_RETURN
+  QC_SCAN
+  FG_INWARD_SCAN
+  MATERIAL_RECEIPT_SCAN
+  FABRIC_ROLL_ISSUE_SCAN
+  FABRIC_ROLL_RETURN_SCAN
+  LOOKUP
+}
+
+enum ScanEventStatus {
+  ACCEPTED
+  REJECTED_VALIDATION
+  DUPLICATE_IGNORED
+}
+
+enum JobWorkerKind {
+  INTERNAL_DEPARTMENT
+  EXTERNAL_VENDOR
+  INDIVIDUAL_CONTRACTOR
+}
+
+enum JobWorkOrderStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum QcKind {
+  INLINE_STAGE
+  FINAL
+  REINSPECTION
+}
+
+enum DefectCategory {
+  STITCHING
+  EMBROIDERY
+  FABRIC
+  COLOR_VARIATION
+  MEASUREMENT
+  FINISHING
+  DAMAGE
+  OTHER
+}
+
+enum ReworkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  SCRAPPED
+  CANCELLED
+}
+
+enum FinishedGoodsMovementType {
+  INWARD
+  TRANSFER
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  EXTERNAL_SYNC_OUT
+}
+
+enum SyncStatus {
+  NOT_REQUIRED
+  SYNC_PENDING
+  SYNC_QUEUED
+  SYNC_PROCESSING
+  SYNC_SUCCESS
+  SYNC_FAILED
+  RECONCILIATION_REQUIRED
+  RECONCILED
+}
+
+enum PushJobStatus {
+  DRAFT
+  READY
+  PENDING
+  PROCESSING
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+  RECONCILIATION_REQUIRED
+  RECONCILED
+  CANCELLED
+}
+
+/// Which external operation a push job intends to perform. Chosen explicitly so
+/// a stock correction is never silently used in place of PO receiving.
+enum PushOperationKind {
+  GRN_AGAINST_PURCHASE_ORDER
+  INVENTORY_ADJUSTMENT
+  INVENTORY_OVERRIDE
+}
+
+enum IntegrationProvider {
+  SHOPIFY
+  UNICOMMERCE
+}
+
+enum IntegrationEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  IGNORED_DUPLICATE
+  FAILED
+  DEAD_LETTERED
+}
+
+enum IdempotencyStatus {
+  IN_FLIGHT
+  COMPLETED
+  FAILED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  SUBMIT
+  CANCEL
+  POST
+  RELEASE
+  RESERVE
+  HOLD
+  RESUME
+  RUN
+  SCAN
+  PUSH
+  LOGIN
+  LOGIN_FAILED
+}
+
+// =============================================================================
+// ORGANISATION, IDENTITY, RBAC, AUDIT
+// =============================================================================
+
+model Organization {
+  id        String       @id @default(uuid()) @db.Uuid
+  code      String       @unique
+  name      String
+  timezone  String       @default("Asia/Kolkata")
+  currency  String       @default("INR")
+  status    RecordStatus @default(ACTIVE)
+  settings  Json         @default("{}")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  users                User[]
+  roles                Role[]
+  products             Product[]
+  productVariants      ProductVariant[]
+  rawMaterials         RawMaterial[]
+  locations            MaterialLocation[]
+  suppliers            Supplier[]
+  boms                 Bom[]
+  manufacturingOrders  ManufacturingOrder[]
+  demands              ManufacturingDemand[]
+  productionRoutes     ProductionRoute[]
+  productionStages     ProductionStage[]
+  jobWorkers           JobWorker[]
+  externalFacilities   ExternalFacility[]
+  integrations         IntegrationConnection[]
+  auditLogs            AuditLog[]
+  numberSequences      NumberSequence[]
+  uomConversions       UomConversion[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  email          String
+  employeeCode   String?
+  fullName       String
+  passwordHash   String
+  /// Short numeric PIN hash for shop-floor barcode terminals (optional).
+  pinHash        String?
+  status         RecordStatus @default(ACTIVE)
+  lastLoginAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  userRoles    UserRole[]
+
+  @@unique([organizationId, email])
+  @@unique([organizationId, employeeCode])
+  @@index([organizationId, status])
+  @@map("users")
+}
+
+model Role {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  code           String
+  name           String
+  description    String?
+  isSystem       Boolean @default(false)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, code])
+  @@map("roles")
+}
+
+model Permission {
+  id       String  @id @default(uuid()) @db.Uuid
+  /// Canonical "module.action" string, e.g. "inventory.adjust".
+  code     String  @unique
+  module   String
+  action   String
+  /// True when the permission mutates stock, cost or external inventory.
+  elevated Boolean @default(false)
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model AuditLog {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @db.Uuid
+  actorUserId    String?     @db.Uuid
+  actorLabel     String?
+  action         AuditAction
+  entityType     String
+  entityId       String?
+  /// Field-level before/after diff; never contains secrets.
+  diff           Json?
+  context        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
+
+/// Request-level idempotency guard for every inventory / production / push
+/// mutation. The unique key makes a replayed request return the stored result
+/// instead of applying the effect twice.
+model IdempotencyRecord {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @db.Uuid
+  scope          String
+  key            String
+  requestHash    String
+  status         IdempotencyStatus @default(IN_FLIGHT)
+  responseBody   Json?
+  entityType     String?
+  entityId       String?
+  createdAt      DateTime          @default(now())
+  completedAt    DateTime?
+
+  @@unique([organizationId, scope, key])
+  @@index([createdAt])
+  @@map("idempotency_records")
+}
+
+/// Gap-free, per-organisation document numbering (MO-000123, RMPO-000045, ...).
+model NumberSequence {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  scope          String
+  prefix         String
+  padding        Int      @default(6)
+  nextValue      Int      @default(1)
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, scope])
+  @@map("number_sequences")
+}
+
+// =============================================================================
+// PRODUCT MASTER
+// -----------------------------------------------------------------------------
+// Product        = style level (DASH AND DOT KURTA, style DD-KRT-001)
+// ProductVariant = the canonical internal sellable/manufacturable SKU
+// ExternalProductMapping = Shopify / Unicommerce identities for that variant
+//
+// The same SKU arriving from both Shopify and Unicommerce resolves to ONE
+// ProductVariant; external identifiers are preserved as mapping rows.
+// =============================================================================
+
+model Product {
+  id                       String         @id @default(uuid()) @db.Uuid
+  organizationId           String         @db.Uuid
+  styleCode                String
+  name                     String
+  collection               String?
+  category                 String?
+  sizeSet                  String?
+  fabricDescription        String?
+  productionType           ProductionType @default(IN_HOUSE)
+  /// Default manufacturing lead time in days for planning.
+  standardManufacturingDays Int?
+  defaultRouteId           String?        @db.Uuid
+  status                   ProductStatus  @default(DRAFT)
+  imageUrl                 String?
+  notes                    String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  defaultRoute ProductionRoute? @relation(fields: [defaultRouteId], references: [id])
+  variants     ProductVariant[]
+  boms         Bom[]
+  manufacturingOrders ManufacturingOrder[]
+
+  @@unique([organizationId, styleCode])
+  @@index([organizationId, status])
+  @@map("products")
+}
+
+model ProductVariant {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  productId      String        @db.Uuid
+  /// Canonical internal SKU. Unique within the organisation.
+  sku            String
+  barcode        String?
+  name           String?
+  color          String?
+  size           String?
+  sizeSortOrder  Int           @default(0)
+  fabric         String?
+  imageUrl       String?
+  sizeSet        String?
+  /// True when this SKU is sold as a set assembled from component SKUs.
+  isBundle       Boolean       @default(false)
+  status         ProductStatus @default(DRAFT)
+  /// Resolved BOM version; null means fall back to the style-level BOM.
+  activeBomVersionId String?   @db.Uuid
+  mrpUnitWeight  Decimal?      @db.Decimal(18, 4)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization        Organization              @relation(fields: [organizationId], references: [id])
+  product             Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  activeBomVersion    BomVersion?               @relation("VariantActiveBom", fields: [activeBomVersionId], references: [id])
+  externalMappings    ExternalProductMapping[]
+  boms                Bom[]                     @relation("VariantBoms")
+  demands             ManufacturingDemand[]
+  manufacturingOrders ManufacturingOrder[]
+  manufacturingOrderItems ManufacturingOrderItem[]
+  finishedBalances    FinishedGoodsBalance[]
+  finishedMovements   FinishedGoodsMovement[]
+  finishedInwardLines FinishedGoodsInwardLine[]
+  syncIssues          ProductSyncIssue[]
+  bundleComponents    ProductBundleComponent[]  @relation("BundleParent")
+  partOfBundles       ProductBundleComponent[]  @relation("BundleChild")
+
+  @@unique([organizationId, sku])
+  @@unique([organizationId, barcode])
+  @@index([organizationId, status])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+/// One row per (provider, identifier kind) per variant. Preserves the exact
+/// external ids so pushes and order imports never guess.
+model ExternalProductMapping {
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @db.Uuid
+  productVariantId String              @db.Uuid
+  provider         IntegrationProvider
+  /// e.g. SHOPIFY: PRODUCT_GID / VARIANT_GID / VARIANT_SKU / INVENTORY_ITEM_GID
+  ///      UNICOMMERCE: ITEM_SKU_CODE / ITEM_TYPE_ID
+  identifierKind   String
+  externalId       String
+  externalSku      String?
+  /// Raw payload snapshot from the last successful sync of this identity.
+  rawPayload       Json?
+  isPrimary        Boolean             @default(false)
+  syncedAt         DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider, identifierKind, externalId])
+  @@index([organizationId, provider, externalSku])
+  @@index([productVariantId])
+  @@map("external_product_mappings")
+}
+
+/// Unresolved SKU/mapping problems surfaced by an import, kept until fixed.
+model ProductSyncIssue {
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @db.Uuid
+  provider         IntegrationProvider
+  issueType        String
+  externalSku      String?
+  externalId       String?
+  productVariantId String?             @db.Uuid
+  message          String
+  payload          Json?
+  resolvedAt       DateTime?
+  resolvedByUserId String?             @db.Uuid
+  createdAt        DateTime            @default(now())
+
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
+
+  @@index([organizationId, provider, resolvedAt])
+  @@map("product_sync_issues")
+}
+
+// =============================================================================
+// UNITS OF MEASURE
+// -----------------------------------------------------------------------------
+// Conversions are NEVER implicit. A conversion exists only if it is configured,
+// either globally (materialId = null, e.g. 1 KILOGRAM = 1000 GRAM) or for one
+// specific material (e.g. 1 ROLL of DD-FAB-001 = 42.5 METER).
+// =============================================================================
+
+model UomConversion {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  /// Null = organisation-wide conversion; set = material-specific override.
+  rawMaterialId  String?  @db.Uuid
+  fromUom        UomCode
+  toUom          UomCode
+  /// qty(toUom) = qty(fromUom) * factor
+  factor         Decimal  @db.Decimal(18, 8)
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  rawMaterial  RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, rawMaterialId, fromUom, toUom])
+  @@map("uom_conversions")
+}
+
+// =============================================================================
+// RAW MATERIAL MASTER
+// =============================================================================
+
+model RawMaterial {
+  id                 String           @id @default(uuid()) @db.Uuid
+  organizationId     String           @db.Uuid
+  materialCode       String
+  name               String
+  category           MaterialCategory
+  description        String?
+  color              String?
+  colorCode          String?
+  fabricComposition  String?
+  /// Fabric width, stored with the unit it is expressed in (usually inches).
+  width              Decimal?         @db.Decimal(10, 2)
+  widthUom           String?
+  gsm                Int?
+  /// Stock-keeping (base) unit. All balances and ledger postings use this unit.
+  baseUom            UomCode
+  /// Default unit used when purchasing (converted to baseUom on receipt).
+  purchaseUom        UomCode?
+  defaultSupplierId  String?          @db.Uuid
+  purchaseRate       Decimal?         @db.Decimal(18, 6)
+  /// Weighted-average cost in base UOM, recomputed on every costed inward.
+  averageCost        Decimal          @default(0) @db.Decimal(18, 6)
+  minimumStock       Decimal          @default(0) @db.Decimal(18, 4)
+  reorderLevel       Decimal          @default(0) @db.Decimal(18, 4)
+  reorderQty         Decimal          @default(0) @db.Decimal(18, 4)
+  leadTimeDays       Int              @default(0)
+  defaultLocationId  String?          @db.Uuid
+  /// When false the material still gets a single implicit "GENERAL" lot so the
+  /// ledger shape stays uniform, but lot attributes are not enforced.
+  lotTracked         Boolean          @default(true)
+  shadeTracked       Boolean          @default(false)
+  status             RecordStatus     @default(ACTIVE)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  organization     Organization              @relation(fields: [organizationId], references: [id])
+  defaultSupplier  Supplier?                 @relation(fields: [defaultSupplierId], references: [id])
+  defaultLocation  MaterialLocation?         @relation(fields: [defaultLocationId], references: [id])
+  lots             MaterialLot[]
+  balances         MaterialBalance[]
+  movements        MaterialMovement[]
+  reservations     MaterialReservation[]
+  bomItems         BomItem[]
+  requisitionItems PurchaseRequisitionItem[]
+  purchaseItems    RawMaterialPurchaseItem[]
+  receiptLines     RawMaterialReceiptLine[]
+  requirements     MaterialRequirement[]
+  issueLines       MaterialIssueLine[]
+  consumptions     MaterialConsumption[]
+  uomConversions   UomConversion[]
+  stockCountLines  StockCountLine[]
+  fabricRolls      FabricRoll[]
+  altForBomItems   BomItemAlternative[]
+
+  @@unique([organizationId, materialCode])
+  @@index([organizationId, category, status])
+  @@index([organizationId, name])
+  @@map("raw_materials")
+}
+
+/// A received batch of one raw material. Carries the traceability attributes
+/// (shade, width, roll no.) that must not be mixed across production batches.
+model MaterialLot {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  rawMaterialId  String       @db.Uuid
+  lotCode        String
+  supplierLotRef String?
+  shade          String?
+  width          Decimal?     @db.Decimal(10, 2)
+  gsm            Int?
+  /// Landed cost per base UOM for this lot (used for consumption costing).
+  unitCost       Decimal      @default(0) @db.Decimal(18, 6)
+  receivedAt     DateTime?
+  expiryAt       DateTime?
+  supplierId     String?      @db.Uuid
+  receiptLineId  String?      @db.Uuid
+  isGeneral      Boolean      @default(false)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  rawMaterial  RawMaterial             @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  supplier     Supplier?               @relation(fields: [supplierId], references: [id])
+  receiptLine  RawMaterialReceiptLine? @relation(fields: [receiptLineId], references: [id])
+  balances     MaterialBalance[]
+  movements    MaterialMovement[]
+  reservations MaterialReservation[]
+  barcode      BarcodeIdentifier?      @relation("LotBarcode")
+  issueLines   MaterialIssueLine[]
+  consumptions MaterialConsumption[]
+  cuttingOrders CuttingOrder[]
+  fabricRolls  FabricRoll[]
+
+  @@unique([organizationId, rawMaterialId, lotCode])
+  @@index([rawMaterialId, receivedAt])
+  @@map("material_lots")
+}
+
+/// Physical and logical stock locations, including the virtual counter-accounts
+/// that keep the ledger balanced (see LocationKind).
+model MaterialLocation {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  code           String
+  name           String
+  kind           LocationKind
+  /// Storage tier label: WAREHOUSE / ROOM / RACK / BIN / DEPARTMENT / VIRTUAL.
+  storageLevel   String?
+  parentId       String?      @db.Uuid
+  jobWorkerId    String?      @db.Uuid
+  /// System locations cannot be deleted and are resolved by code at runtime.
+  isSystem       Boolean      @default(false)
+  /// Stock here is excluded from "available for production" calculations.
+  blocksIssue    Boolean      @default(false)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization     Organization          @relation(fields: [organizationId], references: [id])
+  parent           MaterialLocation?     @relation("LocationTree", fields: [parentId], references: [id])
+  children         MaterialLocation[]    @relation("LocationTree")
+  jobWorker        JobWorker?            @relation(fields: [jobWorkerId], references: [id])
+  balances         MaterialBalance[]
+  movementsFrom    MaterialMovement[]    @relation("MovementSource")
+  movementsTo      MaterialMovement[]    @relation("MovementDestination")
+  reservations     MaterialReservation[]
+  defaultForMaterials RawMaterial[]
+  receipts         RawMaterialReceipt[]
+  issuesFrom       MaterialIssue[]       @relation("IssueSource")
+  issuesTo         MaterialIssue[]       @relation("IssueDestination")
+  stockCounts      StockCount[]
+  stages           ProductionStage[]
+  fgBalances       FinishedGoodsBalance[]
+  fgInwards        FinishedGoodsInward[]
+  fabricRolls      FabricRoll[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, kind, status])
+  @@map("material_locations")
+}
+
+/// Derived balance cache: exactly one row per (material, lot, location).
+/// Only ever written inside the same transaction as the MaterialMovement that
+/// caused the change, under a row-level lock. Rebuildable from the ledger.
+model MaterialBalance {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  rawMaterialId  String   @db.Uuid
+  materialLotId  String   @db.Uuid
+  locationId     String   @db.Uuid
+  /// Signed on-hand quantity in the material's base UOM.
+  onHandQty      Decimal  @default(0) @db.Decimal(18, 4)
+  /// Portion of onHandQty committed to manufacturing orders.
+  reservedQty    Decimal  @default(0) @db.Decimal(18, 4)
+  /// Monotonic counter bumped on every write; used for optimistic diagnostics.
+  version        Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  rawMaterial RawMaterial      @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  materialLot MaterialLot      @relation(fields: [materialLotId], references: [id], onDelete: Cascade)
+  location    MaterialLocation @relation(fields: [locationId], references: [id])
+
+  @@unique([rawMaterialId, materialLotId, locationId])
+  @@index([organizationId, rawMaterialId])
+  @@index([locationId])
+  @@map("material_balances")
+}
+
+/// Append-only inventory ledger. Strict double entry: every row debits
+/// sourceLocation and credits destinationLocation by the same base quantity.
+/// Rows are never updated or deleted - corrections are new reversing rows.
+model MaterialMovement {
+  id                    String       @id @default(uuid()) @db.Uuid
+  organizationId        String       @db.Uuid
+  movementNo            String
+  movementType          MovementType
+  rawMaterialId         String       @db.Uuid
+  materialLotId         String       @db.Uuid
+  /// Set for roll-level fabric movements; null for non-roll materials.
+  fabricRollId          String?      @db.Uuid
+  sourceLocationId      String       @db.Uuid
+  destinationLocationId String       @db.Uuid
+  /// Quantity as the operator entered it, in enteredUom.
+  enteredQty            Decimal      @db.Decimal(18, 4)
+  enteredUom            UomCode
+  /// Authoritative quantity in the material's base UOM. Always > 0.
+  baseQty               Decimal      @db.Decimal(18, 4)
+  baseUom               UomCode
+  unitCost              Decimal?     @db.Decimal(18, 6)
+  totalCost             Decimal?     @db.Decimal(18, 2)
+  /// Logical document that authorised the movement.
+  referenceType         String?
+  referenceId           String?      @db.Uuid
+  referenceLineId       String?      @db.Uuid
+  referenceNo           String?
+  reason                String?
+  remarks               String?
+  operatorUserId        String?      @db.Uuid
+  reversalOfId          String?      @db.Uuid
+  /// Unique per organisation: makes replayed submissions no-ops.
+  idempotencyKey        String
+  occurredAt            DateTime     @default(now())
+  createdAt             DateTime     @default(now())
+
+  rawMaterial         RawMaterial        @relation(fields: [rawMaterialId], references: [id])
+  materialLot         MaterialLot        @relation(fields: [materialLotId], references: [id])
+  fabricRoll          FabricRoll?        @relation(fields: [fabricRollId], references: [id])
+  sourceLocation      MaterialLocation   @relation("MovementSource", fields: [sourceLocationId], references: [id])
+  destinationLocation MaterialLocation   @relation("MovementDestination", fields: [destinationLocationId], references: [id])
+  reversalOf          MaterialMovement?  @relation("MovementReversal", fields: [reversalOfId], references: [id])
+  reversals           MaterialMovement[] @relation("MovementReversal")
+  consumptions        MaterialConsumption[]
+
+  @@unique([organizationId, movementNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, rawMaterialId, occurredAt])
+  @@index([organizationId, movementType, occurredAt])
+  @@index([referenceType, referenceId])
+  @@index([materialLotId])
+  @@index([fabricRollId])
+  @@map("material_movements")
+}
+
+/// A commitment of specific stock (material + lot + location) to a
+/// manufacturing order. Reserved stock stays physically in place but is not
+/// available to other orders.
+model MaterialReservation {
+  id                   String            @id @default(uuid()) @db.Uuid
+  organizationId       String            @db.Uuid
+  rawMaterialId        String            @db.Uuid
+  materialLotId        String            @db.Uuid
+  locationId           String            @db.Uuid
+  manufacturingOrderId String            @db.Uuid
+  materialRequirementId String?          @db.Uuid
+  reservedQty          Decimal           @db.Decimal(18, 4)
+  issuedQty            Decimal           @default(0) @db.Decimal(18, 4)
+  releasedQty          Decimal           @default(0) @db.Decimal(18, 4)
+  status               ReservationStatus @default(ACTIVE)
+  reservedByUserId     String?           @db.Uuid
+  idempotencyKey       String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  rawMaterial         RawMaterial          @relation(fields: [rawMaterialId], references: [id])
+  materialLot         MaterialLot          @relation(fields: [materialLotId], references: [id])
+  location            MaterialLocation     @relation(fields: [locationId], references: [id])
+  manufacturingOrder  ManufacturingOrder   @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  materialRequirement MaterialRequirement? @relation(fields: [materialRequirementId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([manufacturingOrderId, status])
+  @@index([rawMaterialId, materialLotId, locationId, status])
+  @@map("material_reservations")
+}
+
+model StockCount {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  countNo        String
+  locationId     String       @db.Uuid
+  status         String       @default("DRAFT")
+  countedAt      DateTime?
+  countedByUserId String?     @db.Uuid
+  postedAt       DateTime?
+  postedByUserId String?      @db.Uuid
+  remarks        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  location MaterialLocation @relation(fields: [locationId], references: [id])
+  lines    StockCountLine[]
+
+  @@unique([organizationId, countNo])
+  @@index([organizationId, status])
+  @@map("stock_counts")
+}
+
+model StockCountLine {
+  id            String   @id @default(uuid()) @db.Uuid
+  stockCountId  String   @db.Uuid
+  rawMaterialId String   @db.Uuid
+  materialLotId String   @db.Uuid
+  systemQty     Decimal  @db.Decimal(18, 4)
+  countedQty    Decimal  @db.Decimal(18, 4)
+  varianceQty   Decimal  @db.Decimal(18, 4)
+  reason        String?
+  movementId    String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  stockCount  StockCount  @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
+
+  @@unique([stockCountId, rawMaterialId, materialLotId])
+  @@map("stock_count_lines")
+}
+
+// =============================================================================
+// SUPPLIERS AND RAW MATERIAL PURCHASING
+// -----------------------------------------------------------------------------
+// Requirement -> Requisition -> Approval -> PO -> Delivery -> Receipt (scan)
+//   -> Inspection -> Inventory inward
+// Receipts land in a QUALITY_HOLD location first; only inspection releases
+// stock to a usable warehouse location. Every step is a ledger movement.
+// =============================================================================
+
+model Supplier {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  supplierCode    String
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  pincode         String?
+  gstin           String?
+  paymentTerms    String?
+  leadTimeDays    Int          @default(0)
+  rating          Int?
+  status          RecordStatus @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization  Organization                 @relation(fields: [organizationId], references: [id])
+  materials     RawMaterial[]
+  lots          MaterialLot[]
+  purchaseOrders RawMaterialPurchaseOrder[]
+  receipts      RawMaterialReceipt[]
+  requisitionItems PurchaseRequisitionItem[]
+  fabricRolls   FabricRoll[]
+
+  @@unique([organizationId, supplierCode])
+  @@index([organizationId, status])
+  @@map("suppliers")
+}
+
+model PurchaseRequisition {
+  id               String                    @id @default(uuid()) @db.Uuid
+  organizationId   String                    @db.Uuid
+  requisitionNo    String
+  status           PurchaseRequisitionStatus @default(DRAFT)
+  requiredByDate   DateTime?
+  /// MRP run that produced this requisition, when auto-generated.
+  mrpRunId         String?                   @db.Uuid
+  raisedByUserId   String?                   @db.Uuid
+  approvedByUserId String?                   @db.Uuid
+  approvedAt       DateTime?
+  rejectionReason  String?
+  remarks          String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  mrpRun MrpRun?                   @relation(fields: [mrpRunId], references: [id])
+  items  PurchaseRequisitionItem[]
+
+  @@unique([organizationId, requisitionNo])
+  @@index([organizationId, status])
+  @@map("purchase_requisitions")
+}
+
+model PurchaseRequisitionItem {
+  id                    String   @id @default(uuid()) @db.Uuid
+  purchaseRequisitionId String   @db.Uuid
+  rawMaterialId         String   @db.Uuid
+  requestedQty          Decimal  @db.Decimal(18, 4)
+  uom                   UomCode
+  approvedQty           Decimal? @db.Decimal(18, 4)
+  orderedQty            Decimal  @default(0) @db.Decimal(18, 4)
+  suggestedSupplierId   String?  @db.Uuid
+  estimatedRate         Decimal? @db.Decimal(18, 6)
+  materialRequirementId String?  @db.Uuid
+  remarks               String?
+
+  purchaseRequisition PurchaseRequisition       @relation(fields: [purchaseRequisitionId], references: [id], onDelete: Cascade)
+  rawMaterial         RawMaterial               @relation(fields: [rawMaterialId], references: [id])
+  suggestedSupplier   Supplier?                 @relation(fields: [suggestedSupplierId], references: [id])
+  materialRequirement MaterialRequirement?      @relation(fields: [materialRequirementId], references: [id])
+  purchaseItems       RawMaterialPurchaseItem[]
+
+  @@index([purchaseRequisitionId])
+  @@map("purchase_requisition_items")
+}
+
+model RawMaterialPurchaseOrder {
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @db.Uuid
+  poNo             String
+  supplierId       String              @db.Uuid
+  status           PurchaseOrderStatus @default(DRAFT)
+  orderDate        DateTime            @default(now())
+  expectedDate     DateTime?
+  deliverToLocationId String?          @db.Uuid
+  /// Receipt tolerance applied when deciding whether a PO can auto-close.
+  overReceiptTolerancePct  Decimal     @default(0) @db.Decimal(9, 4)
+  underReceiptTolerancePct Decimal     @default(0) @db.Decimal(9, 4)
+  subtotalAmount   Decimal             @default(0) @db.Decimal(18, 2)
+  taxAmount        Decimal             @default(0) @db.Decimal(18, 2)
+  freightAmount    Decimal             @default(0) @db.Decimal(18, 2)
+  totalAmount      Decimal             @default(0) @db.Decimal(18, 2)
+  currency         String              @default("INR")
+  paymentTerms     String?
+  raisedByUserId   String?             @db.Uuid
+  approvedByUserId String?             @db.Uuid
+  approvedAt       DateTime?
+  closedByUserId   String?             @db.Uuid
+  closedAt         DateTime?
+  closeReason      String?
+  cancelReason     String?
+  remarks          String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  supplier Supplier                   @relation(fields: [supplierId], references: [id])
+  items    RawMaterialPurchaseItem[]
+  receipts RawMaterialReceipt[]
+
+  @@unique([organizationId, poNo])
+  @@index([organizationId, status, expectedDate])
+  @@index([supplierId])
+  @@map("raw_material_purchase_orders")
+}
+
+model RawMaterialPurchaseItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  purchaseOrderId String   @db.Uuid
+  lineNo          Int
+  rawMaterialId   String   @db.Uuid
+  /// Quantity and rate in the PURCHASE uom; baseQty is the converted figure.
+  orderedQty      Decimal  @db.Decimal(18, 4)
+  uom             UomCode
+  orderedBaseQty  Decimal  @db.Decimal(18, 4)
+  rate            Decimal  @db.Decimal(18, 6)
+  discountPct     Decimal  @default(0) @db.Decimal(9, 4)
+  taxPct          Decimal  @default(0) @db.Decimal(9, 4)
+  lineAmount      Decimal  @default(0) @db.Decimal(18, 2)
+  /// Running totals maintained transactionally by the receipt service.
+  receivedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
+  acceptedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
+  rejectedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
+  expectedDate    DateTime?
+  requisitionItemId String? @db.Uuid
+  remarks         String?
+
+  purchaseOrder   RawMaterialPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  rawMaterial     RawMaterial              @relation(fields: [rawMaterialId], references: [id])
+  requisitionItem PurchaseRequisitionItem? @relation(fields: [requisitionItemId], references: [id])
+  receiptLines    RawMaterialReceiptLine[]
+
+  @@unique([purchaseOrderId, lineNo])
+  @@index([rawMaterialId])
+  @@map("raw_material_purchase_items")
+}
+
+/// Goods Receipt Note. Supports partial deliveries against one PO.
+model RawMaterialReceipt {
+  id                 String        @id @default(uuid()) @db.Uuid
+  organizationId     String        @db.Uuid
+  grnNo              String
+  purchaseOrderId    String?       @db.Uuid
+  supplierId         String        @db.Uuid
+  status             ReceiptStatus @default(DRAFT)
+  receiptDate        DateTime      @default(now())
+  supplierInvoiceNo  String?
+  supplierDcNo       String?
+  vehicleNo          String?
+  /// Location accepted stock is released to after inspection.
+  targetLocationId   String        @db.Uuid
+  receivedByUserId   String?       @db.Uuid
+  inspectedByUserId  String?       @db.Uuid
+  inspectedAt        DateTime?
+  postedByUserId     String?       @db.Uuid
+  postedAt           DateTime?
+  freightAmount      Decimal       @default(0) @db.Decimal(18, 2)
+  remarks            String?
+  idempotencyKey     String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  purchaseOrder  RawMaterialPurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  supplier       Supplier                  @relation(fields: [supplierId], references: [id])
+  targetLocation MaterialLocation          @relation(fields: [targetLocationId], references: [id])
+  lines          RawMaterialReceiptLine[]
+  barcode        BarcodeIdentifier?        @relation("ReceiptBarcode")
+
+  @@unique([organizationId, grnNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, receiptDate])
+  @@index([purchaseOrderId])
+  @@map("raw_material_receipts")
+}
+
+model RawMaterialReceiptLine {
+  id                 String            @id @default(uuid()) @db.Uuid
+  receiptId          String            @db.Uuid
+  lineNo             Int
+  purchaseItemId     String?           @db.Uuid
+  rawMaterialId      String            @db.Uuid
+  /// What the supplier delivered, in the receipt uom.
+  receivedQty        Decimal           @db.Decimal(18, 4)
+  uom                UomCode
+  receivedBaseQty    Decimal           @db.Decimal(18, 4)
+  acceptedBaseQty    Decimal           @default(0) @db.Decimal(18, 4)
+  rejectedBaseQty    Decimal           @default(0) @db.Decimal(18, 4)
+  inspectionResult   InspectionResult?
+  rejectionReason    String?
+  rate               Decimal?          @db.Decimal(18, 6)
+  landedUnitCost     Decimal?          @db.Decimal(18, 6)
+  /// Lot attributes captured at receiving.
+  supplierLotRef     String?
+  shade              String?
+  width              Decimal?          @db.Decimal(10, 2)
+  gsm                Int?
+  remarks            String?
+
+  receipt      RawMaterialReceipt       @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  purchaseItem RawMaterialPurchaseItem? @relation(fields: [purchaseItemId], references: [id])
+  rawMaterial  RawMaterial              @relation(fields: [rawMaterialId], references: [id])
+  lots         MaterialLot[]
+  fabricRolls  FabricRoll[]
+
+  @@unique([receiptId, lineNo])
+  @@index([rawMaterialId])
+  @@map("raw_material_receipt_lines")
+}
+
+// =============================================================================
+// BILL OF MATERIALS
+// -----------------------------------------------------------------------------
+// Bom         = the logical BOM for a style, or for one specific variant
+//               (variant-level BOMs override the style-level BOM)
+// BomVersion  = an immutable-once-approved revision with its own cost snapshot
+// BomItem     = one material line of a version
+//
+// A released manufacturing order pins a BomVersion id plus a frozen copy of
+// its lines, so later master-BOM edits can never alter live production.
+// =============================================================================
+
+model Bom {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @db.Uuid
+  bomCode          String
+  name             String?
+  productId        String    @db.Uuid
+  /// Null = style-level BOM applying to every variant of the product.
+  productVariantId String?   @db.Uuid
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant? @relation("VariantBoms", fields: [productVariantId], references: [id])
+  versions       BomVersion[]
+
+  @@unique([organizationId, bomCode])
+  /// At most one logical BOM per (product, variant) scope.
+  @@unique([organizationId, productId, productVariantId])
+  @@index([productId])
+  @@map("boms")
+}
+
+model BomVersion {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @db.Uuid
+  bomId            String    @db.Uuid
+  version          Int
+  status           BomStatus @default(DRAFT)
+  effectiveFrom    DateTime?
+  effectiveTo      DateTime?
+  /// Base garment quantity the item quantities are expressed for (normally 1).
+  baseQuantity     Decimal   @default(1) @db.Decimal(18, 4)
+  /// Snapshot of total material cost per base quantity at approval time.
+  plannedUnitCost  Decimal   @default(0) @db.Decimal(18, 6)
+  createdByUserId  String?   @db.Uuid
+  approvedByUserId String?   @db.Uuid
+  approvedAt       DateTime?
+  supersededById   String?   @db.Uuid
+  changeNote       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  bom                 Bom                   @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  supersededBy        BomVersion?           @relation("BomSupersede", fields: [supersededById], references: [id])
+  supersedes          BomVersion[]          @relation("BomSupersede")
+  items               BomItem[]
+  activeForVariants   ProductVariant[]      @relation("VariantActiveBom")
+  manufacturingOrders ManufacturingOrder[]
+  requirements        MaterialRequirement[]
+  moBomSnapshotLines  MoBomSnapshotLine[]
+
+  @@unique([bomId, version])
+  @@index([organizationId, status])
+  @@map("bom_versions")
+}
+
+model BomItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  bomVersionId   String       @db.Uuid
+  lineNo         Int
+  rawMaterialId  String       @db.Uuid
+  /// Net consumption per baseQuantity garments, before wastage.
+  consumptionQty Decimal      @db.Decimal(18, 4)
+  uom            UomCode
+  wastageBasis   WastageBasis @default(PERCENT_OF_CONSUMPTION)
+  wastageValue   Decimal      @default(0) @db.Decimal(18, 4)
+  /// Stage at which the material is physically issued/consumed.
+  productionStageId String?   @db.Uuid
+  unitCost       Decimal?     @db.Decimal(18, 6)
+  /// consumptionQty + wastage, cached for display and costing snapshots.
+  grossQtyPerUnit Decimal     @default(0) @db.Decimal(18, 4)
+  lineCost       Decimal      @default(0) @db.Decimal(18, 6)
+  isCritical     Boolean      @default(true)
+  notes          String?
+
+  bomVersion      BomVersion            @relation(fields: [bomVersionId], references: [id], onDelete: Cascade)
+  rawMaterial     RawMaterial           @relation(fields: [rawMaterialId], references: [id])
+  productionStage ProductionStage?      @relation(fields: [productionStageId], references: [id])
+  alternatives    BomItemAlternative[]
+  sizeOverrides   BomItemSizeOverride[]
+
+  @@unique([bomVersionId, lineNo])
+  @@index([rawMaterialId])
+  @@map("bom_items")
+}
+
+/// Approved substitute materials for a BOM line, in preference order.
+model BomItemAlternative {
+  id                String  @id @default(uuid()) @db.Uuid
+  bomItemId         String  @db.Uuid
+  rawMaterialId     String  @db.Uuid
+  preferenceOrder   Int     @default(1)
+  /// Conversion applied when substituting (1 = same consumption).
+  conversionFactor  Decimal @default(1) @db.Decimal(18, 6)
+  notes             String?
+
+  bomItem     BomItem     @relation(fields: [bomItemId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
+
+  @@unique([bomItemId, rawMaterialId])
+  @@map("bom_item_alternatives")
+}
+
+/// Size-wise consumption variation, e.g. XS 2.30 m, M 2.50 m, XXL 2.85 m.
+model BomItemSizeOverride {
+  id             String  @id @default(uuid()) @db.Uuid
+  bomItemId      String  @db.Uuid
+  size           String
+  consumptionQty Decimal @db.Decimal(18, 4)
+
+  bomItem BomItem @relation(fields: [bomItemId], references: [id], onDelete: Cascade)
+
+  @@unique([bomItemId, size])
+  @@map("bom_item_size_overrides")
+}
+
+// =============================================================================
+// MATERIAL REQUIREMENT PLANNING
+// -----------------------------------------------------------------------------
+// An MRP run is an explicit, reproducible snapshot. Open supplier POs are
+// reported as incoming supply with an expected date - never counted as stock.
+// =============================================================================
+
+model MrpRun {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @db.Uuid
+  runNo            String
+  status           MrpRunStatus @default(QUEUED)
+  /// Explicit scope: which MOs / demands were planned in this run.
+  scope            Json         @default("{}")
+  /// Planning parameters frozen for reproducibility (horizon, lot policy...).
+  parameters       Json         @default("{}")
+  totalShortageValue Decimal    @default(0) @db.Decimal(18, 2)
+  shortageLineCount  Int        @default(0)
+  runByUserId      String?      @db.Uuid
+  startedAt        DateTime?
+  completedAt      DateTime?
+  errorMessage     String?
+  createdAt        DateTime     @default(now())
+
+  requirements MaterialRequirement[]
+  requisitions PurchaseRequisition[]
+
+  @@unique([organizationId, runNo])
+  @@index([organizationId, status, createdAt])
+  @@map("mrp_runs")
+}
+
+model MaterialRequirement {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  mrpRunId             String?  @db.Uuid
+  manufacturingOrderId String?  @db.Uuid
+  manufacturingOrderItemId String? @db.Uuid
+  bomVersionId         String?  @db.Uuid
+  rawMaterialId        String   @db.Uuid
+  productionStageId    String?  @db.Uuid
+  /// Net consumption for the planned quantity, before wastage.
+  netRequiredQty       Decimal  @db.Decimal(18, 4)
+  wastageQty           Decimal  @default(0) @db.Decimal(18, 4)
+  /// netRequiredQty + wastageQty.
+  grossRequiredQty     Decimal  @db.Decimal(18, 4)
+  uom                  UomCode
+  /// Unreserved physical stock in issuable locations at run time.
+  availableQty         Decimal  @default(0) @db.Decimal(18, 4)
+  /// Stock reserved by other manufacturing orders.
+  reservedElsewhereQty Decimal  @default(0) @db.Decimal(18, 4)
+  /// Open purchase order quantity not yet received (incoming supply only).
+  openPurchaseQty      Decimal  @default(0) @db.Decimal(18, 4)
+  expectedArrivalDate  DateTime?
+  shortageQty          Decimal  @default(0) @db.Decimal(18, 4)
+  reservedQty          Decimal  @default(0) @db.Decimal(18, 4)
+  estimatedUnitCost    Decimal? @db.Decimal(18, 6)
+  estimatedCost        Decimal  @default(0) @db.Decimal(18, 2)
+  createdAt            DateTime @default(now())
+
+  mrpRun             MrpRun?                   @relation(fields: [mrpRunId], references: [id], onDelete: Cascade)
+  manufacturingOrder ManufacturingOrder?       @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  bomVersion         BomVersion?               @relation(fields: [bomVersionId], references: [id])
+  rawMaterial        RawMaterial               @relation(fields: [rawMaterialId], references: [id])
+  reservations       MaterialReservation[]
+  requisitionItems   PurchaseRequisitionItem[]
+
+  @@index([mrpRunId])
+  @@index([manufacturingOrderId])
+  @@index([organizationId, rawMaterialId])
+  @@map("material_requirements")
+}
+
+// =============================================================================
+// MANUFACTURING DEMAND
+// -----------------------------------------------------------------------------
+// One ManufacturingDemand row = one economic unit of demand. The same demand
+// reaching the ERP from two systems (a Shopify order also pushed into
+// Unicommerce) produces TWO DemandSourceMapping rows pointing at ONE demand.
+// =============================================================================
+
+model ManufacturingDemand {
+  id                  String        @id @default(uuid()) @db.Uuid
+  organizationId      String        @db.Uuid
+  demandNo            String
+  channel             DemandChannel
+  productVariantId    String?       @db.Uuid
+  /// SKU as it arrived externally; kept even when unmapped.
+  externalSku         String?
+  requestedQty        Decimal       @db.Decimal(18, 4)
+  /// Quantity that actually needs manufacturing after the stock/rules check.
+  manufacturingQty    Decimal       @default(0) @db.Decimal(18, 4)
+  allocatedQty        Decimal       @default(0) @db.Decimal(18, 4)
+  cancelledQty        Decimal       @default(0) @db.Decimal(18, 4)
+  status              DemandStatus  @default(NEW)
+  priority            Priority      @default(NORMAL)
+  requiredByDate      DateTime?
+  destinationFacilityId String?     @db.Uuid
+  /// Stable hash over the normalised economic identity of this demand, used to
+  /// collapse the same demand arriving through different systems.
+  dedupeFingerprint   String
+  decisionReason      String?
+  approvedByUserId    String?       @db.Uuid
+  approvedAt          DateTime?
+  notes               String?
+  customization       Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  organization        Organization           @relation(fields: [organizationId], references: [id])
+  productVariant      ProductVariant?        @relation(fields: [productVariantId], references: [id])
+  destinationFacility ExternalFacility?      @relation(fields: [destinationFacilityId], references: [id])
+  sourceMappings      DemandSourceMapping[]
+  allocations         DemandAllocation[]
+
+  @@unique([organizationId, demandNo])
+  @@unique([organizationId, dedupeFingerprint])
+  @@index([organizationId, status, requiredByDate])
+  @@index([productVariantId])
+  @@map("manufacturing_demand")
+}
+
+/// Link from an external source document line to a ManufacturingDemand.
+/// The unique constraint is the hard guard against duplicate imports and
+/// repeated webhook deliveries.
+model DemandSourceMapping {
+  id                    String              @id @default(uuid()) @db.Uuid
+  organizationId        String              @db.Uuid
+  manufacturingDemandId String              @db.Uuid
+  sourceSystem          SourceSystem
+  /// SHOPIFY_ORDER / SHOPIFY_POS_ORDER / UNICOMMERCE_PURCHASE_ORDER / MANUAL
+  sourceDocType         String
+  sourceDocId           String
+  sourceDocNo           String?
+  sourceLineId          String
+  sourceLineQty         Decimal             @db.Decimal(18, 4)
+  sourceStatus          String?
+  /// True for the mapping that first created the demand row.
+  isPrimary             Boolean             @default(false)
+  rawPayload            Json?
+  lastSeenAt            DateTime            @default(now())
+  createdAt             DateTime            @default(now())
+
+  manufacturingDemand ManufacturingDemand @relation(fields: [manufacturingDemandId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sourceSystem, sourceDocType, sourceDocId, sourceLineId])
+  @@index([manufacturingDemandId])
+  @@index([organizationId, sourceDocNo])
+  @@map("demand_source_mappings")
+}
+
+/// Allocation of demand quantity to a manufacturing order. A consolidated
+/// batch serving several source orders has one row per demand line.
+model DemandAllocation {
+  id                       String   @id @default(uuid()) @db.Uuid
+  organizationId           String   @db.Uuid
+  manufacturingDemandId    String   @db.Uuid
+  manufacturingOrderId     String   @db.Uuid
+  manufacturingOrderItemId String?  @db.Uuid
+  allocatedQty             Decimal  @db.Decimal(18, 4)
+  fulfilledQty             Decimal  @default(0) @db.Decimal(18, 4)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  manufacturingDemand    ManufacturingDemand     @relation(fields: [manufacturingDemandId], references: [id], onDelete: Cascade)
+  manufacturingOrder     ManufacturingOrder      @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  manufacturingOrderItem ManufacturingOrderItem? @relation(fields: [manufacturingOrderItemId], references: [id])
+
+  @@unique([manufacturingDemandId, manufacturingOrderId, manufacturingOrderItemId])
+  @@index([manufacturingOrderId])
+  @@map("demand_allocations")
+}
+
+// =============================================================================
+// MANUFACTURING ORDERS
+// =============================================================================
+
+model ManufacturingOrder {
+  id               String                   @id @default(uuid()) @db.Uuid
+  organizationId   String                   @db.Uuid
+  moNo             String
+  status           ManufacturingOrderStatus @default(DRAFT)
+  priority         Priority                 @default(NORMAL)
+  productionType   ProductionType           @default(IN_HOUSE)
+  productId        String                   @db.Uuid
+  /// Set when the order covers exactly one SKU; the size/colour breakdown
+  /// always lives in ManufacturingOrderItem.
+  productVariantId String?                  @db.Uuid
+  /// Denormalised primary source for list screens; authoritative demand links
+  /// are the DemandAllocation rows.
+  primarySourceSystem SourceSystem          @default(MANUAL)
+  primarySourceDocNo  String?
+  orderedQty       Decimal                  @db.Decimal(18, 4)
+  releasedQty      Decimal                  @default(0) @db.Decimal(18, 4)
+  completedQty     Decimal                  @default(0) @db.Decimal(18, 4)
+  rejectedQty      Decimal                  @default(0) @db.Decimal(18, 4)
+  inwardedQty      Decimal                  @default(0) @db.Decimal(18, 4)
+  cancelledQty     Decimal                  @default(0) @db.Decimal(18, 4)
+  /// BOM version pinned at release; master BOM edits cannot change it.
+  bomVersionId     String?                  @db.Uuid
+  routeId          String?                  @db.Uuid
+  plannedStartDate DateTime?
+  plannedEndDate   DateTime?
+  actualStartDate  DateTime?
+  actualEndDate    DateTime?
+  dueDate          DateTime?
+  destinationFacilityId String?             @db.Uuid
+  manufacturingLocationId String?           @db.Uuid
+  supervisorUserId String?                  @db.Uuid
+  /// Cost snapshot frozen at release, plus running actuals.
+  plannedMaterialCost Decimal               @default(0) @db.Decimal(18, 2)
+  plannedConversionCost Decimal             @default(0) @db.Decimal(18, 2)
+  plannedTotalCost Decimal                  @default(0) @db.Decimal(18, 2)
+  actualMaterialCost Decimal                @default(0) @db.Decimal(18, 2)
+  actualConversionCost Decimal              @default(0) @db.Decimal(18, 2)
+  actualTotalCost  Decimal                  @default(0) @db.Decimal(18, 2)
+  /// Set when production was authorised to start despite a material shortage.
+  shortageOverrideByUserId String?          @db.Uuid
+  shortageOverrideReason   String?
+  releasedByUserId String?                  @db.Uuid
+  releasedAt       DateTime?
+  closedByUserId   String?                  @db.Uuid
+  closedAt         DateTime?
+  cancelReason     String?
+  parentMoId       String?                  @db.Uuid
+  remarks          String?
+  idempotencyKey   String?
+  createdByUserId  String?                  @db.Uuid
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  organization          Organization              @relation(fields: [organizationId], references: [id])
+  product               Product                   @relation(fields: [productId], references: [id])
+  productVariant        ProductVariant?           @relation(fields: [productVariantId], references: [id])
+  bomVersion            BomVersion?               @relation(fields: [bomVersionId], references: [id])
+  route                 ProductionRoute?          @relation(fields: [routeId], references: [id])
+  destinationFacility   ExternalFacility?         @relation(fields: [destinationFacilityId], references: [id])
+  parentMo              ManufacturingOrder?       @relation("MoSplit", fields: [parentMoId], references: [id])
+  childMos              ManufacturingOrder[]      @relation("MoSplit")
+  items                 ManufacturingOrderItem[]
+  bomSnapshotLines      MoBomSnapshotLine[]
+  requirements          MaterialRequirement[]
+  reservations          MaterialReservation[]
+  allocations           DemandAllocation[]
+  batches               ProductionBatch[]
+  materialIssues        MaterialIssue[]
+  consumptions          MaterialConsumption[]
+  jobWorkOrders         JobWorkOrder[]
+  inspections           QualityInspection[]
+  finishedInwards       FinishedGoodsInward[]
+  costEntries           MoCostEntry[]
+  cuttingOrders         CuttingOrder[]
+
+  @@unique([organizationId, moNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, dueDate])
+  @@index([organizationId, productId])
+  @@index([productVariantId])
+  @@map("manufacturing_orders")
+}
+
+model ManufacturingOrderItem {
+  id                   String   @id @default(uuid()) @db.Uuid
+  manufacturingOrderId String   @db.Uuid
+  lineNo               Int
+  productVariantId     String   @db.Uuid
+  size                 String?
+  color                String?
+  orderedQty           Decimal  @db.Decimal(18, 4)
+  releasedQty          Decimal  @default(0) @db.Decimal(18, 4)
+  completedQty         Decimal  @default(0) @db.Decimal(18, 4)
+  rejectedQty          Decimal  @default(0) @db.Decimal(18, 4)
+  inwardedQty          Decimal  @default(0) @db.Decimal(18, 4)
+  cancelledQty         Decimal  @default(0) @db.Decimal(18, 4)
+  bomVersionId         String?  @db.Uuid
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  productVariant     ProductVariant     @relation(fields: [productVariantId], references: [id])
+  batches            ProductionBatch[]
+  allocations        DemandAllocation[]
+
+  @@unique([manufacturingOrderId, lineNo])
+  @@unique([manufacturingOrderId, productVariantId])
+  @@index([productVariantId])
+  @@map("manufacturing_order_items")
+}
+
+/// Frozen copy of the BOM lines (and their costs) used by a released MO.
+/// Written once at release and never modified.
+model MoBomSnapshotLine {
+  id                   String   @id @default(uuid()) @db.Uuid
+  manufacturingOrderId String   @db.Uuid
+  bomVersionId         String   @db.Uuid
+  lineNo               Int
+  rawMaterialId        String   @db.Uuid
+  materialCode         String
+  materialName         String
+  consumptionQtyPerUnit Decimal @db.Decimal(18, 4)
+  wastageQtyPerUnit    Decimal  @db.Decimal(18, 4)
+  grossQtyPerUnit      Decimal  @db.Decimal(18, 4)
+  uom                  UomCode
+  unitCost             Decimal  @db.Decimal(18, 6)
+  plannedQty           Decimal  @db.Decimal(18, 4)
+  plannedCost          Decimal  @db.Decimal(18, 2)
+  productionStageCode  String?
+  createdAt            DateTime @default(now())
+
+  manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  bomVersion         BomVersion         @relation(fields: [bomVersionId], references: [id])
+
+  @@unique([manufacturingOrderId, lineNo])
+  @@map("mo_bom_snapshot_lines")
+}
+
+// =============================================================================
+// PRODUCTION ROUTES AND STAGES
+// -----------------------------------------------------------------------------
+// Stages are configurable master data. A route is an ordered list of stage
+// steps; a product type can skip embroidery or washing by using a route that
+// omits those steps.
+// =============================================================================
+
+model ProductionStage {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  code            String
+  name            String
+  sequenceHint    Int          @default(0)
+  /// Department / default location where work at this stage happens.
+  defaultLocationId String?    @db.Uuid
+  /// Stage consumes material (cutting) and therefore can post consumption.
+  consumesMaterial Boolean     @default(false)
+  /// Stage can be performed by an external job worker.
+  allowsJobWork   Boolean      @default(false)
+  requiresQc      Boolean      @default(false)
+  /// Unit serialisation happens when work is completed at this stage.
+  serialisesUnits Boolean      @default(false)
+  isTerminal      Boolean      @default(false)
+  status          RecordStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  defaultLocation MaterialLocation?    @relation(fields: [defaultLocationId], references: [id])
+  routeSteps      ProductionRouteStep[]
+  stageTasks      ProductionStageTask[]
+  bomItems        BomItem[]
+  inspections     QualityInspection[]
+  jobWorkOrders   JobWorkOrder[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@map("production_stages")
+}
+
+model ProductionRoute {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  code           String
+  name           String
+  description    String?
+  isDefault      Boolean      @default(false)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id])
+  steps        ProductionRouteStep[]
+  products     Product[]
+  orders       ManufacturingOrder[]
+  batches      ProductionBatch[]
+
+  @@unique([organizationId, code])
+  @@map("production_routes")
+}
+
+model ProductionRouteStep {
+  id                String   @id @default(uuid()) @db.Uuid
+  routeId           String   @db.Uuid
+  productionStageId String   @db.Uuid
+  sequence          Int
+  isOptional        Boolean  @default(false)
+  /// Planned standard minutes per garment, used for capacity and efficiency.
+  standardMinutes   Decimal? @db.Decimal(18, 4)
+  /// Stage SLA: hours allowed at this step before it is flagged as delayed.
+  slaHours          Decimal? @db.Decimal(18, 2)
+  defaultJobWorkerId String? @db.Uuid
+  createdAt         DateTime @default(now())
+
+  route           ProductionRoute       @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  productionStage ProductionStage       @relation(fields: [productionStageId], references: [id])
+  defaultJobWorker JobWorker?           @relation(fields: [defaultJobWorkerId], references: [id])
+  stageTasks      ProductionStageTask[]
+
+  @@unique([routeId, sequence])
+  @@unique([routeId, productionStageId])
+  @@map("production_route_steps")
+}
+
+// =============================================================================
+// PRODUCTION BATCHES, UNITS AND THE STAGE QUANTITY LEDGER
+// -----------------------------------------------------------------------------
+// A batch is always ONE SKU. Quantity never "sums across stages": each stage
+// task holds its own received/completed/rejected/rework/forwarded counters, and
+// qty can only enter stage N+1 by being forwarded out of stage N, bounded by
+// (completedQty - forwardedQty) at stage N. Scanning a batch barcode once does
+// not complete 100 garments - the operator always states the quantity.
+// =============================================================================
+
+model ProductionBatch {
+  id                       String       @id @default(uuid()) @db.Uuid
+  organizationId           String       @db.Uuid
+  manufacturingOrderId     String       @db.Uuid
+  manufacturingOrderItemId String       @db.Uuid
+  batchNo                  String
+  routeId                  String       @db.Uuid
+  trackingMode             TrackingMode @default(BATCH)
+  /// Quantity released into the batch at the first stage.
+  plannedQty               Decimal      @db.Decimal(18, 4)
+  releasedQty              Decimal      @default(0) @db.Decimal(18, 4)
+  /// Quantity that has passed the final stage of the route.
+  finishedQty              Decimal      @default(0) @db.Decimal(18, 4)
+  rejectedQty              Decimal      @default(0) @db.Decimal(18, 4)
+  qcPassedQty              Decimal      @default(0) @db.Decimal(18, 4)
+  inwardedQty              Decimal      @default(0) @db.Decimal(18, 4)
+  status                   String       @default("OPEN")
+  parentBatchId            String?      @db.Uuid
+  splitReason              String?
+  startedAt                DateTime?
+  completedAt              DateTime?
+  createdByUserId          String?      @db.Uuid
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  manufacturingOrder     ManufacturingOrder        @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  manufacturingOrderItem ManufacturingOrderItem    @relation(fields: [manufacturingOrderItemId], references: [id])
+  route                  ProductionRoute           @relation(fields: [routeId], references: [id])
+  parentBatch            ProductionBatch?          @relation("BatchSplit", fields: [parentBatchId], references: [id])
+  childBatches           ProductionBatch[]         @relation("BatchSplit")
+  stageTasks             ProductionStageTask[]
+  stageMovements         ProductionStageMovement[]
+  units                  ProductionUnit[]
+  barcode                BarcodeIdentifier?        @relation("BatchBarcode")
+  scanEvents             BarcodeScanEvent[]
+  inspections            QualityInspection[]
+  reworkOrders           ReworkOrder[]
+  inwardLines            FinishedGoodsInwardLine[]
+  jobWorkOrderLines      JobWorkOrderLine[]
+  consumptions           MaterialConsumption[]
+  cuttingOrders          CuttingOrder[]
+
+  @@unique([organizationId, batchNo])
+  @@index([manufacturingOrderId, status])
+  @@index([manufacturingOrderItemId])
+  @@map("production_batches")
+}
+
+/// Serialised garment. Created by the stage flagged serialisesUnits (normally
+/// after cutting) or on demand before QC. Parent-child to its batch is kept so
+/// a split batch never loses lineage.
+model ProductionUnit {
+  id                 String               @id @default(uuid()) @db.Uuid
+  organizationId     String               @db.Uuid
+  productionBatchId  String               @db.Uuid
+  serialNo           String
+  currentRouteStepId String?              @db.Uuid
+  status             ProductionUnitStatus @default(CREATED)
+  qcResult           InspectionResult?
+  rejectedAt         DateTime?
+  rejectReason       String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  productionBatch ProductionBatch           @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  barcode         BarcodeIdentifier?        @relation("UnitBarcode")
+  stageMovements  ProductionStageMovement[]
+  scanEvents      BarcodeScanEvent[]
+  inspections     QualityInspection[]
+
+  @@unique([organizationId, serialNo])
+  @@index([productionBatchId, status])
+  @@map("production_units")
+}
+
+/// One row per (batch, route step). The authoritative per-stage counters.
+model ProductionStageTask {
+  id                  String          @id @default(uuid()) @db.Uuid
+  organizationId      String          @db.Uuid
+  productionBatchId   String          @db.Uuid
+  routeStepId         String          @db.Uuid
+  productionStageId   String          @db.Uuid
+  sequence            Int
+  plannedQty          Decimal         @default(0) @db.Decimal(18, 4)
+  /// Accepted into this stage (released, or forwarded from the previous stage).
+  receivedQty         Decimal         @default(0) @db.Decimal(18, 4)
+  /// Finished at this stage and eligible to be forwarded.
+  completedQty        Decimal         @default(0) @db.Decimal(18, 4)
+  rejectedQty         Decimal         @default(0) @db.Decimal(18, 4)
+  /// Cumulative quantity ever sent out to rework from this stage.
+  reworkSentQty       Decimal         @default(0) @db.Decimal(18, 4)
+  /// Cumulative quantity ever returned from rework to this stage.
+  /// Outstanding rework is the difference, which keeps a garment reworked
+  /// twice counted as one garment.
+  reworkReturnedQty   Decimal         @default(0) @db.Decimal(18, 4)
+  /// Handed to the next stage. Can never exceed completedQty.
+  forwardedQty        Decimal         @default(0) @db.Decimal(18, 4)
+  status              StageTaskStatus @default(NOT_STARTED)
+  assignedJobWorkerId String?         @db.Uuid
+  assignedUserId      String?         @db.Uuid
+  plannedStartAt      DateTime?
+  plannedEndAt        DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  remarks             String?
+  version             Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  productionBatch ProductionBatch           @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  routeStep       ProductionRouteStep       @relation(fields: [routeStepId], references: [id])
+  productionStage ProductionStage           @relation(fields: [productionStageId], references: [id])
+  assignedJobWorker JobWorker?              @relation(fields: [assignedJobWorkerId], references: [id])
+  movementsFrom   ProductionStageMovement[] @relation("StageMovementFrom")
+  movementsTo     ProductionStageMovement[] @relation("StageMovementTo")
+  inspections     QualityInspection[]
+  consumptions    MaterialConsumption[]
+  issues          MaterialIssue[]
+
+  @@unique([productionBatchId, routeStepId])
+  @@index([organizationId, productionStageId, status])
+  @@index([assignedJobWorkerId, status])
+  @@map("production_stage_tasks")
+}
+
+/// Append-only production quantity ledger. Never updated or deleted.
+model ProductionStageMovement {
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @db.Uuid
+  productionBatchId  String            @db.Uuid
+  productionUnitId   String?           @db.Uuid
+  movementType       StageMovementType
+  fromStageTaskId    String?           @db.Uuid
+  toStageTaskId      String?           @db.Uuid
+  qty                Decimal           @db.Decimal(18, 4)
+  barcodeScanEventId String?           @db.Uuid
+  operatorUserId     String?           @db.Uuid
+  reason             String?
+  remarks            String?
+  idempotencyKey     String
+  occurredAt         DateTime          @default(now())
+  createdAt          DateTime          @default(now())
+
+  productionBatch ProductionBatch      @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  productionUnit  ProductionUnit?      @relation(fields: [productionUnitId], references: [id])
+  fromStageTask   ProductionStageTask? @relation("StageMovementFrom", fields: [fromStageTaskId], references: [id])
+  toStageTask     ProductionStageTask? @relation("StageMovementTo", fields: [toStageTaskId], references: [id])
+  scanEvent       BarcodeScanEvent?    @relation(fields: [barcodeScanEventId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([productionBatchId, occurredAt])
+  @@index([organizationId, movementType, occurredAt])
+  @@index([productionUnitId])
+  @@map("production_stage_movements")
+}
+
+// =============================================================================
+// BARCODES AND SCANNING
+// -----------------------------------------------------------------------------
+// The printed symbol encodes ONLY a stable short code (Code 128). All context
+// is resolved server-side from this table - never from the payload.
+// =============================================================================
+
+model BarcodeIdentifier {
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @db.Uuid
+  code               String
+  kind               BarcodeKind
+  productionBatchId  String?      @unique @db.Uuid
+  productionUnitId   String?      @unique @db.Uuid
+  materialLotId      String?      @unique @db.Uuid
+  fabricRollId       String?      @unique @db.Uuid
+  receiptId          String?      @unique @db.Uuid
+  finishedInwardId   String?      @unique @db.Uuid
+  /// Human-readable label payload snapshot (MO/SKU/size/colour/qty context).
+  labelData          Json?
+  printCount         Int          @default(0)
+  lastPrintedAt      DateTime?
+  isActive           Boolean      @default(true)
+  revokedAt          DateTime?
+  revokeReason       String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  productionBatch ProductionBatch?     @relation("BatchBarcode", fields: [productionBatchId], references: [id], onDelete: Cascade)
+  productionUnit  ProductionUnit?      @relation("UnitBarcode", fields: [productionUnitId], references: [id], onDelete: Cascade)
+  materialLot     MaterialLot?         @relation("LotBarcode", fields: [materialLotId], references: [id], onDelete: Cascade)
+  fabricRoll      FabricRoll?          @relation("RollBarcode", fields: [fabricRollId], references: [id], onDelete: Cascade)
+  receipt         RawMaterialReceipt?  @relation("ReceiptBarcode", fields: [receiptId], references: [id], onDelete: Cascade)
+  finishedInward  FinishedGoodsInward? @relation("InwardBarcode", fields: [finishedInwardId], references: [id], onDelete: Cascade)
+  scanEvents      BarcodeScanEvent[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, kind, isActive])
+  @@map("barcode_identifiers")
+}
+
+/// Every scan attempt is recorded, including rejected and duplicate ones, so
+/// the shop floor has a complete audit trail and operator productivity data.
+model BarcodeScanEvent {
+  id                  String          @id @default(uuid()) @db.Uuid
+  organizationId      String          @db.Uuid
+  scannedCode         String
+  barcodeIdentifierId String?         @db.Uuid
+  eventType           ScanEventType
+  status              ScanEventStatus @default(ACCEPTED)
+  productionBatchId   String?         @db.Uuid
+  productionUnitId    String?         @db.Uuid
+  fromStageId         String?         @db.Uuid
+  toStageId           String?         @db.Uuid
+  receivedQty         Decimal?        @db.Decimal(18, 4)
+  completedQty        Decimal?        @db.Decimal(18, 4)
+  rejectedQty         Decimal?        @db.Decimal(18, 4)
+  reworkQty           Decimal?        @db.Decimal(18, 4)
+  operatorUserId      String?         @db.Uuid
+  deviceId            String?
+  sessionId           String?
+  validationMessage   String?
+  remarks             String?
+  /// Client-generated; makes a re-submitted or replayed scan a no-op.
+  idempotencyKey      String
+  scannedAt           DateTime        @default(now())
+  createdAt           DateTime        @default(now())
+
+  barcodeIdentifier BarcodeIdentifier?        @relation(fields: [barcodeIdentifierId], references: [id])
+  productionBatch   ProductionBatch?          @relation(fields: [productionBatchId], references: [id])
+  productionUnit    ProductionUnit?           @relation(fields: [productionUnitId], references: [id])
+  stageMovements    ProductionStageMovement[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, scannedAt])
+  @@index([operatorUserId, scannedAt])
+  @@index([productionBatchId, scannedAt])
+  @@map("barcode_scan_events")
+}
+
+// =============================================================================
+// MATERIAL ISSUE AND CONSUMPTION
+// -----------------------------------------------------------------------------
+// ISSUE moves stock between locations (warehouse -> cutting floor): owned
+// quantity is unchanged. CONSUMPTION is the separate, later event that retires
+// stock into the CONSUMED sink. This separation is what prevents the same
+// material being deducted twice as it travels through production.
+// =============================================================================
+
+model MaterialIssue {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  issueNo              String
+  manufacturingOrderId String?  @db.Uuid
+  stageTaskId          String?  @db.Uuid
+  jobWorkOrderId       String?  @db.Uuid
+  sourceLocationId     String   @db.Uuid
+  destinationLocationId String  @db.Uuid
+  issueType            String   @default("PRODUCTION")
+  status               String   @default("POSTED")
+  issuedByUserId       String?  @db.Uuid
+  issuedAt             DateTime @default(now())
+  remarks              String?
+  idempotencyKey       String?
+  createdAt            DateTime @default(now())
+
+  manufacturingOrder  ManufacturingOrder?  @relation(fields: [manufacturingOrderId], references: [id])
+  stageTask           ProductionStageTask? @relation(fields: [stageTaskId], references: [id])
+  jobWorkOrder        JobWorkOrder?        @relation(fields: [jobWorkOrderId], references: [id])
+  sourceLocation      MaterialLocation     @relation("IssueSource", fields: [sourceLocationId], references: [id])
+  destinationLocation MaterialLocation     @relation("IssueDestination", fields: [destinationLocationId], references: [id])
+  lines               MaterialIssueLine[]
+
+  @@unique([organizationId, issueNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([manufacturingOrderId])
+  @@map("material_issues")
+}
+
+model MaterialIssueLine {
+  id              String   @id @default(uuid()) @db.Uuid
+  materialIssueId String   @db.Uuid
+  lineNo          Int
+  rawMaterialId   String   @db.Uuid
+  materialLotId   String   @db.Uuid
+  fabricRollId    String?  @db.Uuid
+  issuedBaseQty   Decimal  @db.Decimal(18, 4)
+  returnedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
+  consumedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
+  uom             UomCode
+  unitCost        Decimal? @db.Decimal(18, 6)
+  movementId      String?  @db.Uuid
+  reservationId   String?  @db.Uuid
+  remarks         String?
+
+  materialIssue MaterialIssue         @relation(fields: [materialIssueId], references: [id], onDelete: Cascade)
+  rawMaterial   RawMaterial           @relation(fields: [rawMaterialId], references: [id])
+  materialLot   MaterialLot           @relation(fields: [materialLotId], references: [id])
+  fabricRoll    FabricRoll?           @relation(fields: [fabricRollId], references: [id])
+  consumptions  MaterialConsumption[]
+
+  @@unique([materialIssueId, lineNo])
+  @@index([rawMaterialId, materialLotId])
+  @@map("material_issue_lines")
+}
+
+model MaterialConsumption {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  manufacturingOrderId String   @db.Uuid
+  productionBatchId    String?  @db.Uuid
+  stageTaskId          String?  @db.Uuid
+  materialIssueLineId  String?  @db.Uuid
+  rawMaterialId        String   @db.Uuid
+  materialLotId        String   @db.Uuid
+  fabricRollId         String?  @db.Uuid
+  consumedBaseQty      Decimal  @db.Decimal(18, 4)
+  wastageBaseQty       Decimal  @default(0) @db.Decimal(18, 4)
+  uom                  UomCode
+  unitCost             Decimal  @default(0) @db.Decimal(18, 6)
+  totalCost            Decimal  @default(0) @db.Decimal(18, 2)
+  /// The CONSUMPTION ledger row this record is backed by (1:1).
+  movementId           String?  @db.Uuid
+  wastageMovementId    String?  @db.Uuid
+  postedByUserId       String?  @db.Uuid
+  postedAt             DateTime @default(now())
+  idempotencyKey       String?
+  remarks              String?
+
+  manufacturingOrder ManufacturingOrder   @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  productionBatch    ProductionBatch?     @relation(fields: [productionBatchId], references: [id])
+  stageTask          ProductionStageTask? @relation(fields: [stageTaskId], references: [id])
+  materialIssueLine  MaterialIssueLine?   @relation(fields: [materialIssueLineId], references: [id])
+  rawMaterial        RawMaterial          @relation(fields: [rawMaterialId], references: [id])
+  materialLot        MaterialLot          @relation(fields: [materialLotId], references: [id])
+  fabricRoll         FabricRoll?          @relation(fields: [fabricRollId], references: [id])
+  movement           MaterialMovement?    @relation(fields: [movementId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([manufacturingOrderId])
+  @@index([rawMaterialId, materialLotId])
+  @@map("material_consumption")
+}
+
+// =============================================================================
+// CUTTING
+// =============================================================================
+
+model CuttingOrder {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  cuttingOrderNo       String
+  manufacturingOrderId String   @db.Uuid
+  productionBatchId    String?  @db.Uuid
+  fabricMaterialId     String?  @db.Uuid
+  fabricLotId          String?  @db.Uuid
+  fabricRollId         String?  @db.Uuid
+  /// Size-wise cutting plan: [{ size, plannedPieces, actualPieces }]
+  sizeBreakdown        Json     @default("[]")
+  fabricIssuedBaseQty  Decimal  @default(0) @db.Decimal(18, 4)
+  fabricUsedBaseQty    Decimal  @default(0) @db.Decimal(18, 4)
+  fabricWastageBaseQty Decimal  @default(0) @db.Decimal(18, 4)
+  fabricReturnedBaseQty Decimal @default(0) @db.Decimal(18, 4)
+  plannedPieces        Decimal  @default(0) @db.Decimal(18, 4)
+  actualPiecesCut      Decimal  @default(0) @db.Decimal(18, 4)
+  rejectedPieces       Decimal  @default(0) @db.Decimal(18, 4)
+  status               String   @default("PLANNED")
+  /// Set once the consumption posting has happened, so completing a cutting
+  /// order twice cannot deduct fabric twice.
+  consumptionPostedAt  DateTime?
+  operatorUserId       String?  @db.Uuid
+  startedAt            DateTime?
+  completedAt          DateTime?
+  remarks              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  productionBatch    ProductionBatch?   @relation(fields: [productionBatchId], references: [id])
+  fabricLot          MaterialLot?       @relation(fields: [fabricLotId], references: [id])
+  fabricRoll         FabricRoll?        @relation(fields: [fabricRollId], references: [id])
+
+  @@unique([organizationId, cuttingOrderNo])
+  @@index([manufacturingOrderId, status])
+  @@map("cutting_orders")
+}
+
+// =============================================================================
+// JOB WORKERS AND JOB WORK ORDERS
+// =============================================================================
+
+model JobWorker {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  code           String
+  name           String
+  kind           JobWorkerKind
+  contactPerson  String?
+  phone          String?
+  email          String?
+  address        String?
+  gstin          String?
+  /// Default per-piece rate; overridable per job work order line.
+  defaultRate    Decimal?      @db.Decimal(18, 6)
+  capacityPerDay Decimal?      @db.Decimal(18, 4)
+  /// Stock physically held by this worker lives at this JOB_WORKER location.
+  stockLocationId String?      @db.Uuid
+  rating         Int?
+  status         RecordStatus  @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization  Organization          @relation(fields: [organizationId], references: [id])
+  locations     MaterialLocation[]
+  jobWorkOrders JobWorkOrder[]
+  stageTasks    ProductionStageTask[]
+  routeSteps    ProductionRouteStep[]
+  reworkOrders  ReworkOrder[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, kind, status])
+  @@map("job_workers")
+}
+
+model JobWorkOrder {
+  id                   String             @id @default(uuid()) @db.Uuid
+  organizationId       String             @db.Uuid
+  jobWorkOrderNo       String
+  manufacturingOrderId String             @db.Uuid
+  jobWorkerId          String             @db.Uuid
+  productionStageId    String             @db.Uuid
+  status               JobWorkOrderStatus @default(DRAFT)
+  assignedQty          Decimal            @default(0) @db.Decimal(18, 4)
+  issuedQty            Decimal            @default(0) @db.Decimal(18, 4)
+  receivedQty          Decimal            @default(0) @db.Decimal(18, 4)
+  completedQty         Decimal            @default(0) @db.Decimal(18, 4)
+  rejectedQty          Decimal            @default(0) @db.Decimal(18, 4)
+  reworkQty            Decimal            @default(0) @db.Decimal(18, 4)
+  ratePerPiece         Decimal            @default(0) @db.Decimal(18, 6)
+  totalCharge          Decimal            @default(0) @db.Decimal(18, 2)
+  issueDate            DateTime?
+  dueDate              DateTime?
+  completionDate       DateTime?
+  remarks              String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  jobWorker          JobWorker          @relation(fields: [jobWorkerId], references: [id])
+  productionStage    ProductionStage    @relation(fields: [productionStageId], references: [id])
+  lines              JobWorkOrderLine[]
+  materialIssues     MaterialIssue[]
+
+  @@unique([organizationId, jobWorkOrderNo])
+  @@index([jobWorkerId, status])
+  @@index([manufacturingOrderId])
+  @@map("job_work_orders")
+}
+
+model JobWorkOrderLine {
+  id                String   @id @default(uuid()) @db.Uuid
+  jobWorkOrderId    String   @db.Uuid
+  productionBatchId String   @db.Uuid
+  assignedQty       Decimal  @db.Decimal(18, 4)
+  receivedQty       Decimal  @default(0) @db.Decimal(18, 4)
+  completedQty      Decimal  @default(0) @db.Decimal(18, 4)
+  rejectedQty       Decimal  @default(0) @db.Decimal(18, 4)
+  reworkQty         Decimal  @default(0) @db.Decimal(18, 4)
+  ratePerPiece      Decimal  @default(0) @db.Decimal(18, 6)
+  lineCharge        Decimal  @default(0) @db.Decimal(18, 2)
+  createdAt         DateTime @default(now())
+
+  jobWorkOrder    JobWorkOrder    @relation(fields: [jobWorkOrderId], references: [id], onDelete: Cascade)
+  productionBatch ProductionBatch @relation(fields: [productionBatchId], references: [id])
+
+  @@unique([jobWorkOrderId, productionBatchId])
+  @@map("job_work_order_lines")
+}
+
+// =============================================================================
+// QUALITY CONTROL
+// =============================================================================
+
+model QualityInspection {
+  id                   String           @id @default(uuid()) @db.Uuid
+  organizationId       String           @db.Uuid
+  inspectionNo         String
+  kind                 QcKind
+  manufacturingOrderId String           @db.Uuid
+  productionBatchId    String?          @db.Uuid
+  productionUnitId     String?          @db.Uuid
+  stageTaskId          String?          @db.Uuid
+  productionStageId    String?          @db.Uuid
+  inspectedQty         Decimal          @db.Decimal(18, 4)
+  passedQty            Decimal          @default(0) @db.Decimal(18, 4)
+  failedQty            Decimal          @default(0) @db.Decimal(18, 4)
+  reworkQty            Decimal          @default(0) @db.Decimal(18, 4)
+  holdQty              Decimal          @default(0) @db.Decimal(18, 4)
+  result               InspectionResult
+  /// Filled checklist: [{ code, label, expected, observed, result }]
+  checklist            Json             @default("[]")
+  photoUrls            String[]         @default([])
+  /// Set when this inspection re-checks an earlier one.
+  reinspectionOfId     String?          @db.Uuid
+  inspectorUserId      String?          @db.Uuid
+  inspectedAt          DateTime         @default(now())
+  remarks              String?
+  idempotencyKey       String?
+  createdAt            DateTime         @default(now())
+
+  manufacturingOrder ManufacturingOrder   @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  productionBatch    ProductionBatch?     @relation(fields: [productionBatchId], references: [id])
+  productionUnit     ProductionUnit?      @relation(fields: [productionUnitId], references: [id])
+  stageTask          ProductionStageTask? @relation(fields: [stageTaskId], references: [id])
+  productionStage    ProductionStage?     @relation(fields: [productionStageId], references: [id])
+  reinspectionOf     QualityInspection?   @relation("Reinspection", fields: [reinspectionOfId], references: [id])
+  reinspections      QualityInspection[]  @relation("Reinspection")
+  defects            QualityDefect[]
+  reworkOrders       ReworkOrder[]
+
+  @@unique([organizationId, inspectionNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([manufacturingOrderId, kind])
+  @@index([productionBatchId])
+  @@map("quality_inspections")
+}
+
+model QualityDefect {
+  id                  String         @id @default(uuid()) @db.Uuid
+  qualityInspectionId String         @db.Uuid
+  category            DefectCategory
+  defectCode          String?
+  description         String?
+  qty                 Decimal        @db.Decimal(18, 4)
+  severity            String?
+  photoUrls           String[]       @default([])
+  attributedStageId   String?        @db.Uuid
+  attributedJobWorkerId String?      @db.Uuid
+  createdAt           DateTime       @default(now())
+
+  qualityInspection QualityInspection @relation(fields: [qualityInspectionId], references: [id], onDelete: Cascade)
+
+  @@index([qualityInspectionId])
+  @@index([category])
+  @@map("quality_defects")
+}
+
+model ReworkOrder {
+  id                  String            @id @default(uuid()) @db.Uuid
+  organizationId      String            @db.Uuid
+  reworkOrderNo       String
+  qualityInspectionId String?           @db.Uuid
+  productionBatchId   String            @db.Uuid
+  /// Stage the quantity is routed back to.
+  targetStageId       String?           @db.Uuid
+  assignedJobWorkerId String?           @db.Uuid
+  assignedUserId      String?           @db.Uuid
+  qty                 Decimal           @db.Decimal(18, 4)
+  completedQty        Decimal           @default(0) @db.Decimal(18, 4)
+  scrappedQty         Decimal           @default(0) @db.Decimal(18, 4)
+  status              ReworkOrderStatus @default(OPEN)
+  reason              String?
+  dueDate             DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  qualityInspection QualityInspection? @relation(fields: [qualityInspectionId], references: [id])
+  productionBatch   ProductionBatch    @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  assignedJobWorker JobWorker?         @relation(fields: [assignedJobWorkerId], references: [id])
+
+  @@unique([organizationId, reworkOrderNo])
+  @@index([productionBatchId, status])
+  @@map("rework_orders")
+}
+
+// =============================================================================
+// FINISHED GOODS
+// -----------------------------------------------------------------------------
+// Only QC-approved quantity can be inwarded, and inward can never exceed
+// (qcPassedQty - alreadyInwardedQty) for the batch. The push to Unicommerce is
+// a separate, explicitly approved step tracked per inward line.
+// =============================================================================
+
+model FinishedGoodsBalance {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  productVariantId String   @db.Uuid
+  locationId       String   @db.Uuid
+  onHandQty        Decimal  @default(0) @db.Decimal(18, 4)
+  /// Quantity inwarded in the ERP but not yet confirmed in Unicommerce.
+  pendingSyncQty   Decimal  @default(0) @db.Decimal(18, 4)
+  syncedQty        Decimal  @default(0) @db.Decimal(18, 4)
+  version          Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  productVariant ProductVariant   @relation(fields: [productVariantId], references: [id])
+  location       MaterialLocation @relation(fields: [locationId], references: [id])
+
+  @@unique([productVariantId, locationId])
+  @@index([organizationId, productVariantId])
+  @@map("finished_goods_balances")
+}
+
+model FinishedGoodsMovement {
+  id               String                    @id @default(uuid()) @db.Uuid
+  organizationId   String                    @db.Uuid
+  movementNo       String
+  movementType     FinishedGoodsMovementType
+  productVariantId String                    @db.Uuid
+  sourceLocationId String?                   @db.Uuid
+  destinationLocationId String?              @db.Uuid
+  qty              Decimal                   @db.Decimal(18, 4)
+  unitCost         Decimal?                  @db.Decimal(18, 6)
+  referenceType    String?
+  referenceId      String?                   @db.Uuid
+  referenceNo      String?
+  operatorUserId   String?                   @db.Uuid
+  reason           String?
+  idempotencyKey   String
+  occurredAt       DateTime                  @default(now())
+  createdAt        DateTime                  @default(now())
+
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  @@unique([organizationId, movementNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, productVariantId, occurredAt])
+  @@index([referenceType, referenceId])
+  @@map("finished_goods_movements")
+}
+
+model FinishedGoodsInward {
+  id                   String     @id @default(uuid()) @db.Uuid
+  organizationId       String     @db.Uuid
+  inwardNo             String
+  manufacturingOrderId String     @db.Uuid
+  manufacturingLocationId String  @db.Uuid
+  destinationFacilityId String?   @db.Uuid
+  inwardDate           DateTime   @default(now())
+  status               String     @default("DRAFT")
+  syncStatus           SyncStatus @default(SYNC_PENDING)
+  inwardByUserId       String?    @db.Uuid
+  postedAt             DateTime?
+  remarks              String?
+  idempotencyKey       String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  manufacturingOrder    ManufacturingOrder        @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  manufacturingLocation MaterialLocation          @relation(fields: [manufacturingLocationId], references: [id])
+  destinationFacility   ExternalFacility?         @relation(fields: [destinationFacilityId], references: [id])
+  lines                 FinishedGoodsInwardLine[]
+  barcode               BarcodeIdentifier?        @relation("InwardBarcode")
+
+  @@unique([organizationId, inwardNo])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, syncStatus])
+  @@index([manufacturingOrderId])
+  @@map("finished_goods_inwards")
+}
+
+model FinishedGoodsInwardLine {
+  id                 String   @id @default(uuid()) @db.Uuid
+  finishedInwardId   String   @db.Uuid
+  lineNo             Int
+  productVariantId   String   @db.Uuid
+  productionBatchId  String?  @db.Uuid
+  acceptedQty        Decimal  @db.Decimal(18, 4)
+  rejectedQty        Decimal  @default(0) @db.Decimal(18, 4)
+  /// Serial numbers inwarded, when the batch is unit-tracked.
+  unitIds            String[] @default([])
+  unitCost           Decimal? @db.Decimal(18, 6)
+  /// Quantity already accepted by Unicommerce. Guarded so the same quantity is
+  /// never credited to external inventory twice.
+  pushedQty          Decimal  @default(0) @db.Decimal(18, 4)
+  movementId         String?  @db.Uuid
+  version            Int      @default(0)
+  remarks            String?
+
+  finishedInward  FinishedGoodsInward @relation(fields: [finishedInwardId], references: [id], onDelete: Cascade)
+  productVariant  ProductVariant      @relation(fields: [productVariantId], references: [id])
+  productionBatch ProductionBatch?    @relation(fields: [productionBatchId], references: [id])
+  pushLines       InventoryPushLine[]
+
+  @@unique([finishedInwardId, lineNo])
+  @@index([productVariantId])
+  @@index([productionBatchId])
+  @@map("finished_goods_inward_lines")
+}
+
+// =============================================================================
+// EXTERNAL FACILITIES AND UNICOMMERCE INVENTORY PUSH
+// -----------------------------------------------------------------------------
+// A push job is an immutable transaction record. The externalRequestId is
+// generated by the ERP and sent with the call so a retry is idempotent on the
+// external side too. Success is decided by the BUSINESS response, never by the
+// HTTP status; an uncertain outcome goes to RECONCILIATION_REQUIRED and is
+// never auto-retried.
+// =============================================================================
+
+model ExternalFacility {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  provider       IntegrationProvider
+  /// Exact external facility identifier, preserved verbatim.
+  externalCode   String
+  externalName   String?
+  displayName    String
+  /// Internal location that mirrors this facility, when one exists.
+  mirrorLocationId String?           @db.Uuid
+  isDefault      Boolean             @default(false)
+  /// Pushes are blocked unless the facility has been explicitly approved.
+  isPushEnabled  Boolean             @default(false)
+  address        Json?
+  rawPayload     Json?
+  status         RecordStatus        @default(ACTIVE)
+  syncedAt       DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization    Organization                      @relation(fields: [organizationId], references: [id])
+  pushJobs        InventoryPushJob[]
+  inwards         FinishedGoodsInward[]
+  demands         ManufacturingDemand[]
+  orders          ManufacturingOrder[]
+  reconciliations ExternalInventoryReconciliation[]
+  inventorySnapshots FacilityInventorySnapshot[]
+  unicommercePos  UnicommercePurchaseOrder[]
+  forecasts       DemandForecast[]
+  replenishments  ReplenishmentSuggestion[]
+
+  @@unique([organizationId, provider, externalCode])
+  @@index([organizationId, provider, status])
+  @@map("external_facilities")
+}
+
+model InventoryPushJob {
+  id                  String            @id @default(uuid()) @db.Uuid
+  organizationId      String            @db.Uuid
+  pushJobNo           String
+  provider            IntegrationProvider @default(UNICOMMERCE)
+  operationKind       PushOperationKind
+  externalFacilityId  String            @db.Uuid
+  status              PushJobStatus     @default(DRAFT)
+  /// Client-generated id sent to the external API for its own de-duplication.
+  externalRequestId   String
+  /// External reference returned on success (e.g. the Unicommerce GRN number).
+  externalReference   String?
+  totalQty            Decimal           @default(0) @db.Decimal(18, 4)
+  successQty          Decimal           @default(0) @db.Decimal(18, 4)
+  failedQty           Decimal           @default(0) @db.Decimal(18, 4)
+  attemptCount        Int               @default(0)
+  lastAttemptAt       DateTime?
+  /// Verbatim request and business response, for audit and dispute handling.
+  requestPayload      Json?
+  responsePayload     Json?
+  errorCode           String?
+  errorMessage        String?
+  /// Set when an operator changed the destination facility; requires approval.
+  facilityChangeApprovedByUserId String? @db.Uuid
+  previewedByUserId   String?           @db.Uuid
+  approvedByUserId    String?           @db.Uuid
+  approvedAt          DateTime?
+  queuedAt            DateTime?
+  completedAt         DateTime?
+  idempotencyKey      String
+  createdByUserId     String?           @db.Uuid
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  externalFacility ExternalFacility                  @relation(fields: [externalFacilityId], references: [id])
+  lines            InventoryPushLine[]
+  reconciliations  ExternalInventoryReconciliation[]
+
+  @@unique([organizationId, pushJobNo])
+  @@unique([organizationId, externalRequestId])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, createdAt])
+  @@map("inventory_push_jobs")
+}
+
+model InventoryPushLine {
+  id                  String     @id @default(uuid()) @db.Uuid
+  inventoryPushJobId  String     @db.Uuid
+  lineNo              Int
+  finishedInwardLineId String    @db.Uuid
+  productVariantId    String     @db.Uuid
+  /// External SKU resolved at preview time; a push with a null value is refused.
+  externalSku         String?
+  qty                 Decimal    @db.Decimal(18, 4)
+  acceptedQty         Decimal    @default(0) @db.Decimal(18, 4)
+  status              SyncStatus @default(SYNC_PENDING)
+  externalLineRef     String?
+  errorCode           String?
+  errorMessage        String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  inventoryPushJob   InventoryPushJob        @relation(fields: [inventoryPushJobId], references: [id], onDelete: Cascade)
+  finishedInwardLine FinishedGoodsInwardLine @relation(fields: [finishedInwardLineId], references: [id])
+
+  @@unique([inventoryPushJobId, lineNo])
+  /// One inward line can appear at most once per push job.
+  @@unique([inventoryPushJobId, finishedInwardLineId])
+  @@index([finishedInwardLineId])
+  @@map("inventory_push_lines")
+}
+
+/// Point-in-time comparison of ERP quantity against the quantity the external
+/// system actually reports. Nothing is marked reconciled without this record.
+model ExternalInventoryReconciliation {
+  id                 String              @id @default(uuid()) @db.Uuid
+  organizationId     String              @db.Uuid
+  provider           IntegrationProvider
+  externalFacilityId String              @db.Uuid
+  productVariantId   String?             @db.Uuid
+  inventoryPushJobId String?             @db.Uuid
+  erpQty             Decimal             @db.Decimal(18, 4)
+  externalQty        Decimal             @db.Decimal(18, 4)
+  varianceQty        Decimal             @db.Decimal(18, 4)
+  observedAt         DateTime            @default(now())
+  resolution         String?
+  resolvedByUserId   String?             @db.Uuid
+  resolvedAt         DateTime?
+  rawPayload         Json?
+  createdAt          DateTime            @default(now())
+
+  externalFacility ExternalFacility  @relation(fields: [externalFacilityId], references: [id])
+  inventoryPushJob InventoryPushJob? @relation(fields: [inventoryPushJobId], references: [id])
+
+  @@index([organizationId, externalFacilityId, observedAt])
+  @@index([inventoryPushJobId])
+  @@map("external_inventory_reconciliations")
+}
+
+// =============================================================================
+// INTEGRATION PLUMBING
+// =============================================================================
+
+model IntegrationConnection {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  provider       IntegrationProvider
+  name           String
+  /// Non-secret configuration (shop domain, base url, api version, facility...).
+  config         Json                @default("{}")
+  /// Opaque reference to the secret in the configured secret store. Secrets are
+  /// NEVER stored in this column or in this database in plaintext.
+  credentialRef  String?
+  /// Supported API version pinned for this connection.
+  apiVersion     String?
+  isEnabled      Boolean             @default(false)
+  /// Blocks any write/mutating call to the external system.
+  allowExternalWrites Boolean        @default(false)
+  healthStatus   String              @default("UNKNOWN")
+  lastHealthCheckAt DateTime?
+  lastSyncAt     DateTime?
+  rateLimitState Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  events       IntegrationEvent[]
+  syncLogs     SyncLog[]
+
+  @@unique([organizationId, provider, name])
+  @@map("integration_connections")
+}
+
+/// Inbound webhook / polled event envelope. The unique external event id is the
+/// guard against duplicate webhook deliveries.
+model IntegrationEvent {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  organizationId          String                 @db.Uuid
+  integrationConnectionId String?                @db.Uuid
+  provider                IntegrationProvider
+  eventType               String
+  externalEventId         String
+  externalResourceId      String?
+  payload                 Json
+  headers                 Json?
+  status                  IntegrationEventStatus @default(RECEIVED)
+  attemptCount            Int                    @default(0)
+  lastError               String?
+  processedAt             DateTime?
+  receivedAt              DateTime               @default(now())
+
+  integrationConnection IntegrationConnection? @relation(fields: [integrationConnectionId], references: [id])
+
+  @@unique([organizationId, provider, eventType, externalEventId])
+  @@index([organizationId, status, receivedAt])
+  @@map("integration_events")
+}
+
+/// One row per outbound external API call. Request and response are retained
+/// so an uncertain outcome can be investigated and reconciled.
+model SyncLog {
+  id                      String              @id @default(uuid()) @db.Uuid
+  organizationId          String              @db.Uuid
+  integrationConnectionId String?             @db.Uuid
+  provider                IntegrationProvider
+  operation               String
+  direction               String              @default("OUTBOUND")
+  referenceType           String?
+  referenceId             String?             @db.Uuid
+  externalRequestId       String?
+  httpStatus              Int?
+  /// Business-level success flag parsed from the response body.
+  businessSuccess         Boolean?
+  requestPayload          Json?
+  responsePayload         Json?
+  errorCode               String?
+  errorMessage            String?
+  durationMs              Int?
+  attemptNo               Int                 @default(1)
+  /// True when the call timed out or the outcome could not be determined.
+  outcomeUncertain        Boolean             @default(false)
+  createdAt               DateTime            @default(now())
+
+  integrationConnection IntegrationConnection? @relation(fields: [integrationConnectionId], references: [id])
+
+  @@index([organizationId, provider, operation, createdAt])
+  @@index([referenceType, referenceId])
+  @@index([externalRequestId])
+  @@map("sync_logs")
+}
+
+// =============================================================================
+// COSTING
+// =============================================================================
+
+model MoCostEntry {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  manufacturingOrderId String   @db.Uuid
+  /// MATERIAL / WASTAGE / CUTTING / EMBROIDERY / STITCHING / FINISHING /
+  /// JOB_WORK / PACKAGING / OVERHEAD
+  costCategory         String
+  isPlanned            Boolean
+  qty                  Decimal? @db.Decimal(18, 4)
+  unitRate             Decimal? @db.Decimal(18, 6)
+  amount               Decimal  @db.Decimal(18, 2)
+  referenceType        String?
+  referenceId          String?  @db.Uuid
+  remarks              String?
+  createdAt            DateTime @default(now())
+
+  manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+
+  @@index([manufacturingOrderId, costCategory, isPlanned])
+  @@map("mo_cost_entries")
+}
+
+// =============================================================================
+// V3 ADDITIONS - ENUMS
+// =============================================================================
+
+enum FabricRollStatus {
+  RECEIVED
+  QC_PENDING
+  AVAILABLE
+  PARTIALLY_ISSUED
+  ISSUED
+  EXHAUSTED
+  BLOCKED
+  RETURNED_TO_SUPPLIER
+}
+
+/// Fulfilment readiness of one external order line, computed from a facility
+/// stock snapshot. Availability is NOT a reservation.
+enum InventoryAvailabilityStatus {
+  PENDING_CHECK
+  AVAILABLE
+  PARTIALLY_AVAILABLE
+  OUT_OF_STOCK
+  ALLOCATION_PENDING
+  ALLOCATION_CONFIRMED
+  INVENTORY_CHECK_FAILED
+}
+
+enum ExternalOrderStatus {
+  OPEN
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
+  CLOSED
+  ON_HOLD
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  SUPPRESSED_DUPLICATE
+  READ
+}
+
+enum ForecastMethod {
+  MOVING_AVERAGE
+  WEIGHTED_VELOCITY
+  SEASONAL_INDEX
+  MANUAL_OVERRIDE
+}
+
+enum BundleComponentRole {
+  PRIMARY
+  COMPONENT
+  ACCESSORY
+}
+
+// =============================================================================
+// FABRIC ROLL MANAGEMENT  (V3 Section 7)
+// -----------------------------------------------------------------------------
+// A roll is a physically identifiable piece of one fabric lot, with its own
+// barcode and its own length. Roll lengths are a projection of the ledger just
+// like MaterialBalance: every roll movement stamps fabricRollId, so
+//   SUM(FabricRoll.currentLength) for (material, lot, location)
+//     == MaterialBalance.onHandQty for that key
+// is a checkable invariant (see inventory-accounting.md).
+// =============================================================================
+
+model FabricRoll {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  rollNo         String
+  rawMaterialId  String           @db.Uuid
+  materialLotId  String           @db.Uuid
+  locationId     String           @db.Uuid
+  supplierId     String?          @db.Uuid
+  receiptLineId  String?          @db.Uuid
+  shade          String?
+  color          String?
+  width          Decimal?         @db.Decimal(10, 2)
+  widthUom       String?
+  gsm            Int?
+  /// Length as received. Immutable.
+  originalLength Decimal          @db.Decimal(18, 4)
+  /// Physical length remaining on the roll right now.
+  currentLength  Decimal          @db.Decimal(18, 4)
+  /// Portion of currentLength committed to manufacturing orders.
+  reservedLength Decimal          @default(0) @db.Decimal(18, 4)
+  lengthUom      UomCode          @default(METER)
+  purchaseRate   Decimal?         @db.Decimal(18, 6)
+  qcStatus       InspectionResult?
+  status         FabricRollStatus @default(RECEIVED)
+  defectNotes    String?
+  receivedAt     DateTime?
+  version        Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  rawMaterial    RawMaterial             @relation(fields: [rawMaterialId], references: [id])
+  materialLot    MaterialLot             @relation(fields: [materialLotId], references: [id])
+  location       MaterialLocation        @relation(fields: [locationId], references: [id])
+  supplier       Supplier?               @relation(fields: [supplierId], references: [id])
+  receiptLine    RawMaterialReceiptLine? @relation(fields: [receiptLineId], references: [id])
+  barcode        BarcodeIdentifier?      @relation("RollBarcode")
+  issueLines     MaterialIssueLine[]
+  movements      MaterialMovement[]
+  consumptions   MaterialConsumption[]
+  cuttingOrders  CuttingOrder[]
+
+  @@unique([organizationId, rollNo])
+  @@index([organizationId, rawMaterialId, status])
+  @@index([materialLotId])
+  @@index([locationId])
+  @@map("fabric_rolls")
+}
+
+// =============================================================================
+// PRODUCT BUNDLES  (V3 Section 3 / 22B)
+// -----------------------------------------------------------------------------
+// A bundle SKU (Set = Kurta + Pant + Dupatta) is assembled from component SKUs
+// that each keep their own BOM and production route, so component-level
+// material consumption and stage tracking stay intact.
+// =============================================================================
+
+model ProductBundleComponent {
+  id                       String              @id @default(uuid()) @db.Uuid
+  organizationId           String              @db.Uuid
+  bundleVariantId          String              @db.Uuid
+  componentVariantId       String              @db.Uuid
+  qtyPerBundle             Decimal             @default(1) @db.Decimal(18, 4)
+  role                     BundleComponentRole @default(COMPONENT)
+  sequence                 Int                 @default(1)
+  /// When true the component must be manufactured, not drawn from stock.
+  requiresManufacturing    Boolean             @default(true)
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  bundleVariant    ProductVariant @relation("BundleParent", fields: [bundleVariantId], references: [id], onDelete: Cascade)
+  componentVariant ProductVariant @relation("BundleChild", fields: [componentVariantId], references: [id])
+
+  @@unique([bundleVariantId, componentVariantId])
+  @@index([componentVariantId])
+  @@map("product_bundle_components")
+}
+
+// =============================================================================
+// EXTERNAL ORDER INTELLIGENCE  (V3 Section 4)
+// -----------------------------------------------------------------------------
+// Raw imported order documents are stored verbatim and separately from
+// ManufacturingDemand. Demand is DERIVED from these lines after the stock
+// availability check; only the uncovered quantity becomes demand.
+// =============================================================================
+
+model ShopifyOrder {
+  id                 String              @id @default(uuid()) @db.Uuid
+  organizationId     String              @db.Uuid
+  /// Shopify order GID, preserved verbatim.
+  externalId         String
+  orderNumber        String
+  orderName          String?
+  /// ONLINE / POS / CUSTOM / DRAFT - classified on import.
+  channel            DemandChannel
+  posLocationId      String?
+  posLocationName    String?
+  orderedAt          DateTime
+  financialStatus    String?
+  fulfillmentStatus  String?
+  status             ExternalOrderStatus @default(OPEN)
+  currency           String?
+  totalAmount        Decimal?            @db.Decimal(18, 2)
+  requiredByDate     DateTime?
+  customerRef        String?
+  note               String?
+  tags               String[]            @default([])
+  cancelledAt        DateTime?
+  /// Verbatim payload of the last import, for audit and replay.
+  rawPayload         Json?
+  /// Shopify updated_at of the version we have processed, for stale-write guard.
+  externalUpdatedAt  DateTime?
+  importedAt         DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  lines ShopifyOrderLine[]
+
+  @@unique([organizationId, externalId])
+  @@index([organizationId, channel, orderedAt])
+  @@index([organizationId, status])
+  @@map("shopify_orders")
+}
+
+model ShopifyOrderLine {
+  id                  String                      @id @default(uuid()) @db.Uuid
+  organizationId      String                      @db.Uuid
+  shopifyOrderId      String                      @db.Uuid
+  /// Shopify line item GID, preserved verbatim.
+  externalLineId      String
+  productVariantId    String?                     @db.Uuid
+  externalSku         String?
+  externalVariantId   String?
+  title               String?
+  size                String?
+  color               String?
+  orderedQty          Decimal                     @db.Decimal(18, 4)
+  cancelledQty        Decimal                     @default(0) @db.Decimal(18, 4)
+  fulfilledQty        Decimal                     @default(0) @db.Decimal(18, 4)
+  refundedQty         Decimal                     @default(0) @db.Decimal(18, 4)
+  /// Result of the facility stock check. Availability != reservation.
+  availabilityStatus  InventoryAvailabilityStatus @default(PENDING_CHECK)
+  availableQty        Decimal                     @default(0) @db.Decimal(18, 4)
+  /// Quantity an external allocation/reservation call actually confirmed.
+  allocatedQty        Decimal                     @default(0) @db.Decimal(18, 4)
+  /// orderedQty - cancelled - covered by confirmed stock.
+  manufacturingQty    Decimal                     @default(0) @db.Decimal(18, 4)
+  /// Timestamp of the snapshot the availability figures came from.
+  availabilityCheckedAt DateTime?
+  availabilityError   String?
+  customization       Json?
+  priority            Priority                    @default(NORMAL)
+  rawPayload          Json?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  shopifyOrder ShopifyOrder @relation(fields: [shopifyOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, externalLineId])
+  @@index([shopifyOrderId])
+  @@index([organizationId, availabilityStatus])
+  @@index([productVariantId])
+  @@map("shopify_order_lines")
+}
+
+model UnicommercePurchaseOrder {
+  id                  String              @id @default(uuid()) @db.Uuid
+  organizationId      String              @db.Uuid
+  /// Unicommerce purchase order code, preserved verbatim.
+  externalId          String
+  poNumber            String
+  poDate              DateTime
+  supplierName        String?
+  supplierCode        String?
+  destinationFacilityId String?           @db.Uuid
+  externalFacilityCode String?
+  status              ExternalOrderStatus @default(OPEN)
+  expectedDeliveryDate DateTime?
+  totalQty            Decimal             @default(0) @db.Decimal(18, 4)
+  receivedQty         Decimal             @default(0) @db.Decimal(18, 4)
+  pendingQty          Decimal             @default(0) @db.Decimal(18, 4)
+  /// Amendment counter from the external document, used for stale-write guard.
+  externalVersion     String?
+  rawPayload          Json?
+  importedAt          DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  destinationFacility ExternalFacility?            @relation(fields: [destinationFacilityId], references: [id])
+  lines               UnicommercePurchaseOrderLine[]
+
+  @@unique([organizationId, externalId])
+  @@index([organizationId, status, expectedDeliveryDate])
+  @@map("unicommerce_purchase_orders")
+}
+
+model UnicommercePurchaseOrderLine {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  unicommercePoId      String   @db.Uuid
+  /// External line identifier, preserved verbatim.
+  externalLineId       String
+  productVariantId     String?  @db.Uuid
+  externalSku          String?
+  itemName             String?
+  size                 String?
+  color                String?
+  orderedQty           Decimal  @db.Decimal(18, 4)
+  receivedQty          Decimal  @default(0) @db.Decimal(18, 4)
+  pendingQty           Decimal  @default(0) @db.Decimal(18, 4)
+  cancelledQty         Decimal  @default(0) @db.Decimal(18, 4)
+  manufacturingQty     Decimal  @default(0) @db.Decimal(18, 4)
+  expectedDeliveryDate DateTime?
+  rawPayload           Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  unicommercePo UnicommercePurchaseOrder @relation(fields: [unicommercePoId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, externalLineId])
+  @@index([unicommercePoId])
+  @@index([productVariantId])
+  @@map("unicommerce_purchase_order_lines")
+}
+
+/// Timestamped facility-level stock snapshot pulled from the external system.
+/// A snapshot is evidence of availability at a moment - never a reservation.
+model FacilityInventorySnapshot {
+  id                 String   @id @default(uuid()) @db.Uuid
+  organizationId     String   @db.Uuid
+  externalFacilityId String   @db.Uuid
+  productVariantId   String?  @db.Uuid
+  externalSku        String?
+  availableQty       Decimal  @db.Decimal(18, 4)
+  reservedQty        Decimal  @default(0) @db.Decimal(18, 4)
+  inTransitQty       Decimal  @default(0) @db.Decimal(18, 4)
+  totalQty           Decimal  @default(0) @db.Decimal(18, 4)
+  /// When the EXTERNAL system reported this figure.
+  snapshotAt         DateTime
+  fetchedAt          DateTime @default(now())
+  rawPayload         Json?
+
+  externalFacility ExternalFacility @relation(fields: [externalFacilityId], references: [id])
+
+  @@index([organizationId, externalFacilityId, productVariantId, snapshotAt])
+  @@index([organizationId, externalSku, snapshotAt])
+  @@map("facility_inventory_snapshots")
+}
+
+// =============================================================================
+// FORECASTING AND REPLENISHMENT  (V3 Section 20)
+// -----------------------------------------------------------------------------
+// Rule-based and transparent: every forecast row stores the inputs and the
+// method used, so a planner can see exactly why a number was suggested.
+// =============================================================================
+
+model DemandForecast {
+  id                 String         @id @default(uuid()) @db.Uuid
+  organizationId     String         @db.Uuid
+  productVariantId   String         @db.Uuid
+  externalFacilityId String?        @db.Uuid
+  periodStart        DateTime
+  periodEnd          DateTime
+  method             ForecastMethod @default(WEIGHTED_VELOCITY)
+  /// Units sold per week over the look-back window.
+  salesVelocity      Decimal        @default(0) @db.Decimal(18, 4)
+  lookbackDays       Int            @default(56)
+  seasonalIndex      Decimal        @default(1) @db.Decimal(9, 4)
+  forecastQty        Decimal        @db.Decimal(18, 4)
+  confidence         Decimal?       @db.Decimal(9, 4)
+  /// All inputs used, so the figure is reproducible and explainable.
+  inputs             Json           @default("{}")
+  generatedByUserId  String?        @db.Uuid
+  createdAt          DateTime       @default(now())
+
+  externalFacility ExternalFacility? @relation(fields: [externalFacilityId], references: [id])
+
+  @@unique([organizationId, productVariantId, externalFacilityId, periodStart, method])
+  @@index([organizationId, periodStart])
+  @@map("demand_forecasts")
+}
+
+model ReplenishmentSuggestion {
+  id                 String   @id @default(uuid()) @db.Uuid
+  organizationId     String   @db.Uuid
+  productVariantId   String   @db.Uuid
+  externalFacilityId String?  @db.Uuid
+  demandForecastId   String?  @db.Uuid
+  availableQty       Decimal  @default(0) @db.Decimal(18, 4)
+  /// Already-confirmed incoming quantity (open MOs and confirmed transfers).
+  incomingQty        Decimal  @default(0) @db.Decimal(18, 4)
+  leadTimeDays       Int      @default(0)
+  /// Expected demand over the lead-time horizon.
+  leadTimeDemandQty  Decimal  @default(0) @db.Decimal(18, 4)
+  safetyStockQty     Decimal  @default(0) @db.Decimal(18, 4)
+  suggestedQty       Decimal  @db.Decimal(18, 4)
+  rationale          String?
+  status             String   @default("OPEN")
+  actionedByUserId   String?  @db.Uuid
+  actionedAt         DateTime?
+  manufacturingOrderId String? @db.Uuid
+  createdAt          DateTime @default(now())
+
+  externalFacility ExternalFacility? @relation(fields: [externalFacilityId], references: [id])
+
+  @@index([organizationId, status, createdAt])
+  @@index([productVariantId])
+  @@map("replenishment_suggestions")
+}
+
+// =============================================================================
+// ALERTS AND NOTIFICATIONS  (V3 Section 19)
+// =============================================================================
+
+model AlertRule {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  code           String
+  name           String
+  /// LOW_STOCK / REORDER_POINT / ROLL_SHORTAGE / BOM_SHORTAGE /
+  /// PRODUCTION_DELAY / PO_OVERDUE / JOB_WORKER_DELAY / QC_HOLD /
+  /// HIGH_WASTAGE / SYNC_FAILED / RECONCILIATION_VARIANCE
+  alertType      String
+  severity       AlertSeverity @default(WARNING)
+  /// Rule parameters, e.g. { "thresholdPct": 20, "graceDays": 2 }
+  conditions     Json          @default("{}")
+  channels       NotificationChannel[]
+  /// Recipients by role code; resolved to users at send time.
+  recipientRoles String[]      @default([])
+  recipientUserIds String[]    @default([])
+  /// Minimum minutes between two notifications for the same dedupe key.
+  cooldownMinutes Int          @default(1440)
+  isEnabled      Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  notifications Notification[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, alertType, isEnabled])
+  @@map("alert_rules")
+}
+
+model Notification {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  alertRuleId    String?             @db.Uuid
+  channel        NotificationChannel @default(IN_APP)
+  severity       AlertSeverity       @default(INFO)
+  title          String
+  body           String
+  /// Stable key over (rule, subject, bucket). Unique, so the same alert is not
+  /// delivered twice within its cooldown window.
+  dedupeKey      String
+  recipientUserId String?            @db.Uuid
+  recipientAddress String?
+  entityType     String?
+  entityId       String?
+  actionUrl      String?
+  status         NotificationStatus  @default(QUEUED)
+  sentAt         DateTime?
+  readAt         DateTime?
+  failureReason  String?
+  payload        Json?
+  createdAt      DateTime            @default(now())
+
+  alertRule AlertRule? @relation(fields: [alertRuleId], references: [id])
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, recipientUserId, status])
+  @@index([organizationId, createdAt])
+  @@map("notifications")
+}
+
+// =============================================================================
+// APPROVAL MATRIX  (V3 Section 22J)
+// =============================================================================
+
+model ApprovalRule {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  code           String
+  name           String
+  /// PURCHASE_ORDER / STOCK_ADJUSTMENT / BOM_RELEASE / MATERIAL_SUBSTITUTION /
+  /// SHORTAGE_RELEASE / SHADE_MIX / FACILITY_CHANGE / INVENTORY_PUSH
+  subjectType    String
+  /// Optional threshold that triggers the requirement, e.g. amount > 50000.
+  conditions     Json     @default("{}")
+  /// Role codes allowed to approve, in escalation order.
+  approverRoles  String[] @default([])
+  minApprovals   Int      @default(1)
+  isEnabled      Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  requests ApprovalRequest[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, subjectType, isEnabled])
+  @@map("approval_rules")
+}
+
+model ApprovalRequest {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @db.Uuid
+  approvalRuleId  String?        @db.Uuid
+  subjectType     String
+  subjectId       String         @db.Uuid
+  subjectRef      String?
+  /// Snapshot of what is being approved, so the approver sees the exact state.
+  requestPayload  Json           @default("{}")
+  reason          String?
+  status          ApprovalStatus @default(PENDING)
+  requestedByUserId String?      @db.Uuid
+  decidedByUserId String?        @db.Uuid
+  decidedAt       DateTime?
+  decisionNote    String?
+  expiresAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  approvalRule ApprovalRule? @relation(fields: [approvalRuleId], references: [id])
+
+  @@index([organizationId, status, subjectType])
+  @@index([subjectType, subjectId])
+  @@map("approval_requests")
+}
+
+// =============================================================================
+// DOCUMENTS AND SAVED VIEWS
+// =============================================================================
+
+model DocumentAttachment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  entityType     String
+  entityId       String   @db.Uuid
+  category       String?
+  fileName       String
+  contentType    String
+  byteSize       Int
+  /// Object-storage key. Binary content never lives in the database.
+  storageKey     String
+  checksumSha256 String?
+  uploadedByUserId String? @db.Uuid
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, entityType, entityId])
+  @@map("document_attachments")
+}
+
+model SavedView {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  ownerUserId    String?  @db.Uuid
+  resource       String
+  name           String
+  /// Serialised filters, sort, column visibility and page size.
+  definition     Json     @default("{}")
+  isShared       Boolean  @default(false)
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, ownerUserId, resource, name])
+  @@index([organizationId, resource])
+  @@map("saved_views")
+}

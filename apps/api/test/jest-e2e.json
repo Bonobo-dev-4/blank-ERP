@@ -1,0 +1,26 @@
+{
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/tsconfig.json"
+      }
+    ]
+  },
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@dnd/domain$": "<rootDir>/../../packages/domain/src/index.ts",
+    "^@dnd/contracts$": "<rootDir>/../../packages/contracts/src/index.ts"
+  },
+  "testTimeout": 60000,
+  "maxWorkers": 1,
+  "testSequencer": "<rootDir>/test/phase-sequencer.js"
+}
