@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_NAV_ITEMS, BUILD_STATUS_SUMMARY, DELIVERED_PHASES, NAVIGATION, PERMISSIONS,
+  PHASE_DEPENDENCIES,
   PERMISSION_CODES, ROLE_CODES, ROLE_LABELS, ROLE_PERMISSIONS, navItemFor,
   permissionsForRoles,
 } from './index';
@@ -193,12 +194,28 @@ describe('navigation map', () => {
     }
   });
 
-  it('delivers phases contiguously from one', () => {
-    // Phase 4 delivered while phase 3 is not would mean the roadmap's
-    // dependency order was broken somewhere.
-    expect([...DELIVERED_PHASES]).toEqual(
-      Array.from({ length: DELIVERED_PHASES.length }, (_, i) => i + 1),
-    );
+  it('never delivers a phase before what it depends on', () => {
+    // This used to require DELIVERED_PHASES to be contiguous from one, which
+    // was standing in for dependency order. Phase 6 is analytics over phase 3
+    // data and depends on nothing in phases 4 or 5, so it shipped while those
+    // stayed blocked - and contiguity reported that correct work as a broken
+    // roadmap. The dependency graph is what the rule actually meant.
+    const delivered = new Set<number>(DELIVERED_PHASES);
+    for (const phase of delivered) {
+      for (const needs of PHASE_DEPENDENCIES[phase] ?? []) {
+        expect(
+          delivered.has(needs),
+          `phase ${phase} is delivered but depends on phase ${needs}, which is not`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('declares a dependency list for every phase in the navigation map', () => {
+    // A new phase with no entry would silently pass the rule above.
+    for (const phase of new Set(ALL_NAV_ITEMS.map((i) => i.phase))) {
+      expect(PHASE_DEPENDENCIES[phase], `phase ${phase} has no dependency list`).toBeDefined();
+    }
   });
 
   it('starts every href with a slash', () => {

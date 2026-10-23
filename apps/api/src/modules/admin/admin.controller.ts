@@ -125,4 +125,15 @@ export class AdminController {
       settings: body.settings as Prisma.InputJsonValue | undefined,
     });
   }
+
+  @Get('approvals')
+  @RequirePermissions('admin.manage_approvals')
+  @ApiOperation({
+    summary: 'Everything waiting on a decision',
+    description:
+      'Requisitions, purchase orders and BOM versions sitting in PENDING_APPROVAL, read from the documents themselves. Lists and links; approving happens on the document, where that document\'s permission check and state machine live.',
+  })
+  approvals(@OrgId() orgId: string) {
+    return this.admin.pendingApprovals(orgId);
+  }
 }

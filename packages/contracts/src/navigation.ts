@@ -47,7 +47,7 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Unicommerce Bulk POs', href: '/orders/bulk-po', icon: 'FileStack', permission: 'demand.read', status: 'PLANNED', phase: 4 },
       { label: 'Stock Availability', href: '/orders/availability', icon: 'PackageSearch', permission: 'demand.read', status: 'PLANNED', phase: 4 },
       { label: 'Manufacturing Demand', href: '/demand', icon: 'ListChecks', permission: 'demand.read', status: 'PLANNED', phase: 4 },
-      { label: 'Demand Forecast', href: '/demand/forecast', icon: 'TrendingUp', permission: 'reports.read', status: 'PLANNED', phase: 6 },
+      { label: 'Demand Forecast', href: '/demand/forecast', icon: 'TrendingUp', permission: 'reports.read', status: 'BUILT', phase: 6 },
     ],
   },
   {
@@ -59,7 +59,7 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Raw Material Stock', href: '/inventory/stock', icon: 'Warehouse', permission: 'inventory.read', status: 'BUILT', phase: 1 },
       { label: 'Material Movements', href: '/inventory/movements', icon: 'ArrowLeftRight', permission: 'inventory.read', status: 'BUILT', phase: 1 },
       { label: 'Stock Adjustments', href: '/inventory/adjustments', icon: 'SlidersHorizontal', permission: 'inventory.adjust', status: 'BUILT', phase: 1 },
-      { label: 'Stock Audits', href: '/inventory/audits', icon: 'ClipboardCheck', permission: 'inventory.count', status: 'PLANNED', phase: 6 },
+      { label: 'Stock Audits', href: '/inventory/audits', icon: 'ClipboardCheck', permission: 'inventory.count', status: 'BUILT', phase: 6 },
     ],
   },
   {
@@ -127,12 +127,12 @@ export const NAVIGATION: readonly NavGroup[] = [
     items: [
       { label: 'Inventory Alerts', href: '/intelligence/alerts', icon: 'Bell', permission: 'inventory.read', status: 'BUILT', phase: 1,
         description: 'Live low-stock, minimum-stock and reorder-point alerts from the ledger' },
-      { label: 'Replenishment', href: '/intelligence/replenishment', icon: 'Repeat', permission: 'reports.read', status: 'PLANNED', phase: 6 },
-      { label: 'Forecasting', href: '/intelligence/forecasting', icon: 'LineChart', permission: 'reports.read', status: 'PLANNED', phase: 6 },
-      { label: 'Production Reports', href: '/reports/production', icon: 'BarChart3', permission: 'reports.read', status: 'PLANNED', phase: 6 },
-      { label: 'Material Consumption', href: '/reports/consumption', icon: 'PieChart', permission: 'reports.read', status: 'PLANNED', phase: 6 },
-      { label: 'Production Costing', href: '/reports/costing', icon: 'IndianRupee', permission: 'reports.view_costing', status: 'PLANNED', phase: 6 },
-      { label: 'Job Worker Performance', href: '/reports/job-workers', icon: 'Users', permission: 'reports.read', status: 'PLANNED', phase: 6 },
+      { label: 'Replenishment', href: '/intelligence/replenishment', icon: 'Repeat', permission: 'reports.read', status: 'BUILT', phase: 6 },
+      { label: 'Forecasting', href: '/intelligence/forecasting', icon: 'LineChart', permission: 'reports.read', status: 'BUILT', phase: 6 },
+      { label: 'Production Reports', href: '/reports/production', icon: 'BarChart3', permission: 'reports.read', status: 'BUILT', phase: 6 },
+      { label: 'Material Consumption', href: '/reports/consumption', icon: 'PieChart', permission: 'reports.read', status: 'BUILT', phase: 6 },
+      { label: 'Production Costing', href: '/reports/costing', icon: 'IndianRupee', permission: 'reports.view_costing', status: 'BUILT', phase: 6 },
+      { label: 'Job Worker Performance', href: '/reports/job-workers', icon: 'Users', permission: 'reports.read', status: 'BUILT', phase: 6 },
     ],
   },
   {
@@ -146,7 +146,7 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Roles', href: '/admin/roles', icon: 'KeyRound', permission: 'admin.manage_roles', status: 'BUILT', phase: 1 },
       { label: 'Locations', href: '/admin/locations', icon: 'MapPin', permission: 'admin.manage_locations', status: 'BUILT', phase: 1 },
       { label: 'Production Routes', href: '/admin/routes', icon: 'Route', permission: 'admin.manage_routes', status: 'BUILT', phase: 3 },
-      { label: 'Approvals', href: '/admin/approvals', icon: 'Stamp', permission: 'admin.manage_approvals', status: 'PLANNED', phase: 6 },
+      { label: 'Approvals', href: '/admin/approvals', icon: 'Stamp', permission: 'admin.manage_approvals', status: 'BUILT', phase: 6 },
       { label: 'Integrations', href: '/admin/integrations', icon: 'Plug', permission: 'admin.manage_integrations', status: 'PARTIAL', phase: 4,
         description: 'Connection status and contracts; live connectors land in phase 4' },
       { label: 'Settings', href: '/admin/settings', icon: 'Settings', permission: 'admin.manage_settings', status: 'BUILT', phase: 1 },
@@ -161,7 +161,32 @@ export const NAVIGATION: readonly NavGroup[] = [
  * Kept as data rather than hardcoded in a test, so that marking a phase
  * delivered is one edit in one place and the consistency tests follow.
  */
-export const DELIVERED_PHASES = [1, 2, 3] as const;
+/**
+ * What each phase needs before it can ship.
+ *
+ * Phases are not a straight line. Phase 6 is analytics over the production
+ * data phase 3 produces, and has no dependency on the external integrations in
+ * phases 4 and 5 — which is why it could be delivered while those stayed
+ * blocked on a service account and a sandbox facility.
+ *
+ * This replaces an earlier rule that simply required DELIVERED_PHASES to be
+ * contiguous from one. Contiguity was standing in for dependency order, and
+ * once a genuinely independent phase shipped out of turn the proxy started
+ * reporting correct work as a broken roadmap.
+ */
+export const PHASE_DEPENDENCIES: Readonly<Record<number, readonly number[]>> = {
+  1: [],
+  2: [1],
+  3: [2],
+  /** External order intake: needs master data, nothing from production. */
+  4: [1],
+  /** Inventory push: needs the connector phase 4 builds. */
+  5: [4],
+  /** Reporting and forecasting over what phase 3 records. */
+  6: [3],
+};
+
+export const DELIVERED_PHASES = [1, 2, 3, 6] as const;
 
 /** Flat list of every navigable screen. */
 export const ALL_NAV_ITEMS: readonly NavItem[] = NAVIGATION.flatMap((g) => g.items);

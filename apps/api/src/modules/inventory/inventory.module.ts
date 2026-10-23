@@ -4,11 +4,12 @@ import { IdempotencyService } from '../../common/services/idempotency.service';
 import { NumberingService } from '../../common/services/numbering.service';
 import { InventoryController } from './inventory.controller';
 import { InventoryService } from './inventory.service';
+import { StockCountService } from './stock-count.service';
 import { LedgerService } from './ledger.service';
 
 @Module({
   controllers: [InventoryController],
-  providers: [LedgerService, InventoryService, NumberingService, AuditService, IdempotencyService],
+  providers: [LedgerService, InventoryService, NumberingService, AuditService, IdempotencyService, StockCountService],
   exports: [LedgerService, InventoryService, NumberingService, AuditService, IdempotencyService],
 })
 export class InventoryModule {}

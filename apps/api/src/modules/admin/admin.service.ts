@@ -290,6 +290,110 @@ export class AdminService {
     });
     return after;
   }
+
+  /**
+   * Everything waiting on a human decision, in one queue.
+   *
+   * Read from the documents' own statuses rather than from `ApprovalRequest`.
+   * That table exists in the schema and nothing writes to it, so a queue built
+   * on it would be permanently empty while real work sat blocked - the queue
+   * has to reflect what is actually stuck, not what a workflow engine was
+   * going to record.
+   *
+   * This lists and links; approving still happens on the document, where the
+   * permission check and the state machine for that document live.
+   */
+  async pendingApprovals(organizationId: string) {
+    const [requisitions, purchaseOrders, bomVersions] = await Promise.all([
+      this.prisma.purchaseRequisition.findMany({
+        where: { organizationId, status: 'PENDING_APPROVAL' },
+        select: {
+          id: true, requisitionNo: true, createdAt: true, requiredByDate: true,
+          _count: { select: { items: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 100,
+      }),
+      this.prisma.rawMaterialPurchaseOrder.findMany({
+        where: { organizationId, status: 'PENDING_APPROVAL' },
+        select: {
+          id: true, poNo: true, createdAt: true, expectedDate: true, totalAmount: true,
+          supplier: { select: { name: true } },
+          _count: { select: { items: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 100,
+      }),
+      this.prisma.bomVersion.findMany({
+        where: { organizationId, status: 'PENDING_APPROVAL' },
+        select: {
+          id: true, version: true, createdAt: true,
+          bom: { select: { name: true, product: { select: { name: true, styleCode: true } } } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 100,
+      }),
+    ]);
+
+    const now = Date.now();
+    const ageDays = (d: Date): number => Math.floor((now - d.getTime()) / 86_400_000);
+
+    const items = [
+      ...requisitions.map((r) => ({
+        kind: 'REQUISITION' as const,
+        id: r.id,
+        reference: r.requisitionNo,
+        title: `${r._count.items} ${r._count.items === 1 ? 'line' : 'lines'}`,
+        subtitle: null as string | null,
+        amount: null as string | null,
+        dueAt: r.requiredByDate ? r.requiredByDate.toISOString() : null,
+        raisedAt: r.createdAt.toISOString(),
+        ageDays: ageDays(r.createdAt),
+        href: `/purchasing/requisitions`,
+        permission: 'purchasing.approve_requisition',
+      })),
+      ...purchaseOrders.map((p) => ({
+        kind: 'PURCHASE_ORDER' as const,
+        id: p.id,
+        reference: p.poNo,
+        title: p.supplier?.name ?? 'No supplier',
+        subtitle: `${p._count.items} ${p._count.items === 1 ? 'item' : 'items'}`,
+        amount: p.totalAmount ? p.totalAmount.toFixed() : null,
+        dueAt: p.expectedDate ? p.expectedDate.toISOString() : null,
+        raisedAt: p.createdAt.toISOString(),
+        ageDays: ageDays(p.createdAt),
+        href: `/purchasing/approvals`,
+        permission: 'purchasing.approve_po',
+      })),
+      ...bomVersions.map((b) => ({
+        kind: 'BOM_VERSION' as const,
+        id: b.id,
+        reference: `v${b.version}`,
+        title: b.bom?.product?.name ?? b.bom?.name ?? 'Unknown product',
+        subtitle: b.bom?.product?.styleCode ?? null,
+        amount: null,
+        dueAt: null,
+        raisedAt: b.createdAt.toISOString(),
+        ageDays: ageDays(b.createdAt),
+        href: `/bom/${b.id}`,
+        permission: 'bom.approve',
+      })),
+    ].sort((a, b) => b.ageDays - a.ageDays);
+
+    return {
+      totals: {
+        total: items.length,
+        requisitions: requisitions.length,
+        purchaseOrders: purchaseOrders.length,
+        bomVersions: bomVersions.length,
+        // Nothing defines "overdue" for an approval, so this is simply the
+        // count waiting over a week - stated as what it is rather than
+        // dressed up as a breached SLA that nobody agreed to.
+        olderThanAWeek: items.filter((i) => i.ageDays >= 7).length,
+      },
+      items,
+    };
+  }
 }
 
 export type { RoleCode };

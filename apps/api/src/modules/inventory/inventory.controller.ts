@@ -1,8 +1,9 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   balanceListQuery, materialConsumptionRequest, materialInwardRequest, materialIssueRequest,
-  materialReturnRequest, materialTransferRequest, movementListQuery, stockAdjustmentRequest,
+  materialReturnRequest, materialTransferRequest, movementListQuery, openStockCountRequest,
+  postStockCountRequest, recordStockCountRequest, stockAdjustmentRequest, stockCountListQuery,
   type AuthenticatedUser,
 } from '@dnd/contracts';
 import { z } from 'zod';
@@ -10,11 +11,15 @@ import { RequirePermissions } from '../../common/auth/guards';
 import { CurrentUser, OrgId } from '../../common/decorators/current-user.decorator';
 import { ApiZodBody, ApiZodQuery, ZodBody, ZodQuery } from '../../common/zod/zod.decorators';
 import { InventoryService } from './inventory.service';
+import { StockCountService } from './stock-count.service';
 
 @ApiTags('Raw Material Inventory')
 @Controller('inventory')
 export class InventoryController {
-  constructor(private readonly inventory: InventoryService) {}
+  constructor(
+    private readonly inventory: InventoryService,
+    private readonly stockCounts: StockCountService,
+  ) {}
 
   @Get('balances')
   @RequirePermissions('inventory.read')
@@ -124,5 +129,79 @@ export class InventoryController {
     @ZodBody(stockAdjustmentRequest) body: z.infer<typeof stockAdjustmentRequest>,
   ) {
     return this.inventory.adjust(orgId, user.id, body);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stock counts
+  // ---------------------------------------------------------------------------
+
+  @Get('counts')
+  @RequirePermissions('inventory.count')
+  @ApiOperation({ summary: 'Stock counts' })
+  @ApiZodQuery(stockCountListQuery)
+  listCounts(
+    @OrgId() orgId: string,
+    @ZodQuery(stockCountListQuery) query: z.infer<typeof stockCountListQuery>,
+  ) {
+    return this.stockCounts.list(orgId, query);
+  }
+
+  @Get('counts/:id')
+  @RequirePermissions('inventory.count')
+  @ApiOperation({ summary: 'One stock count with its lines' })
+  getCount(@OrgId() orgId: string, @Param('id') id: string) {
+    return this.stockCounts.get(orgId, id);
+  }
+
+  @Post('counts')
+  @RequirePermissions('inventory.count')
+  @ApiOperation({
+    summary: 'Open a count',
+    description:
+      'Freezes what the system believes is on the shelf. Counted quantity starts equal to the system figure, so a line nobody reaches posts nothing rather than reading as a total write-off.',
+  })
+  @ApiZodBody(openStockCountRequest)
+  openCount(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ZodBody(openStockCountRequest) body: z.infer<typeof openStockCountRequest>,
+  ) {
+    return this.stockCounts.open(orgId, user.id, body);
+  }
+
+  @Post('counts/:id/record')
+  @RequirePermissions('inventory.count')
+  @ApiOperation({ summary: 'Record counted quantities', description: 'Variance is derived, never supplied.' })
+  @ApiZodBody(recordStockCountRequest)
+  recordCount(
+    @OrgId() orgId: string,
+    @Param('id') id: string,
+    @ZodBody(recordStockCountRequest) body: z.infer<typeof recordStockCountRequest>,
+  ) {
+    return this.stockCounts.record(orgId, id, body);
+  }
+
+  @Post('counts/:id/post')
+  @RequirePermissions('inventory.adjust')
+  @ApiOperation({
+    summary: 'Post the variances',
+    description:
+      'Raises one ledger adjustment per varying line. Needs inventory.adjust, not just inventory.count: counting is observation, posting changes stock.',
+  })
+  @ApiZodBody(postStockCountRequest)
+  postCount(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @ZodBody(postStockCountRequest) body: z.infer<typeof postStockCountRequest>,
+  ) {
+    return this.stockCounts.post(orgId, user.id, id, body);
+  }
+
+  @Post('counts/:id/cancel')
+  @RequirePermissions('inventory.count')
+  @ApiOperation({ summary: 'Abandon a count without touching stock' })
+  cancelCount(@OrgId() orgId: string, @Param('id') id: string) {
+    return this.stockCounts.cancel(orgId, id);
   }
 }

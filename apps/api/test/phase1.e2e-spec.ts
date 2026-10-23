@@ -562,10 +562,19 @@ describeIfDb('Phase 1: raw material path (end to end)', () => {
     expect(Number(res.body.inventory.movementsToday)).toBeGreaterThan(0);
     expect(Number(res.body.inventory.rawMaterialStockValue)).toBeGreaterThan(0);
     expect(res.body.purchasing.openPurchaseOrders).toBeGreaterThanOrEqual(1);
-    // Modules that do not exist yet say so rather than showing a zero.
-    expect(res.body.production.available).toBe(false);
-    expect(res.body.production.phase).toBe(2);
+
+    // Production reports real figures now that phases 2 and 3 are delivered.
+    // It used to assert `available: false`; that assertion was correct when
+    // written and became a lie the moment the module shipped, which is exactly
+    // what this test is here to catch in the other direction.
+    expect(res.body.production.available).toBe(true);
+    expect(Array.isArray(res.body.production.line)).toBe(true);
+    expect(res.body.production.orders).toBeDefined();
+
+    // Finished goods genuinely does not exist yet, so it still says so rather
+    // than reporting a zero that reads as a measurement.
     expect(res.body.finishedGoods.available).toBe(false);
+    expect(res.body.finishedGoods.phase).toBe(5);
   });
 
   // --- authorisation ------------------------------------------------------

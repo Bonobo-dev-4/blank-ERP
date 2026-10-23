@@ -189,3 +189,47 @@ export interface StockPositionDto {
   readonly reorderLevel: string;
   readonly alertLevel: 'OK' | 'AT_REORDER_LEVEL' | 'BELOW_MINIMUM' | 'OUT_OF_STOCK';
 }
+
+// -----------------------------------------------------------------------------
+// Stock counts (cycle counting / stock audits)
+// -----------------------------------------------------------------------------
+
+export const openStockCountRequest = z.object({
+  ...mutating,
+  locationId: uuid,
+  /** Limit the count to these materials; omit to count everything at the location. */
+  rawMaterialIds: z.array(uuid).max(500).optional(),
+  remarks: optionalText(1000),
+});
+export type OpenStockCountRequest = z.infer<typeof openStockCountRequest>;
+
+export const recordStockCountRequest = z.object({
+  ...mutating,
+  lines: z
+    .array(
+      z.object({
+        lineId: uuid,
+        countedQty: decimalString(),
+        reason: optionalText(300),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+export type RecordStockCountRequest = z.infer<typeof recordStockCountRequest>;
+
+export const postStockCountRequest = z.object({
+  ...mutating,
+  /**
+   * Required: posting a count writes adjustments to the ledger, and the
+   * specification does not allow a stock change without a stated reason.
+   */
+  reason: shortText(300),
+});
+export type PostStockCountRequest = z.infer<typeof postStockCountRequest>;
+
+export const stockCountListQuery = z.object({
+  status: z.enum(['DRAFT', 'COUNTED', 'POSTED', 'CANCELLED']).optional(),
+  locationId: uuid.optional(),
+});
+export type StockCountListQuery = z.infer<typeof stockCountListQuery>;
