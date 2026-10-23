@@ -9,8 +9,21 @@ import {
 import { api } from '@/lib/api';
 import { fmtDateTime, fmtInt, fmtMoneyCompact, fmtQty, fmtRelative, humanise, uomShort } from '@/lib/utils';
 import {
-  Badge, Card, CardBody, CardHeader, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
+  Badge, Card, CardBody, CardHeader, ErrorPanel, LoadingBlock, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { ProductionLine, type LineStage } from '@/components/app/production-line';
+
+type UnbuiltSection = { available: false; phase: number; note: string };
+
+/** The modules that still report themselves as not built. */
+function unbuiltSections(data: DashboardSummary): [string, UnbuiltSection][] {
+  const entries: [string, DashboardSummary['production'] | DashboardSummary['demand']][] = [
+    ['Production', data.production],
+    ['Orders & demand', data.demand],
+    ['Finished goods', data.finishedGoods],
+  ];
+  return entries.filter((e): e is [string, UnbuiltSection] => e[1].available === false);
+}
 
 interface DashboardSummary {
   generatedAt: string;
@@ -27,7 +40,18 @@ interface DashboardSummary {
     available: boolean; openPurchaseOrders: number; awaitingApproval: number;
     overdue: number; receiptsPendingInspection: number;
   };
-  production: { available: false; phase: number; note: string };
+  production:
+    | { available: false; phase: number; note: string }
+    | {
+        available: true;
+        orders: {
+          total: number; byStatus: Record<string, number>;
+          orderedQty: string; completedQty: string; rejectedQty: string;
+        };
+        line: LineStage[];
+        activeStages: number;
+        wipTotal: string;
+      };
   demand: { available: false; phase: number; note: string };
   finishedGoods: { available: false; phase: number; note: string };
   topAlerts: {
@@ -62,17 +86,61 @@ export default function DashboardPage() {
   const alertTotal =
     data.inventory.outOfStockCount + data.inventory.belowMinimumCount + data.inventory.atReorderLevelCount;
 
+  const attention = [
+    { n: data.inventory.outOfStockCount, label: 'out of stock', href: '/intelligence/alerts', tone: 'danger' as const },
+    { n: data.purchasing.overdue, label: 'overdue orders', href: '/purchasing/orders?overdueOnly=true', tone: 'danger' as const },
+    { n: data.purchasing.awaitingApproval, label: 'awaiting approval', href: '/purchasing/approvals', tone: 'warn' as const },
+    { n: data.purchasing.receiptsPendingInspection, label: 'pending inspection', href: '/purchasing/receipts?status=PENDING_INSPECTION', tone: 'warn' as const },
+  ].filter((a) => a.n > 0);
+
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Dashboard"
-        description={
-          <>
-            Live figures as of {fmtDateTime(data.generatedAt)}. Every number here is an aggregate over
-            real records.
-          </>
-        }
-      />
+      {/*
+        What needs attention, before anything else. A row of links to the
+        things that are actually wrong, and a plain sentence when nothing is -
+        an empty state should still tell you where you stand.
+      */}
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-[22px] font-semibold tracking-tight text-ink sm:text-[26px]">
+            Today on the floor
+          </h1>
+          <p className="mt-0.5 text-[12px] text-ink-subtle">
+            Live as of {fmtDateTime(data.generatedAt)}
+          </p>
+        </div>
+        {attention.length === 0 ? (
+          <p className="text-[12.5px] text-ok">Nothing needs attention right now.</p>
+        ) : (
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {attention.map((a) => (
+              <li key={a.label}>
+                <Link
+                  href={a.href}
+                  className="group inline-flex items-baseline gap-1.5 text-[12.5px] transition-colors"
+                >
+                  <span
+                    className={`num font-display text-[17px] font-semibold leading-none ${
+                      a.tone === 'danger' ? 'text-danger' : 'text-warn'
+                    }`}
+                  >
+                    {fmtInt(a.n)}
+                  </span>
+                  <span className="text-ink-muted group-hover:text-ink group-hover:underline">{a.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </header>
+
+      {data.production.available ? (
+        <ProductionLine
+          stages={data.production.line}
+          wipTotal={data.production.wipTotal}
+          activeStages={data.production.activeStages}
+        />
+      ) : null}
 
       {/* --- raw material inventory ----------------------------------------- */}
       <section>
@@ -278,11 +346,12 @@ export default function DashboardPage() {
       <section>
         <SectionTitle>Not built yet</SectionTitle>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {([
-            ['Production', data.production],
-            ['Orders & demand', data.demand],
-            ['Finished goods', data.finishedGoods],
-          ] as const).map(([label, section]) => (
+          {/*
+            Production dropped off this list when phase 3 landed. Filtering on
+            the flag rather than deleting the row means the next module to ship
+            leaves on its own, without an edit here to forget.
+          */}
+          {unbuiltSections(data).map(([label, section]) => (
             <div key={label} className="rounded-lg border border-dashed border-line-strong bg-surface-muted px-3.5 py-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[12.5px] font-medium text-ink">{label}</p>

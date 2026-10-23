@@ -1,7 +1,38 @@
 import type { Metadata, Viewport } from 'next';
+import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/app/providers';
 import { AuthProvider } from '@/components/app/auth-context';
+
+/*
+ * Three faces, three jobs.
+ *
+ * Archivo is an industrial grotesque with numerals that hold their shape at
+ * display sizes - it carries the figures on the production line and nothing
+ * else. IBM Plex Sans was drawn for dense technical interfaces at small sizes,
+ * which is what eight hours of data tables actually is. Plex Mono takes SKUs,
+ * GRN numbers and quantities, where a column has to line up to be read.
+ */
+const display = Archivo({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  variable: '--font-display-face',
+  display: 'swap',
+});
+
+const body = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-body-face',
+  display: 'swap',
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono-face',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'DASH AND DOT Manufacturing ERP',
@@ -18,7 +49,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN">
+    <html lang="en-IN" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       {/*
         suppressHydrationWarning on <body> only.
 

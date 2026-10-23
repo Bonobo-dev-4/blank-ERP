@@ -28,6 +28,7 @@ export class DashboardService {
       supplierCount, locationCount, lotCount, rollCount,
       openPoCount, pendingApprovalPoCount, overduePoCount, pendingInspectionCount,
       movementsToday, alerts, rollLengths, inventoryValue, recentMovements, recentReceipts,
+      production,
     ] = await Promise.all([
       this.prisma.rawMaterial.count({ where: { organizationId } }),
       this.prisma.rawMaterial.count({ where: { organizationId, status: 'ACTIVE' } }),
@@ -75,6 +76,7 @@ export class DashboardService {
           _count: { select: { lines: true } },
         },
       }),
+      this.productionLine(organizationId),
     ]);
 
     return {
@@ -109,13 +111,10 @@ export class DashboardService {
         receiptsPendingInspection: pendingInspectionCount,
       },
 
+      production,
+
       // These are honest placeholders: the modules do not exist yet, so the
       // dashboard says so rather than showing a zero that reads as a fact.
-      production: {
-        available: false,
-        phase: 2,
-        note: 'Manufacturing orders and stage tracking arrive in phases 2 and 3',
-      },
       demand: {
         available: false,
         phase: 4,
@@ -156,5 +155,92 @@ export class DashboardService {
         new Decimal(0),
       ),
     );
+  }
+
+  /**
+   * The production line, stage by stage.
+   *
+   * This is a FUNNEL, not a progress bar. A garment is counted once, at the
+   * stage it has actually reached, and the quantities deliberately do not sum:
+   * 120 cut, 112 stitched and 96 finished is 96 garments, not 328. What the
+   * line is really for is showing where quantity LEAVES - to rejection, or to
+   * rework that has not come back - because that is the number nobody has on
+   * a spreadsheet.
+   */
+  private async productionLine(organizationId: string) {
+    const [stageRows, stages, orderRows, orderTotals] = await Promise.all([
+      this.prisma.productionStageTask.groupBy({
+        by: ['productionStageId'],
+        where: { organizationId },
+        _sum: {
+          plannedQty: true, receivedQty: true, completedQty: true, rejectedQty: true,
+          reworkSentQty: true, reworkReturnedQty: true, forwardedQty: true,
+        },
+      }),
+      this.prisma.productionStage.findMany({
+        where: { organizationId, status: 'ACTIVE' },
+        select: { id: true, code: true, name: true, sequenceHint: true },
+        orderBy: { sequenceHint: 'asc' },
+      }),
+      this.prisma.manufacturingOrder.groupBy({
+        by: ['status'],
+        where: { organizationId },
+        _count: { _all: true },
+      }),
+      this.prisma.manufacturingOrder.aggregate({
+        where: { organizationId, status: { notIn: ['CANCELLED', 'DRAFT'] } },
+        _sum: { orderedQty: true, completedQty: true, rejectedQty: true },
+      }),
+    ]);
+
+    const bySum = new Map(stageRows.map((r) => [r.productionStageId, r._sum]));
+
+    const line = stages.map((stage) => {
+      const s = bySum.get(stage.id);
+      const received = dec(s?.receivedQty?.toFixed() ?? '0');
+      const completed = dec(s?.completedQty?.toFixed() ?? '0');
+      const rejected = dec(s?.rejectedQty?.toFixed() ?? '0');
+      const forwarded = dec(s?.forwardedQty?.toFixed() ?? '0');
+      const reworkSent = dec(s?.reworkSentQty?.toFixed() ?? '0');
+      const reworkReturned = dec(s?.reworkReturnedQty?.toFixed() ?? '0');
+
+      // Outstanding rework, not cumulative: a garment reworked twice is one
+      // garment, and the difference is the only figure that stays true.
+      const reworkOpen = Decimal.max(reworkSent.minus(reworkReturned), 0);
+      // Sitting at this stage right now: taken in, not yet passed on or lost.
+      const wip = Decimal.max(received.minus(forwarded).minus(rejected).minus(reworkOpen), 0);
+
+      return {
+        stageId: stage.id,
+        code: stage.code,
+        name: stage.name,
+        sequence: stage.sequenceHint,
+        receivedQty: received.toFixed(),
+        completedQty: completed.toFixed(),
+        forwardedQty: forwarded.toFixed(),
+        rejectedQty: rejected.toFixed(),
+        reworkOpenQty: reworkOpen.toFixed(),
+        wipQty: wip.toFixed(),
+        hasActivity: received.greaterThan(0) || completed.greaterThan(0),
+      };
+    });
+
+    const statusCounts = Object.fromEntries(orderRows.map((r) => [r.status, r._count._all]));
+    const active = line.filter((l) => dec(l.wipQty).greaterThan(0));
+
+    return {
+      available: true,
+      orders: {
+        total: orderRows.reduce((n, r) => n + r._count._all, 0),
+        byStatus: statusCounts,
+        orderedQty: (orderTotals._sum.orderedQty ?? dec(0)).toFixed(),
+        completedQty: (orderTotals._sum.completedQty ?? dec(0)).toFixed(),
+        rejectedQty: (orderTotals._sum.rejectedQty ?? dec(0)).toFixed(),
+      },
+      line,
+      /** Stages holding work right now - what a supervisor walks to first. */
+      activeStages: active.length,
+      wipTotal: active.reduce((sum, l) => sum.plus(dec(l.wipQty)), dec(0)).toFixed(),
+    };
   }
 }
