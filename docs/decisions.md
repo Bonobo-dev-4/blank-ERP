@@ -616,3 +616,173 @@ narrowing on top of it, and it remains the named gap in
 
 **Revisit when.** Job workers need the same restriction — the task already
 carries `assignedJobWorkerId`, so the shape should extend without change.
+
+---
+
+## 29. How the ERP reaches Unicommerce
+
+**Status.** Accepted for development, **Proposed for production** — the
+production transport needs a deployment decision (below) that is not mine to
+make. **Date:** 23 Oct 2026.
+
+**Context.** Unicommerce whitelists source IPs, so reachability is a deployment
+property, not a code property. The business already runs a fixed-IP proxy at a
+bare address on **plain HTTP**, authenticated by a shared static secret, and
+their Apps Script integration signs in with a named employee's login.
+
+Probing it on 23 Oct 2026 established what was previously guesswork:
+
+| Fact | Verified value |
+|---|---|
+| Proxy gate | `X-Proxy-Secret` header; anything else returns 401 |
+| Token endpoint | `GET /oauth/token` — **not** under `/services/rest/v1/` |
+| Grant | `password`, `client_id=my-trusted-client` |
+| Token | opaque UUID bearer, `expires_in` ≈ 25500s (~7h), scope `read trust write` |
+| Business errors | **HTTP 200 with `successful: false`** |
+| Facility codes | all 17 supplied codes are real (§8a) |
+
+**Decision.** The connector talks to a single configurable base URL and sends
+`X-Proxy-Secret` when one is set. It does not know or care whether that URL is
+the proxy, a replacement gateway, or the tenant directly — which is what lets
+the production transport change without touching connector code.
+
+For **development** it uses the existing proxy, because it is the only route
+that reaches the tenant from a machine whose IP is not whitelisted.
+
+### Options considered
+
+**A. Keep the existing proxy.**
+
+| Dimension | Assessment |
+|---|---|
+| Complexity | Low — it already works |
+| Cost | None |
+| Security | **Poor** — cleartext credentials on the public internet |
+| Team familiarity | High |
+
+*Pros:* zero work; already carries production traffic.
+*Cons:* `http://` on a bare IP means the Uniware password crosses the internet
+in cleartext on every token refresh, and the password rides the **query
+string** because that is the only form the token endpoint accepts — so it lands
+in any proxy access log. A shared static secret is the only thing in front of a
+credential with `write` scope.
+
+**B. Whitelist the ERP's own egress IP.**
+
+| Dimension | Assessment |
+|---|---|
+| Complexity | Low in code, medium in deployment |
+| Cost | A static egress address |
+| Security | **Good** — TLS directly to the tenant, no middle box |
+| Team familiarity | Medium |
+
+*Pros:* removes the proxy and the cleartext hop entirely; one less thing to
+run. *Cons:* needs a stable egress IP, so it constrains hosting; a platform
+with rotating addresses fails intermittently, which reads as a flaky API.
+
+**C. Replace the proxy with a TLS gateway.**
+
+| Dimension | Assessment |
+|---|---|
+| Complexity | Medium — something new to run |
+| Cost | A small always-on host |
+| Security | Good, if built correctly |
+| Team familiarity | Low |
+
+*Pros:* keeps a fixed IP while removing cleartext; can hold the credential so
+the ERP never sees it. *Cons:* a new production dependency on the path of all
+inventory traffic.
+
+**Trade-off.** A and B differ mainly in *where the trust boundary sits*. The
+proxy's weakness is not that it is a proxy — it is that it is unencrypted and
+guarded by a static shared secret while holding a `write`-scoped credential.
+B is the better endpoint and the cheaper long-run answer; C is the fallback if
+a stable egress IP is not available.
+
+**The credential is the sharper problem, and it is independent of A/B/C.** The
+token returned carries scope `read trust write`, and it is a *named employee's*
+login. That means the integration inherits a senior human's blast radius, stops
+working when they change their password, and dies when they leave. §8c asks for
+a service account; this probe raises its priority, because `write` scope is now
+a measured fact rather than an assumption.
+
+**Consequences.** Development is unblocked immediately. Production is not: the
+connector will run against whatever base URL it is given, so an unreviewed
+deployment could quietly ship cleartext credentials. `UNICOMMERCE_ENABLED`
+stays `false` by default, and the three write gates in §6 remain the thing that
+stands between a bug and real inventory.
+
+**Revisit when.** A service account exists, or the egress IP is whitelisted.
+
+---
+
+## 30. Success is the envelope, never the HTTP status
+
+**Decision.** The Unicommerce client treats a response as successful only when
+the body says `successful: true`. HTTP 200 is necessary and nowhere near
+sufficient, and the client raises on `successful: false` rather than returning
+a shape callers might read as empty.
+
+**Why.** This is measured, not defensive programming. Every one of these
+returned **HTTP 200**:
+
+```
+{"successful":false,"errors":[{"message":"INVENTORY_NOT_AVAILABLE"}]}
+{"successful":false,"errors":[{"message":"INVALID_ITEM_TYPE"}]}
+{"successful":false,"errors":[{"message":"SALE_ORDER_SEARCH_DATE_RANGE_LIMIT_EXCEEDED"}]}
+{"successful":false,"errors":[{"fieldName":"vendorCode","message":"MISSING_REQUIRED_PARAMETERS"}]}
+```
+
+A client that checks `res.ok` reads every one of them as success. On a read
+that yields a wrong number; on an inventory push it would record a credit that
+never happened — the precise failure §6 exists to prevent.
+
+**The inverse also holds.** `FACILITY_ACCESS_DENIED` arrives as HTTP 403 with a
+*parseable* body, and it means something completely different from the HTTP 403
+a wrong URL produces. Status alone cannot tell them apart.
+
+**Rejected.** *Return null on `successful: false`.* Rejected because "no stock"
+and "the call failed" would become the same value, and the one place that
+distinction matters most is deciding whether to manufacture.
+
+---
+
+## 31. Facility is a per-call argument whose honouring is verified per endpoint
+
+**Decision.** Every facility-scoped call passes the facility explicitly, and the
+connector records, per endpoint, whether the `Facility` header is actually
+honoured. It never assumes a header that worked on one endpoint works on the
+next.
+
+**Why.** Probing found the header is **not** uniformly applied:
+
+| Endpoint | Behaviour with a deliberately invalid facility |
+|---|---|
+| `oms/saleOrder/search` | **Ignored.** Returns an identical 4128 results |
+| `inventory/inventorySnapshot/get` | **Enforced.** 403 `LOOKUP_INVENTORY` |
+| `facility/get` | **Enforced**, and distinguishes the two failure kinds |
+
+A nonsense facility code returning the same data as the real one is the
+dangerous half. If that behaviour extended to a write, an inventory push aimed
+at a Mumbai shop would land in whatever facility the session defaults to, and
+the response would look like success.
+
+**`facility/get` is the only honest validator**, because it separates the two
+questions that every other endpoint conflates:
+
+- `INVALID_FACILITY_CODE` — the code is wrong.
+- `FACILITY_ACCESS_DENIED` — the code is right; this account cannot see it.
+
+Nothing else distinguishes them: `inventorySnapshot/get` returns the same 403
+for a real-but-invisible facility as for a typo. So facility codes are resolved
+through `facility/get` and cached, never inferred from an error elsewhere.
+
+**Consequence for facility switching.** The user's requirement — "switch
+facility if the piece is available somewhere else" — is bounded by what the
+service account can *see*. Five of seventeen facilities are invisible to it, so
+an availability search across facilities is silently partial. The connector
+reports which facilities it could not check rather than presenting a partial
+answer as a complete one.
+
+**Revisit when.** A service account with visibility across all 17 facilities
+exists (§8c).

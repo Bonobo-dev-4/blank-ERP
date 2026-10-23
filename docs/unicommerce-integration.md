@@ -334,47 +334,64 @@ be found by the id that was sent rather than by guesswork.
 dispute handling. When Unicommerce and the ERP disagree about what was sent,
 both sides of the conversation are on record.
 
-## 8a. Facility master — supplied, not yet verified against the API
+## 8a. Facility master — VERIFIED against the live API, 23 Oct 2026
 
-Seventeen facilities, supplied by the business on 23 Oct 2026. **Codes below are
-inferred** from a "Code and Name" column where the two run together, so every
-one must be confirmed against the facility endpoint before a push is enabled.
-A wrong facility code on an inventory push puts stock in the wrong building.
+All seventeen codes supplied by the business are **real**. Confirmed with
+`POST /services/rest/v1/facility/get`, which is the only call that separates a
+wrong code from an inaccessible one.
 
-| Inferred code | Name | Operational type | Status |
-|---|---|---|---|
-| `dashanddot` ⚠️ | WarehouseII | WAREHOUSE | Enabled — **default** |
-| `WH_Noida_3` | Online DashAndDot | WAREHOUSE | Enabled |
-| `WH_Noida` | Production | WAREHOUSE | Enabled |
-| `International_Warehouse` | International Warehouse | WAREHOUSE | Enabled |
-| `CWH` | CWH | WAREHOUSE | **Disabled** |
-| `Coords_Warehouse` | Coords Warehouse | WAREHOUSE | **Disabled** |
-| `ST_Dhanmill` | The Dhan mill | STORE | Enabled |
-| `ST_Pacific_DEL` | Pacific Mall Tagore Garden | STORE | Enabled |
-| `ST_Mmchandigarh_CH` | MM Chandigarh | STORE | Enabled |
-| `ST_dlfpromenade_DL` | DLF Promenade | STORE | Enabled |
-| `ST_dlfavenue_DL` | DLF Avenue | STORE | Enabled |
-| `ST_Zora_Mall` | Zora The Mall | STORE | Enabled |
-| `ST_KGF_Mumbai` | Kala Ghoda Fort | STORE | Enabled |
-| `ST_Exibition_NO` | Exibition | STORE | Enabled |
-| `WH_Second_Floor` ⚠️ | Second Floor | **STORE** | Enabled |
-| `MBO` | MBO | STORE | Enabled |
-| `ST_PhoenixPalladium` ⚠️ | Phoenix Palladium Mumbai | unknown | unknown |
+| Code | Display name | `type` | `operationalType` | Visible to the service account |
+|---|---|---|---|---|
+| `dashanddot` | WarehouseII | WAREHOUSE | WAREHOUSE | yes — **default** |
+| `WH_Noida_3` | Online DashAndDot | WAREHOUSE | WAREHOUSE | yes |
+| `WH_Noida` | Production | WAREHOUSE | WAREHOUSE | yes |
+| `ST_Dhanmill` | The Dhan mill | WAREHOUSE | **STORE** | yes |
+| `ST_Pacific_DEL` | Pacific Mall Tagore Garden | WAREHOUSE | **STORE** | yes |
+| `ST_Mmchandigarh_CH` | MM Chandigarh | WAREHOUSE | **STORE** | yes |
+| `ST_dlfpromenade_DL` | DLF Promenade | WAREHOUSE | **STORE** | yes |
+| `ST_dlfavenue_DL` | DLF Avenue | WAREHOUSE | **STORE** | yes |
+| `ST_Zora_Mall` | Zora The Mall | WAREHOUSE | **STORE** | yes |
+| `ST_KGF_Mumbai` | Kala Ghoda Fort | WAREHOUSE | **STORE** | yes |
+| `ST_Exibition_NO` | Exibition | WAREHOUSE | **STORE** | yes |
+| `WH_Second_Floor` | Second Floor | WAREHOUSE | **STORE** | yes |
+| `International_Warehouse` | — | — | — | **no — access denied** |
+| `CWH` | — | — | — | **no — access denied** |
+| `Coords_Warehouse` | — | — | — | **no — access denied** |
+| `MBO` | — | — | — | **no — access denied** |
+| `ST_PhoenixPalladium` | — | — | — | **no — access denied** |
 
-### Three traps in this list
+A deliberately invented code returns `INVALID_FACILITY_CODE`, which is how the
+five above are known to be genuine rather than typos.
 
-**The default facility's code is ambiguous.** "dashanddot WarehouseII" does not
-split the way every other row does (`WH_Noida_3` + `Online DashAndDot`). Since
-this is the *default* push destination, it is the single most important code to
-confirm.
+### What the probe settled
 
-**`WH_Second_Floor` is operationally a STORE despite its `WH_` prefix.** Any
-logic that reads the prefix to decide warehouse-versus-store will put it in the
-wrong bucket. Read `operationalType`, never the code.
+**The ambiguous default code is correct.** `dashanddot` resolves to
+"WarehouseII". That was the single most important code to confirm, because it
+is the default push destination, and it is the one that did not split the way
+every other row did.
 
-**Two facilities are Disabled.** `ExternalFacility.status` must reflect that, and
-`isPushEnabled` must stay false for them regardless — pushing finished goods
-into a disabled facility is a silent failure.
+**The `type` field is useless and `operationalType` is the only discriminator.**
+This is stronger than previously suspected. *Every* facility reports
+`type: WAREHOUSE`, retail shops included — so Kala Ghoda Fort and the Noida
+production warehouse are indistinguishable by `type`. Only `operationalType`
+separates STORE from WAREHOUSE. Reading `type`, or parsing the `WH_`/`ST_`
+prefix, puts eleven shops in the warehouse bucket.
+
+`WH_Second_Floor` remains the trap that proves it: a `WH_` prefix, `type:
+WAREHOUSE`, and `operationalType: STORE`. It also **holds real stock** — it was
+the only facility carrying inventory of the SKU probed.
+
+**Five facilities are invisible, and that bounds facility switching.** The
+service account is denied `LOOKUP_INVENTORY` at `International_Warehouse`,
+`CWH`, `Coords_Warehouse`, `MBO` and `ST_PhoenixPalladium`. An
+"is it available elsewhere?" search therefore covers **12 of 17** facilities.
+The connector must say so rather than reporting a partial search as a complete
+one — see decisions.md §31.
+
+**The Disabled status could not be verified.** `CWH` and `Coords_Warehouse`
+were supplied as Disabled, but access is denied, so their `enabled` flag is
+unreadable. Every *visible* facility reports `enabled: true`. Treat the Disabled
+claim as still unconfirmed, and keep `isPushEnabled` false for both.
 
 ### What this list means for the system
 
@@ -383,6 +400,60 @@ if the piece is available somewhere else" an *omnichannel routing* question
 rather than a warehouse one, and it is why `sync.change_facility` is a separate
 elevated permission: moving a push from the production warehouse to a shop in
 Chandigarh is a commercial decision, not a clerical one.
+
+## 8d. Verified endpoint map
+
+Everything below was exercised against the live tenant on 23 Oct 2026. Paths
+are **case-sensitive and inconsistent** — `saleOrder/search` is camelCase while
+`saleorder/get` is not. Guessing the casing returns 404.
+
+| Purpose | Method + path | Notes |
+|---|---|---|
+| Token | `GET /oauth/token` | Not under `/services/rest/v1/`. `grant_type=password`, `client_id=my-trusted-client`. ~7h lifetime |
+| Facility detail | `POST /services/rest/v1/facility/get` | `{facilityCode}`. The only honest code validator |
+| Inventory | `POST /services/rest/v1/inventory/inventorySnapshot/get` | `{itemTypeSKUs:[...]}` + `Facility` header, **which it enforces** |
+| Order search | `POST /services/rest/v1/oms/saleOrder/search` | **31-day window cap.** Ignores the `Facility` header |
+| Order detail | `POST /services/rest/v1/oms/saleorder/get` | `{code}` → `saleOrderDTO` |
+| Item master | `POST /services/rest/v1/catalog/itemType/get` | `{skuCode}` |
+| Inventory adjust | `POST /services/rest/v1/inventory/adjust` | **Exists; schema NOT probed.** Needs authorisation first |
+| Purchase order | `POST /services/rest/v1/purchase/purchaseOrder/create` | Exists; requires `vendorCode`. Not probed further |
+
+The two write endpoints were confirmed to exist using **empty request bodies
+only** — a payload that names no SKU and no quantity cannot change inventory.
+Their field schemas are deliberately unknown; establishing them means sending
+a real payload, which §6 forbids without explicit authorisation.
+
+### The order payload, and the join to Shopify
+
+`saleOrderDTO.saleOrderItems[]` is where the useful fields live:
+
+- `facilityCode` / `facilityName` — **per line item**, not per order. One order
+  can be served from several facilities.
+- `alternateFacilityCode` — Unicommerce's own answer to "available elsewhere?".
+- `allocatedQuantity`, `unallocatedQuantity`, `inProcessQuantity`,
+  `completedQuantity`, `cancelledQuantity`, `unfulfillableQuantity` — note that
+  these are **stage counters and must never be summed**, exactly as with
+  internal production quantities.
+- `itemSku` / `sellerSkuCode` — e.g. `W/2769-L-49295244427434`, which **embeds
+  the Shopify variant id** (`49295244427434`) after the style and size.
+
+The order header carries `source: SHOPIFY` and `displayOrderCode: #170717`,
+which matches the Shopify order *name*. **That is the join between the two
+systems**, and it is a far more reliable key than SKU text matching.
+
+### The inventory snapshot is sixteen numbers, not one
+
+`inventorySnapshot/get` returns `inventory`, `openSale`, `openPurchase`,
+`putawayPending`, `inventoryBlocked`, `pendingStockTransfer`, `vendorInventory`,
+`virtualInventory`, `pendingInventoryAssessment`, `badInventory`,
+`inventoryNotSynced`, `batchRecallQuantity`, `quantityNotFound`,
+`excessQuantity`, `quarantinedInventory`, `ageingStockInventory`.
+
+The probed SKU showed `inventory: 0`, `inventoryBlocked: 1`,
+`pendingInventoryAssessment: 5` at the default facility. Reading `inventory`
+alone would call that "nothing here" while six units sit in the building in
+states that are not sellable but are not absent either. **Which of these counts
+as available is a business decision, not a technical one** — see §5.
 
 ## 8b. Network constraint: Unicommerce requires a whitelisted IP
 
