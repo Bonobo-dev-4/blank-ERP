@@ -396,6 +396,31 @@ Tags are also used for product handles — one order carried
 `off-shoulder-sequin-gown-47751089193130` — so any tag-driven rule has to match
 exactly rather than by substring. The current implementation does.
 
+## 9c. The importer walks forward, the probe walks back
+
+Running a real import exposed something the schema cannot tell you. The probe
+query sorts `UPDATED_AT` **reversed** — the 50 most recent orders. The importer
+sorts `UPDATED_AT` **ascending**, oldest first.
+
+That asymmetry is correct and deliberate. A backfill that walks forward has a
+cursor that only ever advances, so it is resumable and a `since` watermark
+means what it says; a newest-first importer would have to re-read from the top
+every time to avoid missing a late update.
+
+But it has a consequence worth stating plainly, because it looks like a bug:
+
+> **An import with no `since` returns the store's oldest orders, not its
+> current ones.** The first 500 rows imported here span 2020-11-29 to
+> 2021-03-21 — 474 fulfilled, 21 cancelled, 5 open. None carry a
+> `retailLocation` and none carry a bespoke tag, because the brand had neither
+> retail stores nor custom tagging in 2020. Every one classified ONLINE, which
+> is right.
+
+So a first run is a **backfill of history**, and demand planning must import
+with a `since` or it will plan against orders that shipped five years ago.
+A full backfill is ~10 pages per 500 orders and the store is on Shopify Plus
+(1000 cost points/second), so cost is not the constraint; interpretation is.
+
 ## 10. Implementation checklist
 
 Before writing the connector:
@@ -411,7 +436,11 @@ Before writing the connector:
 - [x] Confirm whether reading historical orders needs an extra scope
       — `read_all_orders` IS granted, see §9b
 - [ ] **Name the `402708955137` sales channel** — 42% of recent orders
-- [ ] **Decide whether CUSTOM or POS wins** for a bespoke in-store sale
+- [x] **Decide whether CUSTOM or POS wins** for a bespoke in-store sale
+      — resolved by not forcing the choice: `isCustomised` carries bespoke
+      independently of `channel`, see §9b
+- [ ] **Default `since` for demand imports**, so a no-argument run does not
+      plan against 2020 history — see §9c
 - [ ] Decide the inventory-availability source: Shopify inventory levels, or
       Unicommerce facility stock. **They will disagree**, and the ERP must name
       one of them as authoritative for the manufacturing decision.
