@@ -38,3 +38,4 @@ export * from './integrations/push';
 
 export * from './costing/rollup';
 export * from './forecasting/replenishment';
+export * from './integrations/unicommerce';

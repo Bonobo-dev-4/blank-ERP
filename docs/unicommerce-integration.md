@@ -493,20 +493,69 @@ What to ask Unicommerce for: API client credentials (`UNICOMMERCE_CLIENT_ID` /
 `UNICOMMERCE_CLIENT_SECRET`) scoped to the operations in §2, for a service
 account that is not a mailbox.
 
+## 8e. Demand does not arrive only from Shopify
+
+A 45-day order pull returned 6,792 orders with four distinct sources:
+
+| `source` | Orders | Share |
+|---|---|---|
+| `SHOPIFY` | 6,573 | 96.8% |
+| `NYKAA_FASHION` | 135 | 2.0% |
+| `MYNTRAPPMP` | 83 | 1.2% |
+| `AUDACITY` | 1 | — |
+
+**This changes the demand picture.** Building demand purely from the Shopify
+connector would silently miss ~3% of orders — the marketplace channels never
+touch Shopify, so nothing in that import would reveal they exist. Unicommerce
+is the only system that sees all four.
+
+The same pull splits `channel` into `WAREHOUSE` (4,689) and `STORE` (1,884),
+which is an independent confirmation that retail is a substantial share of
+volume rather than a rounding error.
+
+## 8f. Quantities on a sale order line can be null
+
+Every quantity field on a `CREATED` line — `totalQuantity`, `allocatedQuantity`,
+`unallocatedQuantity`, `inProcessQuantity`, `completedQuantity`,
+`cancelledQuantity`, `unfulfillableQuantity` — comes back **null**, not zero.
+
+`null` means Uniware did not report the figure. Coercing it to `0` would state
+"none of these were allocated" on the authority of a field the API declined to
+answer, and that number would then flow into a manufacturing decision. The
+connector keeps them nullable and the UI must render "not reported" rather than
+a confident zero.
+
+These are also **stage counters**: allocated, inProcess and completed describe
+the same garment at different points, so summing them double-counts exactly as
+summing cutting + stitching + finishing would internally.
+
 ## 9. Implementation checklist
 
-Phase 4:
+Phase 4 — **done, verified against the live tenant 23 Oct 2026**:
 
-- [ ] Confirm the tenant base URL and the authentication scheme
-- [ ] **Confirm which document type carries bulk manufacturing demand**
-- [ ] Confirm facility master endpoint and the exact facility codes
-      (**17 supplied in §8a; every code is inferred and unverified**)
+- [x] Confirm the tenant base URL and the authentication scheme
+      — `GET /oauth/token`, password grant, ~7h opaque bearer (§8d)
+- [x] Confirm facility master endpoint and the exact facility codes
+      — `facility/get`; **all 17 codes confirmed real** (§8a)
+- [x] Confirm the inventory availability endpoint
+      — `inventorySnapshot/get`, 16 separate counters (§8d)
+- [x] Confirm the item master endpoint for SKU mapping
+      — `catalog/itemType/get`; SKUs embed the Shopify variant id (§8d)
+- [x] Confirm pagination and limits
+      — sale-order search caps at **31 days**; no cursor, one page per window
+- [x] Confirm the business-level success/failure shape
+      — HTTP 200 with `successful:false` (decisions.md §30)
+
+Still open, and none of it is code:
+
+- [ ] **Confirm which document type carries bulk manufacturing demand.**
+      Narrowed but not closed: marketplace orders (§8e) are retail, not bulk.
 - [ ] Confirm the egress IP the ERP will call from, and get it whitelisted (§8b)
 - [ ] Obtain API client credentials for a service account, not a person (§8c)
-- [ ] Confirm the inventory availability endpoint and whether its figures are
-      live or cached
-- [ ] Confirm rate limits and pagination
-- [ ] Confirm the item master endpoint for SKU mapping
+      — now **urgent**: the token this account receives carries `write` scope
+- [ ] Get the service account visibility at the five facilities it cannot see,
+      or accept that availability search is permanently partial (§8a)
+- [ ] Confirm whether `inventorySnapshot` figures are live or cached
 
 Phase 5 — none of this starts until the above is done:
 
