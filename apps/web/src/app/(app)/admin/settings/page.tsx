@@ -9,6 +9,8 @@ import {
   Badge, Card, CardBody, CardHeader, DescList, ErrorPanel, LoadingBlock, PageHeader,
 } from '@/components/ui/primitives';
 import { CodeCell } from '@/components/ui/data-table';
+import { BrandLogoCard } from '@/components/app/brand-logo-card';
+import { useAuth } from '@/components/app/auth-context';
 
 interface Settings {
   organization: {
@@ -24,6 +26,7 @@ interface Settings {
 }
 
 export default function SettingsPage() {
+  const { can } = useAuth();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['settings'],
     queryFn: () => api.get<Settings>('/admin/settings'),
@@ -36,6 +39,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Settings" description="Organisation configuration, integration status and document numbering." />
+
+      <BrandLogoCard canEdit={can('admin.manage_settings')} />
 
       <Card>
         <CardHeader title="Organisation" />

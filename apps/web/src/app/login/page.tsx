@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/app/auth-context';
 import { ManufacturingCanvas, MiniFlow } from '@/components/auth/manufacturing-canvas';
+import { BrandMark } from '@/components/app/brand-mark';
 
 /**
  * Where to go after signing in.
@@ -110,9 +111,7 @@ export default function LoginPage() {
 
           {/* Brand */}
           <div className="login-logo mb-7 flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-[12px] bg-ink text-[13px] font-bold tracking-tighter text-canvas shadow-[0_6px_18px_-6px_var(--glass-shadow)]">
-              D·D
-            </div>
+            <BrandMark size={44} className="shadow-[0_6px_18px_-6px_var(--glass-shadow)]" />
             <div className="leading-tight">
               <p className="font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">DASH AND DOT</p>
               <p className="text-[13px] text-ink-muted">Manufacturing ERP</p>

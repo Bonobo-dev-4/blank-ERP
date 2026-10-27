@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
-import { ChevronRight, LogOut, Menu, RefreshCw } from 'lucide-react';
+import { ChevronRight, ImageUp, LogOut, Menu, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -115,6 +116,16 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
                   <ThemeSwitcher />
                 </div>
                 <p className="border-t border-line px-3 py-2.5 text-[12px] text-ink-subtle">{BUILD_LINE}</p>
+                {can('admin.manage_settings') ? (
+                  <DropdownMenu.Item asChild>
+                    <Link
+                      href="/admin/settings#brand-logo"
+                      className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-muted"
+                    >
+                      <ImageUp className="size-4 text-ink-muted" /> Change logo
+                    </Link>
+                  </DropdownMenu.Item>
+                ) : null}
                 <DropdownMenu.Item
                   onSelect={() => signOut()}
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-muted"

@@ -402,34 +402,40 @@ enum AuditAction {
 // =============================================================================
 
 model Organization {
-  id        String       @id @default(uuid()) @db.Uuid
-  code      String       @unique
-  name      String
-  timezone  String       @default("Asia/Kolkata")
-  currency  String       @default("INR")
-  status    RecordStatus @default(ACTIVE)
-  settings  Json         @default("{}")
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id            String       @id @default(uuid()) @db.Uuid
+  code          String       @unique
+  name          String
+  timezone      String       @default("Asia/Kolkata")
+  currency      String       @default("INR")
+  status        RecordStatus @default(ACTIVE)
+  settings      Json         @default("{}")
+  /// The organisation's brand mark, shown in the navigation and on sign-in.
+  /// Kept out of `settings` because a settings save replaces that object.
+  /// Raster only (PNG, JPEG, WebP): an SVG can carry script.
+  logoMime      String?
+  logoData      Bytes?
+  logoUpdatedAt DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  users                User[]
-  roles                Role[]
-  products             Product[]
-  productVariants      ProductVariant[]
-  rawMaterials         RawMaterial[]
-  locations            MaterialLocation[]
-  suppliers            Supplier[]
-  boms                 Bom[]
-  manufacturingOrders  ManufacturingOrder[]
-  demands              ManufacturingDemand[]
-  productionRoutes     ProductionRoute[]
-  productionStages     ProductionStage[]
-  jobWorkers           JobWorker[]
-  externalFacilities   ExternalFacility[]
-  integrations         IntegrationConnection[]
-  auditLogs            AuditLog[]
-  numberSequences      NumberSequence[]
-  uomConversions       UomConversion[]
+  users               User[]
+  roles               Role[]
+  products            Product[]
+  productVariants     ProductVariant[]
+  rawMaterials        RawMaterial[]
+  locations           MaterialLocation[]
+  suppliers           Supplier[]
+  boms                Bom[]
+  manufacturingOrders ManufacturingOrder[]
+  demands             ManufacturingDemand[]
+  productionRoutes    ProductionRoute[]
+  productionStages    ProductionStage[]
+  jobWorkers          JobWorker[]
+  externalFacilities  ExternalFacility[]
+  integrations        IntegrationConnection[]
+  auditLogs           AuditLog[]
+  numberSequences     NumberSequence[]
+  uomConversions      UomConversion[]
 
   @@map("organizations")
 }
@@ -582,28 +588,28 @@ model NumberSequence {
 // =============================================================================
 
 model Product {
-  id                       String         @id @default(uuid()) @db.Uuid
-  organizationId           String         @db.Uuid
-  styleCode                String
-  name                     String
-  collection               String?
-  category                 String?
-  sizeSet                  String?
-  fabricDescription        String?
-  productionType           ProductionType @default(IN_HOUSE)
+  id                        String         @id @default(uuid()) @db.Uuid
+  organizationId            String         @db.Uuid
+  styleCode                 String
+  name                      String
+  collection                String?
+  category                  String?
+  sizeSet                   String?
+  fabricDescription         String?
+  productionType            ProductionType @default(IN_HOUSE)
   /// Default manufacturing lead time in days for planning.
   standardManufacturingDays Int?
-  defaultRouteId           String?        @db.Uuid
-  status                   ProductStatus  @default(DRAFT)
-  imageUrl                 String?
-  notes                    String?
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  defaultRouteId            String?        @db.Uuid
+  status                    ProductStatus  @default(DRAFT)
+  imageUrl                  String?
+  notes                     String?
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id])
-  defaultRoute ProductionRoute? @relation(fields: [defaultRouteId], references: [id])
-  variants     ProductVariant[]
-  boms         Bom[]
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  defaultRoute        ProductionRoute?     @relation(fields: [defaultRouteId], references: [id])
+  variants            ProductVariant[]
+  boms                Bom[]
   manufacturingOrders ManufacturingOrder[]
 
   @@unique([organizationId, styleCode])
@@ -612,42 +618,42 @@ model Product {
 }
 
 model ProductVariant {
-  id             String        @id @default(uuid()) @db.Uuid
-  organizationId String        @db.Uuid
-  productId      String        @db.Uuid
+  id                 String        @id @default(uuid()) @db.Uuid
+  organizationId     String        @db.Uuid
+  productId          String        @db.Uuid
   /// Canonical internal SKU. Unique within the organisation.
-  sku            String
-  barcode        String?
-  name           String?
-  color          String?
-  size           String?
-  sizeSortOrder  Int           @default(0)
-  fabric         String?
-  imageUrl       String?
-  sizeSet        String?
+  sku                String
+  barcode            String?
+  name               String?
+  color              String?
+  size               String?
+  sizeSortOrder      Int           @default(0)
+  fabric             String?
+  imageUrl           String?
+  sizeSet            String?
   /// True when this SKU is sold as a set assembled from component SKUs.
-  isBundle       Boolean       @default(false)
-  status         ProductStatus @default(DRAFT)
+  isBundle           Boolean       @default(false)
+  status             ProductStatus @default(DRAFT)
   /// Resolved BOM version; null means fall back to the style-level BOM.
-  activeBomVersionId String?   @db.Uuid
-  mrpUnitWeight  Decimal?      @db.Decimal(18, 4)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  activeBomVersionId String?       @db.Uuid
+  mrpUnitWeight      Decimal?      @db.Decimal(18, 4)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  organization        Organization              @relation(fields: [organizationId], references: [id])
-  product             Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  activeBomVersion    BomVersion?               @relation("VariantActiveBom", fields: [activeBomVersionId], references: [id])
-  externalMappings    ExternalProductMapping[]
-  boms                Bom[]                     @relation("VariantBoms")
-  demands             ManufacturingDemand[]
-  manufacturingOrders ManufacturingOrder[]
+  organization            Organization              @relation(fields: [organizationId], references: [id])
+  product                 Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  activeBomVersion        BomVersion?               @relation("VariantActiveBom", fields: [activeBomVersionId], references: [id])
+  externalMappings        ExternalProductMapping[]
+  boms                    Bom[]                     @relation("VariantBoms")
+  demands                 ManufacturingDemand[]
+  manufacturingOrders     ManufacturingOrder[]
   manufacturingOrderItems ManufacturingOrderItem[]
-  finishedBalances    FinishedGoodsBalance[]
-  finishedMovements   FinishedGoodsMovement[]
-  finishedInwardLines FinishedGoodsInwardLine[]
-  syncIssues          ProductSyncIssue[]
-  bundleComponents    ProductBundleComponent[]  @relation("BundleParent")
-  partOfBundles       ProductBundleComponent[]  @relation("BundleChild")
+  finishedBalances        FinishedGoodsBalance[]
+  finishedMovements       FinishedGoodsMovement[]
+  finishedInwardLines     FinishedGoodsInwardLine[]
+  syncIssues              ProductSyncIssue[]
+  bundleComponents        ProductBundleComponent[]  @relation("BundleParent")
+  partOfBundles           ProductBundleComponent[]  @relation("BundleChild")
 
   @@unique([organizationId, sku])
   @@unique([organizationId, barcode])
@@ -737,39 +743,39 @@ model UomConversion {
 // =============================================================================
 
 model RawMaterial {
-  id                 String           @id @default(uuid()) @db.Uuid
-  organizationId     String           @db.Uuid
-  materialCode       String
-  name               String
-  category           MaterialCategory
-  description        String?
-  color              String?
-  colorCode          String?
-  fabricComposition  String?
+  id                String           @id @default(uuid()) @db.Uuid
+  organizationId    String           @db.Uuid
+  materialCode      String
+  name              String
+  category          MaterialCategory
+  description       String?
+  color             String?
+  colorCode         String?
+  fabricComposition String?
   /// Fabric width, stored with the unit it is expressed in (usually inches).
-  width              Decimal?         @db.Decimal(10, 2)
-  widthUom           String?
-  gsm                Int?
+  width             Decimal?         @db.Decimal(10, 2)
+  widthUom          String?
+  gsm               Int?
   /// Stock-keeping (base) unit. All balances and ledger postings use this unit.
-  baseUom            UomCode
+  baseUom           UomCode
   /// Default unit used when purchasing (converted to baseUom on receipt).
-  purchaseUom        UomCode?
-  defaultSupplierId  String?          @db.Uuid
-  purchaseRate       Decimal?         @db.Decimal(18, 6)
+  purchaseUom       UomCode?
+  defaultSupplierId String?          @db.Uuid
+  purchaseRate      Decimal?         @db.Decimal(18, 6)
   /// Weighted-average cost in base UOM, recomputed on every costed inward.
-  averageCost        Decimal          @default(0) @db.Decimal(18, 6)
-  minimumStock       Decimal          @default(0) @db.Decimal(18, 4)
-  reorderLevel       Decimal          @default(0) @db.Decimal(18, 4)
-  reorderQty         Decimal          @default(0) @db.Decimal(18, 4)
-  leadTimeDays       Int              @default(0)
-  defaultLocationId  String?          @db.Uuid
+  averageCost       Decimal          @default(0) @db.Decimal(18, 6)
+  minimumStock      Decimal          @default(0) @db.Decimal(18, 4)
+  reorderLevel      Decimal          @default(0) @db.Decimal(18, 4)
+  reorderQty        Decimal          @default(0) @db.Decimal(18, 4)
+  leadTimeDays      Int              @default(0)
+  defaultLocationId String?          @db.Uuid
   /// When false the material still gets a single implicit "GENERAL" lot so the
   /// ledger shape stays uniform, but lot attributes are not enforced.
-  lotTracked         Boolean          @default(true)
-  shadeTracked       Boolean          @default(false)
-  status             RecordStatus     @default(ACTIVE)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  lotTracked        Boolean          @default(true)
+  shadeTracked      Boolean          @default(false)
+  status            RecordStatus     @default(ACTIVE)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   organization     Organization              @relation(fields: [organizationId], references: [id])
   defaultSupplier  Supplier?                 @relation(fields: [defaultSupplierId], references: [id])
@@ -818,17 +824,17 @@ model MaterialLot {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  rawMaterial  RawMaterial             @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
-  supplier     Supplier?               @relation(fields: [supplierId], references: [id])
-  receiptLine  RawMaterialReceiptLine? @relation(fields: [receiptLineId], references: [id])
-  balances     MaterialBalance[]
-  movements    MaterialMovement[]
-  reservations MaterialReservation[]
-  barcode      BarcodeIdentifier?      @relation("LotBarcode")
-  issueLines   MaterialIssueLine[]
-  consumptions MaterialConsumption[]
+  rawMaterial   RawMaterial             @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  supplier      Supplier?               @relation(fields: [supplierId], references: [id])
+  receiptLine   RawMaterialReceiptLine? @relation(fields: [receiptLineId], references: [id])
+  balances      MaterialBalance[]
+  movements     MaterialMovement[]
+  reservations  MaterialReservation[]
+  barcode       BarcodeIdentifier?      @relation("LotBarcode")
+  issueLines    MaterialIssueLine[]
+  consumptions  MaterialConsumption[]
   cuttingOrders CuttingOrder[]
-  fabricRolls  FabricRoll[]
+  fabricRolls   FabricRoll[]
 
   @@unique([organizationId, rawMaterialId, lotCode])
   @@index([rawMaterialId, receivedAt])
@@ -855,23 +861,23 @@ model MaterialLocation {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  organization     Organization          @relation(fields: [organizationId], references: [id])
-  parent           MaterialLocation?     @relation("LocationTree", fields: [parentId], references: [id])
-  children         MaterialLocation[]    @relation("LocationTree")
-  jobWorker        JobWorker?            @relation(fields: [jobWorkerId], references: [id])
-  balances         MaterialBalance[]
-  movementsFrom    MaterialMovement[]    @relation("MovementSource")
-  movementsTo      MaterialMovement[]    @relation("MovementDestination")
-  reservations     MaterialReservation[]
+  organization        Organization           @relation(fields: [organizationId], references: [id])
+  parent              MaterialLocation?      @relation("LocationTree", fields: [parentId], references: [id])
+  children            MaterialLocation[]     @relation("LocationTree")
+  jobWorker           JobWorker?             @relation(fields: [jobWorkerId], references: [id])
+  balances            MaterialBalance[]
+  movementsFrom       MaterialMovement[]     @relation("MovementSource")
+  movementsTo         MaterialMovement[]     @relation("MovementDestination")
+  reservations        MaterialReservation[]
   defaultForMaterials RawMaterial[]
-  receipts         RawMaterialReceipt[]
-  issuesFrom       MaterialIssue[]       @relation("IssueSource")
-  issuesTo         MaterialIssue[]       @relation("IssueDestination")
-  stockCounts      StockCount[]
-  stages           ProductionStage[]
-  fgBalances       FinishedGoodsBalance[]
-  fgInwards        FinishedGoodsInward[]
-  fabricRolls      FabricRoll[]
+  receipts            RawMaterialReceipt[]
+  issuesFrom          MaterialIssue[]        @relation("IssueSource")
+  issuesTo            MaterialIssue[]        @relation("IssueDestination")
+  stockCounts         StockCount[]
+  stages              ProductionStage[]
+  fgBalances          FinishedGoodsBalance[]
+  fgInwards           FinishedGoodsInward[]
+  fabricRolls         FabricRoll[]
 
   @@unique([organizationId, code])
   @@index([organizationId, kind, status])
@@ -941,13 +947,13 @@ model MaterialMovement {
   occurredAt            DateTime     @default(now())
   createdAt             DateTime     @default(now())
 
-  rawMaterial         RawMaterial        @relation(fields: [rawMaterialId], references: [id])
-  materialLot         MaterialLot        @relation(fields: [materialLotId], references: [id])
-  fabricRoll          FabricRoll?        @relation(fields: [fabricRollId], references: [id])
-  sourceLocation      MaterialLocation   @relation("MovementSource", fields: [sourceLocationId], references: [id])
-  destinationLocation MaterialLocation   @relation("MovementDestination", fields: [destinationLocationId], references: [id])
-  reversalOf          MaterialMovement?  @relation("MovementReversal", fields: [reversalOfId], references: [id])
-  reversals           MaterialMovement[] @relation("MovementReversal")
+  rawMaterial         RawMaterial           @relation(fields: [rawMaterialId], references: [id])
+  materialLot         MaterialLot           @relation(fields: [materialLotId], references: [id])
+  fabricRoll          FabricRoll?           @relation(fields: [fabricRollId], references: [id])
+  sourceLocation      MaterialLocation      @relation("MovementSource", fields: [sourceLocationId], references: [id])
+  destinationLocation MaterialLocation      @relation("MovementDestination", fields: [destinationLocationId], references: [id])
+  reversalOf          MaterialMovement?     @relation("MovementReversal", fields: [reversalOfId], references: [id])
+  reversals           MaterialMovement[]    @relation("MovementReversal")
   consumptions        MaterialConsumption[]
 
   @@unique([organizationId, movementNo])
@@ -964,21 +970,21 @@ model MaterialMovement {
 /// manufacturing order. Reserved stock stays physically in place but is not
 /// available to other orders.
 model MaterialReservation {
-  id                   String            @id @default(uuid()) @db.Uuid
-  organizationId       String            @db.Uuid
-  rawMaterialId        String            @db.Uuid
-  materialLotId        String            @db.Uuid
-  locationId           String            @db.Uuid
-  manufacturingOrderId String            @db.Uuid
-  materialRequirementId String?          @db.Uuid
-  reservedQty          Decimal           @db.Decimal(18, 4)
-  issuedQty            Decimal           @default(0) @db.Decimal(18, 4)
-  releasedQty          Decimal           @default(0) @db.Decimal(18, 4)
-  status               ReservationStatus @default(ACTIVE)
-  reservedByUserId     String?           @db.Uuid
-  idempotencyKey       String?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  id                    String            @id @default(uuid()) @db.Uuid
+  organizationId        String            @db.Uuid
+  rawMaterialId         String            @db.Uuid
+  materialLotId         String            @db.Uuid
+  locationId            String            @db.Uuid
+  manufacturingOrderId  String            @db.Uuid
+  materialRequirementId String?           @db.Uuid
+  reservedQty           Decimal           @db.Decimal(18, 4)
+  issuedQty             Decimal           @default(0) @db.Decimal(18, 4)
+  releasedQty           Decimal           @default(0) @db.Decimal(18, 4)
+  status                ReservationStatus @default(ACTIVE)
+  reservedByUserId      String?           @db.Uuid
+  idempotencyKey        String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   rawMaterial         RawMaterial          @relation(fields: [rawMaterialId], references: [id])
   materialLot         MaterialLot          @relation(fields: [materialLotId], references: [id])
@@ -993,18 +999,18 @@ model MaterialReservation {
 }
 
 model StockCount {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @db.Uuid
-  countNo        String
-  locationId     String       @db.Uuid
-  status         String       @default("DRAFT")
-  countedAt      DateTime?
-  countedByUserId String?     @db.Uuid
-  postedAt       DateTime?
-  postedByUserId String?      @db.Uuid
-  remarks        String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @db.Uuid
+  countNo         String
+  locationId      String    @db.Uuid
+  status          String    @default("DRAFT")
+  countedAt       DateTime?
+  countedByUserId String?   @db.Uuid
+  postedAt        DateTime?
+  postedByUserId  String?   @db.Uuid
+  remarks         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   location MaterialLocation @relation(fields: [locationId], references: [id])
   lines    StockCountLine[]
@@ -1043,34 +1049,34 @@ model StockCountLine {
 // =============================================================================
 
 model Supplier {
-  id              String       @id @default(uuid()) @db.Uuid
-  organizationId  String       @db.Uuid
-  supplierCode    String
-  name            String
-  contactPerson   String?
-  email           String?
-  phone           String?
-  addressLine1    String?
-  addressLine2    String?
-  city            String?
-  state           String?
-  pincode         String?
-  gstin           String?
-  paymentTerms    String?
-  leadTimeDays    Int          @default(0)
-  rating          Int?
-  status          RecordStatus @default(ACTIVE)
-  notes           String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  supplierCode   String
+  name           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  addressLine1   String?
+  addressLine2   String?
+  city           String?
+  state          String?
+  pincode        String?
+  gstin          String?
+  paymentTerms   String?
+  leadTimeDays   Int          @default(0)
+  rating         Int?
+  status         RecordStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  organization  Organization                 @relation(fields: [organizationId], references: [id])
-  materials     RawMaterial[]
-  lots          MaterialLot[]
-  purchaseOrders RawMaterialPurchaseOrder[]
-  receipts      RawMaterialReceipt[]
+  organization     Organization               @relation(fields: [organizationId], references: [id])
+  materials        RawMaterial[]
+  lots             MaterialLot[]
+  purchaseOrders   RawMaterialPurchaseOrder[]
+  receipts         RawMaterialReceipt[]
   requisitionItems PurchaseRequisitionItem[]
-  fabricRolls   FabricRoll[]
+  fabricRolls      FabricRoll[]
 
   @@unique([organizationId, supplierCode])
   @@index([organizationId, status])
@@ -1125,35 +1131,35 @@ model PurchaseRequisitionItem {
 }
 
 model RawMaterialPurchaseOrder {
-  id               String              @id @default(uuid()) @db.Uuid
-  organizationId   String              @db.Uuid
-  poNo             String
-  supplierId       String              @db.Uuid
-  status           PurchaseOrderStatus @default(DRAFT)
-  orderDate        DateTime            @default(now())
-  expectedDate     DateTime?
-  deliverToLocationId String?          @db.Uuid
+  id                       String              @id @default(uuid()) @db.Uuid
+  organizationId           String              @db.Uuid
+  poNo                     String
+  supplierId               String              @db.Uuid
+  status                   PurchaseOrderStatus @default(DRAFT)
+  orderDate                DateTime            @default(now())
+  expectedDate             DateTime?
+  deliverToLocationId      String?             @db.Uuid
   /// Receipt tolerance applied when deciding whether a PO can auto-close.
-  overReceiptTolerancePct  Decimal     @default(0) @db.Decimal(9, 4)
-  underReceiptTolerancePct Decimal     @default(0) @db.Decimal(9, 4)
-  subtotalAmount   Decimal             @default(0) @db.Decimal(18, 2)
-  taxAmount        Decimal             @default(0) @db.Decimal(18, 2)
-  freightAmount    Decimal             @default(0) @db.Decimal(18, 2)
-  totalAmount      Decimal             @default(0) @db.Decimal(18, 2)
-  currency         String              @default("INR")
-  paymentTerms     String?
-  raisedByUserId   String?             @db.Uuid
-  approvedByUserId String?             @db.Uuid
-  approvedAt       DateTime?
-  closedByUserId   String?             @db.Uuid
-  closedAt         DateTime?
-  closeReason      String?
-  cancelReason     String?
-  remarks          String?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  overReceiptTolerancePct  Decimal             @default(0) @db.Decimal(9, 4)
+  underReceiptTolerancePct Decimal             @default(0) @db.Decimal(9, 4)
+  subtotalAmount           Decimal             @default(0) @db.Decimal(18, 2)
+  taxAmount                Decimal             @default(0) @db.Decimal(18, 2)
+  freightAmount            Decimal             @default(0) @db.Decimal(18, 2)
+  totalAmount              Decimal             @default(0) @db.Decimal(18, 2)
+  currency                 String              @default("INR")
+  paymentTerms             String?
+  raisedByUserId           String?             @db.Uuid
+  approvedByUserId         String?             @db.Uuid
+  approvedAt               DateTime?
+  closedByUserId           String?             @db.Uuid
+  closedAt                 DateTime?
+  closeReason              String?
+  cancelReason             String?
+  remarks                  String?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
 
-  supplier Supplier                   @relation(fields: [supplierId], references: [id])
+  supplier Supplier                  @relation(fields: [supplierId], references: [id])
   items    RawMaterialPurchaseItem[]
   receipts RawMaterialReceipt[]
 
@@ -1164,25 +1170,25 @@ model RawMaterialPurchaseOrder {
 }
 
 model RawMaterialPurchaseItem {
-  id              String   @id @default(uuid()) @db.Uuid
-  purchaseOrderId String   @db.Uuid
-  lineNo          Int
-  rawMaterialId   String   @db.Uuid
+  id                String    @id @default(uuid()) @db.Uuid
+  purchaseOrderId   String    @db.Uuid
+  lineNo            Int
+  rawMaterialId     String    @db.Uuid
   /// Quantity and rate in the PURCHASE uom; baseQty is the converted figure.
-  orderedQty      Decimal  @db.Decimal(18, 4)
-  uom             UomCode
-  orderedBaseQty  Decimal  @db.Decimal(18, 4)
-  rate            Decimal  @db.Decimal(18, 6)
-  discountPct     Decimal  @default(0) @db.Decimal(9, 4)
-  taxPct          Decimal  @default(0) @db.Decimal(9, 4)
-  lineAmount      Decimal  @default(0) @db.Decimal(18, 2)
+  orderedQty        Decimal   @db.Decimal(18, 4)
+  uom               UomCode
+  orderedBaseQty    Decimal   @db.Decimal(18, 4)
+  rate              Decimal   @db.Decimal(18, 6)
+  discountPct       Decimal   @default(0) @db.Decimal(9, 4)
+  taxPct            Decimal   @default(0) @db.Decimal(9, 4)
+  lineAmount        Decimal   @default(0) @db.Decimal(18, 2)
   /// Running totals maintained transactionally by the receipt service.
-  receivedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
-  acceptedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
-  rejectedBaseQty Decimal  @default(0) @db.Decimal(18, 4)
-  expectedDate    DateTime?
-  requisitionItemId String? @db.Uuid
-  remarks         String?
+  receivedBaseQty   Decimal   @default(0) @db.Decimal(18, 4)
+  acceptedBaseQty   Decimal   @default(0) @db.Decimal(18, 4)
+  rejectedBaseQty   Decimal   @default(0) @db.Decimal(18, 4)
+  expectedDate      DateTime?
+  requisitionItemId String?   @db.Uuid
+  remarks           String?
 
   purchaseOrder   RawMaterialPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   rawMaterial     RawMaterial              @relation(fields: [rawMaterialId], references: [id])
@@ -1196,28 +1202,28 @@ model RawMaterialPurchaseItem {
 
 /// Goods Receipt Note. Supports partial deliveries against one PO.
 model RawMaterialReceipt {
-  id                 String        @id @default(uuid()) @db.Uuid
-  organizationId     String        @db.Uuid
-  grnNo              String
-  purchaseOrderId    String?       @db.Uuid
-  supplierId         String        @db.Uuid
-  status             ReceiptStatus @default(DRAFT)
-  receiptDate        DateTime      @default(now())
-  supplierInvoiceNo  String?
-  supplierDcNo       String?
-  vehicleNo          String?
+  id                String        @id @default(uuid()) @db.Uuid
+  organizationId    String        @db.Uuid
+  grnNo             String
+  purchaseOrderId   String?       @db.Uuid
+  supplierId        String        @db.Uuid
+  status            ReceiptStatus @default(DRAFT)
+  receiptDate       DateTime      @default(now())
+  supplierInvoiceNo String?
+  supplierDcNo      String?
+  vehicleNo         String?
   /// Location accepted stock is released to after inspection.
-  targetLocationId   String        @db.Uuid
-  receivedByUserId   String?       @db.Uuid
-  inspectedByUserId  String?       @db.Uuid
-  inspectedAt        DateTime?
-  postedByUserId     String?       @db.Uuid
-  postedAt           DateTime?
-  freightAmount      Decimal       @default(0) @db.Decimal(18, 2)
-  remarks            String?
-  idempotencyKey     String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  targetLocationId  String        @db.Uuid
+  receivedByUserId  String?       @db.Uuid
+  inspectedByUserId String?       @db.Uuid
+  inspectedAt       DateTime?
+  postedByUserId    String?       @db.Uuid
+  postedAt          DateTime?
+  freightAmount     Decimal       @default(0) @db.Decimal(18, 2)
+  remarks           String?
+  idempotencyKey    String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   purchaseOrder  RawMaterialPurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
   supplier       Supplier                  @relation(fields: [supplierId], references: [id])
@@ -1233,27 +1239,27 @@ model RawMaterialReceipt {
 }
 
 model RawMaterialReceiptLine {
-  id                 String            @id @default(uuid()) @db.Uuid
-  receiptId          String            @db.Uuid
-  lineNo             Int
-  purchaseItemId     String?           @db.Uuid
-  rawMaterialId      String            @db.Uuid
+  id               String            @id @default(uuid()) @db.Uuid
+  receiptId        String            @db.Uuid
+  lineNo           Int
+  purchaseItemId   String?           @db.Uuid
+  rawMaterialId    String            @db.Uuid
   /// What the supplier delivered, in the receipt uom.
-  receivedQty        Decimal           @db.Decimal(18, 4)
-  uom                UomCode
-  receivedBaseQty    Decimal           @db.Decimal(18, 4)
-  acceptedBaseQty    Decimal           @default(0) @db.Decimal(18, 4)
-  rejectedBaseQty    Decimal           @default(0) @db.Decimal(18, 4)
-  inspectionResult   InspectionResult?
-  rejectionReason    String?
-  rate               Decimal?          @db.Decimal(18, 6)
-  landedUnitCost     Decimal?          @db.Decimal(18, 6)
+  receivedQty      Decimal           @db.Decimal(18, 4)
+  uom              UomCode
+  receivedBaseQty  Decimal           @db.Decimal(18, 4)
+  acceptedBaseQty  Decimal           @default(0) @db.Decimal(18, 4)
+  rejectedBaseQty  Decimal           @default(0) @db.Decimal(18, 4)
+  inspectionResult InspectionResult?
+  rejectionReason  String?
+  rate             Decimal?          @db.Decimal(18, 6)
+  landedUnitCost   Decimal?          @db.Decimal(18, 6)
   /// Lot attributes captured at receiving.
-  supplierLotRef     String?
-  shade              String?
-  width              Decimal?          @db.Decimal(10, 2)
-  gsm                Int?
-  remarks            String?
+  supplierLotRef   String?
+  shade            String?
+  width            Decimal?          @db.Decimal(10, 2)
+  gsm              Int?
+  remarks          String?
 
   receipt      RawMaterialReceipt       @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   purchaseItem RawMaterialPurchaseItem? @relation(fields: [purchaseItemId], references: [id])
@@ -1279,16 +1285,16 @@ model RawMaterialReceiptLine {
 // =============================================================================
 
 model Bom {
-  id               String    @id @default(uuid()) @db.Uuid
-  organizationId   String    @db.Uuid
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
   bomCode          String
   name             String?
-  productId        String    @db.Uuid
+  productId        String   @db.Uuid
   /// Null = style-level BOM applying to every variant of the product.
-  productVariantId String?   @db.Uuid
+  productVariantId String?  @db.Uuid
   notes            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -1337,23 +1343,23 @@ model BomVersion {
 }
 
 model BomItem {
-  id             String       @id @default(uuid()) @db.Uuid
-  bomVersionId   String       @db.Uuid
-  lineNo         Int
-  rawMaterialId  String       @db.Uuid
+  id                String       @id @default(uuid()) @db.Uuid
+  bomVersionId      String       @db.Uuid
+  lineNo            Int
+  rawMaterialId     String       @db.Uuid
   /// Net consumption per baseQuantity garments, before wastage.
-  consumptionQty Decimal      @db.Decimal(18, 4)
-  uom            UomCode
-  wastageBasis   WastageBasis @default(PERCENT_OF_CONSUMPTION)
-  wastageValue   Decimal      @default(0) @db.Decimal(18, 4)
+  consumptionQty    Decimal      @db.Decimal(18, 4)
+  uom               UomCode
+  wastageBasis      WastageBasis @default(PERCENT_OF_CONSUMPTION)
+  wastageValue      Decimal      @default(0) @db.Decimal(18, 4)
   /// Stage at which the material is physically issued/consumed.
-  productionStageId String?   @db.Uuid
-  unitCost       Decimal?     @db.Decimal(18, 6)
+  productionStageId String?      @db.Uuid
+  unitCost          Decimal?     @db.Decimal(18, 6)
   /// consumptionQty + wastage, cached for display and costing snapshots.
-  grossQtyPerUnit Decimal     @default(0) @db.Decimal(18, 4)
-  lineCost       Decimal      @default(0) @db.Decimal(18, 6)
-  isCritical     Boolean      @default(true)
-  notes          String?
+  grossQtyPerUnit   Decimal      @default(0) @db.Decimal(18, 4)
+  lineCost          Decimal      @default(0) @db.Decimal(18, 6)
+  isCritical        Boolean      @default(true)
+  notes             String?
 
   bomVersion      BomVersion            @relation(fields: [bomVersionId], references: [id], onDelete: Cascade)
   rawMaterial     RawMaterial           @relation(fields: [rawMaterialId], references: [id])
@@ -1368,13 +1374,13 @@ model BomItem {
 
 /// Approved substitute materials for a BOM line, in preference order.
 model BomItemAlternative {
-  id                String  @id @default(uuid()) @db.Uuid
-  bomItemId         String  @db.Uuid
-  rawMaterialId     String  @db.Uuid
-  preferenceOrder   Int     @default(1)
+  id               String  @id @default(uuid()) @db.Uuid
+  bomItemId        String  @db.Uuid
+  rawMaterialId    String  @db.Uuid
+  preferenceOrder  Int     @default(1)
   /// Conversion applied when substituting (1 = same consumption).
-  conversionFactor  Decimal @default(1) @db.Decimal(18, 6)
-  notes             String?
+  conversionFactor Decimal @default(1) @db.Decimal(18, 6)
+  notes            String?
 
   bomItem     BomItem     @relation(fields: [bomItemId], references: [id], onDelete: Cascade)
   rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
@@ -1404,21 +1410,21 @@ model BomItemSizeOverride {
 // =============================================================================
 
 model MrpRun {
-  id               String       @id @default(uuid()) @db.Uuid
-  organizationId   String       @db.Uuid
-  runNo            String
-  status           MrpRunStatus @default(QUEUED)
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @db.Uuid
+  runNo              String
+  status             MrpRunStatus @default(QUEUED)
   /// Explicit scope: which MOs / demands were planned in this run.
-  scope            Json         @default("{}")
+  scope              Json         @default("{}")
   /// Planning parameters frozen for reproducibility (horizon, lot policy...).
-  parameters       Json         @default("{}")
-  totalShortageValue Decimal    @default(0) @db.Decimal(18, 2)
-  shortageLineCount  Int        @default(0)
-  runByUserId      String?      @db.Uuid
-  startedAt        DateTime?
-  completedAt      DateTime?
-  errorMessage     String?
-  createdAt        DateTime     @default(now())
+  parameters         Json         @default("{}")
+  totalShortageValue Decimal      @default(0) @db.Decimal(18, 2)
+  shortageLineCount  Int          @default(0)
+  runByUserId        String?      @db.Uuid
+  startedAt          DateTime?
+  completedAt        DateTime?
+  errorMessage       String?
+  createdAt          DateTime     @default(now())
 
   requirements MaterialRequirement[]
   requisitions PurchaseRequisition[]
@@ -1429,32 +1435,32 @@ model MrpRun {
 }
 
 model MaterialRequirement {
-  id                   String   @id @default(uuid()) @db.Uuid
-  organizationId       String   @db.Uuid
-  mrpRunId             String?  @db.Uuid
-  manufacturingOrderId String?  @db.Uuid
-  manufacturingOrderItemId String? @db.Uuid
-  bomVersionId         String?  @db.Uuid
-  rawMaterialId        String   @db.Uuid
-  productionStageId    String?  @db.Uuid
+  id                       String    @id @default(uuid()) @db.Uuid
+  organizationId           String    @db.Uuid
+  mrpRunId                 String?   @db.Uuid
+  manufacturingOrderId     String?   @db.Uuid
+  manufacturingOrderItemId String?   @db.Uuid
+  bomVersionId             String?   @db.Uuid
+  rawMaterialId            String    @db.Uuid
+  productionStageId        String?   @db.Uuid
   /// Net consumption for the planned quantity, before wastage.
-  netRequiredQty       Decimal  @db.Decimal(18, 4)
-  wastageQty           Decimal  @default(0) @db.Decimal(18, 4)
+  netRequiredQty           Decimal   @db.Decimal(18, 4)
+  wastageQty               Decimal   @default(0) @db.Decimal(18, 4)
   /// netRequiredQty + wastageQty.
-  grossRequiredQty     Decimal  @db.Decimal(18, 4)
-  uom                  UomCode
+  grossRequiredQty         Decimal   @db.Decimal(18, 4)
+  uom                      UomCode
   /// Unreserved physical stock in issuable locations at run time.
-  availableQty         Decimal  @default(0) @db.Decimal(18, 4)
+  availableQty             Decimal   @default(0) @db.Decimal(18, 4)
   /// Stock reserved by other manufacturing orders.
-  reservedElsewhereQty Decimal  @default(0) @db.Decimal(18, 4)
+  reservedElsewhereQty     Decimal   @default(0) @db.Decimal(18, 4)
   /// Open purchase order quantity not yet received (incoming supply only).
-  openPurchaseQty      Decimal  @default(0) @db.Decimal(18, 4)
-  expectedArrivalDate  DateTime?
-  shortageQty          Decimal  @default(0) @db.Decimal(18, 4)
-  reservedQty          Decimal  @default(0) @db.Decimal(18, 4)
-  estimatedUnitCost    Decimal? @db.Decimal(18, 6)
-  estimatedCost        Decimal  @default(0) @db.Decimal(18, 2)
-  createdAt            DateTime @default(now())
+  openPurchaseQty          Decimal   @default(0) @db.Decimal(18, 4)
+  expectedArrivalDate      DateTime?
+  shortageQty              Decimal   @default(0) @db.Decimal(18, 4)
+  reservedQty              Decimal   @default(0) @db.Decimal(18, 4)
+  estimatedUnitCost        Decimal?  @db.Decimal(18, 6)
+  estimatedCost            Decimal   @default(0) @db.Decimal(18, 2)
+  createdAt                DateTime  @default(now())
 
   mrpRun             MrpRun?                   @relation(fields: [mrpRunId], references: [id], onDelete: Cascade)
   manufacturingOrder ManufacturingOrder?       @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
@@ -1478,46 +1484,46 @@ model MaterialRequirement {
 // =============================================================================
 
 model ManufacturingDemand {
-  id                  String        @id @default(uuid()) @db.Uuid
-  organizationId      String        @db.Uuid
-  demandNo            String
-  channel             DemandChannel
-  productVariantId    String?       @db.Uuid
+  id                    String        @id @default(uuid()) @db.Uuid
+  organizationId        String        @db.Uuid
+  demandNo              String
+  channel               DemandChannel
+  productVariantId      String?       @db.Uuid
   /// SKU as it arrived externally; kept even when unmapped.
-  externalSku         String?
-  requestedQty        Decimal       @db.Decimal(18, 4)
+  externalSku           String?
+  requestedQty          Decimal       @db.Decimal(18, 4)
   /// Quantity that actually needs manufacturing after the stock/rules check.
-  manufacturingQty    Decimal       @default(0) @db.Decimal(18, 4)
-  allocatedQty        Decimal       @default(0) @db.Decimal(18, 4)
-  cancelledQty        Decimal       @default(0) @db.Decimal(18, 4)
-  status              DemandStatus  @default(NEW)
-  priority            Priority      @default(NORMAL)
-  requiredByDate      DateTime?
-  destinationFacilityId String?     @db.Uuid
+  manufacturingQty      Decimal       @default(0) @db.Decimal(18, 4)
+  allocatedQty          Decimal       @default(0) @db.Decimal(18, 4)
+  cancelledQty          Decimal       @default(0) @db.Decimal(18, 4)
+  status                DemandStatus  @default(NEW)
+  priority              Priority      @default(NORMAL)
+  requiredByDate        DateTime?
+  destinationFacilityId String?       @db.Uuid
   /// Stable hash over the normalised economic identity of this demand, used to
   /// collapse the same demand arriving through different systems.
-  dedupeFingerprint   String
-  decisionReason      String?
+  dedupeFingerprint     String
+  decisionReason        String?
   /// An operator looked at a line that COULD be dispatched from stock and sent
   /// it to production anyway - damaged stock, a customisation, a shade that
   /// will not match. A human decision outranks the arithmetic, so routing
   /// honours this over available inventory.
   isRejectedForDispatch Boolean       @default(false)
-  rejectedReason      String?
-  rejectedByUserId    String?       @db.Uuid
-  rejectedAt          DateTime?
+  rejectedReason        String?
+  rejectedByUserId      String?       @db.Uuid
+  rejectedAt            DateTime?
   /// Facility the line is routed to ship from, once decided.
-  routedFacilityCode  String?
-  approvedByUserId    String?       @db.Uuid
-  approvedAt          DateTime?
-  notes               String?
-  customization       Json?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  routedFacilityCode    String?
+  approvedByUserId      String?       @db.Uuid
+  approvedAt            DateTime?
+  notes                 String?
+  customization         Json?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
-  organization        Organization           @relation(fields: [organizationId], references: [id])
-  productVariant      ProductVariant?        @relation(fields: [productVariantId], references: [id])
-  destinationFacility ExternalFacility?      @relation(fields: [destinationFacilityId], references: [id])
+  organization        Organization          @relation(fields: [organizationId], references: [id])
+  productVariant      ProductVariant?       @relation(fields: [productVariantId], references: [id])
+  destinationFacility ExternalFacility?     @relation(fields: [destinationFacilityId], references: [id])
   sourceMappings      DemandSourceMapping[]
   allocations         DemandAllocation[]
 
@@ -1532,22 +1538,22 @@ model ManufacturingDemand {
 /// The unique constraint is the hard guard against duplicate imports and
 /// repeated webhook deliveries.
 model DemandSourceMapping {
-  id                    String              @id @default(uuid()) @db.Uuid
-  organizationId        String              @db.Uuid
-  manufacturingDemandId String              @db.Uuid
+  id                    String       @id @default(uuid()) @db.Uuid
+  organizationId        String       @db.Uuid
+  manufacturingDemandId String       @db.Uuid
   sourceSystem          SourceSystem
   /// SHOPIFY_ORDER / SHOPIFY_POS_ORDER / UNICOMMERCE_PURCHASE_ORDER / MANUAL
   sourceDocType         String
   sourceDocId           String
   sourceDocNo           String?
   sourceLineId          String
-  sourceLineQty         Decimal             @db.Decimal(18, 4)
+  sourceLineQty         Decimal      @db.Decimal(18, 4)
   sourceStatus          String?
   /// True for the mapping that first created the demand row.
-  isPrimary             Boolean             @default(false)
+  isPrimary             Boolean      @default(false)
   rawPayload            Json?
-  lastSeenAt            DateTime            @default(now())
-  createdAt             DateTime            @default(now())
+  lastSeenAt            DateTime     @default(now())
+  createdAt             DateTime     @default(now())
 
   manufacturingDemand ManufacturingDemand @relation(fields: [manufacturingDemandId], references: [id], onDelete: Cascade)
 
@@ -1584,80 +1590,80 @@ model DemandAllocation {
 // =============================================================================
 
 model ManufacturingOrder {
-  id               String                   @id @default(uuid()) @db.Uuid
-  organizationId   String                   @db.Uuid
-  moNo             String
-  status           ManufacturingOrderStatus @default(DRAFT)
-  priority         Priority                 @default(NORMAL)
-  productionType   ProductionType           @default(IN_HOUSE)
-  productId        String                   @db.Uuid
+  id                       String                   @id @default(uuid()) @db.Uuid
+  organizationId           String                   @db.Uuid
+  moNo                     String
+  status                   ManufacturingOrderStatus @default(DRAFT)
+  priority                 Priority                 @default(NORMAL)
+  productionType           ProductionType           @default(IN_HOUSE)
+  productId                String                   @db.Uuid
   /// Set when the order covers exactly one SKU; the size/colour breakdown
   /// always lives in ManufacturingOrderItem.
-  productVariantId String?                  @db.Uuid
+  productVariantId         String?                  @db.Uuid
   /// Denormalised primary source for list screens; authoritative demand links
   /// are the DemandAllocation rows.
-  primarySourceSystem SourceSystem          @default(MANUAL)
-  primarySourceDocNo  String?
-  orderedQty       Decimal                  @db.Decimal(18, 4)
-  releasedQty      Decimal                  @default(0) @db.Decimal(18, 4)
-  completedQty     Decimal                  @default(0) @db.Decimal(18, 4)
-  rejectedQty      Decimal                  @default(0) @db.Decimal(18, 4)
-  inwardedQty      Decimal                  @default(0) @db.Decimal(18, 4)
-  cancelledQty     Decimal                  @default(0) @db.Decimal(18, 4)
+  primarySourceSystem      SourceSystem             @default(MANUAL)
+  primarySourceDocNo       String?
+  orderedQty               Decimal                  @db.Decimal(18, 4)
+  releasedQty              Decimal                  @default(0) @db.Decimal(18, 4)
+  completedQty             Decimal                  @default(0) @db.Decimal(18, 4)
+  rejectedQty              Decimal                  @default(0) @db.Decimal(18, 4)
+  inwardedQty              Decimal                  @default(0) @db.Decimal(18, 4)
+  cancelledQty             Decimal                  @default(0) @db.Decimal(18, 4)
   /// BOM version pinned at release; master BOM edits cannot change it.
-  bomVersionId     String?                  @db.Uuid
-  routeId          String?                  @db.Uuid
-  plannedStartDate DateTime?
-  plannedEndDate   DateTime?
-  actualStartDate  DateTime?
-  actualEndDate    DateTime?
-  dueDate          DateTime?
-  destinationFacilityId String?             @db.Uuid
-  manufacturingLocationId String?           @db.Uuid
-  supervisorUserId String?                  @db.Uuid
+  bomVersionId             String?                  @db.Uuid
+  routeId                  String?                  @db.Uuid
+  plannedStartDate         DateTime?
+  plannedEndDate           DateTime?
+  actualStartDate          DateTime?
+  actualEndDate            DateTime?
+  dueDate                  DateTime?
+  destinationFacilityId    String?                  @db.Uuid
+  manufacturingLocationId  String?                  @db.Uuid
+  supervisorUserId         String?                  @db.Uuid
   /// Cost snapshot frozen at release, plus running actuals.
-  plannedMaterialCost Decimal               @default(0) @db.Decimal(18, 2)
-  plannedConversionCost Decimal             @default(0) @db.Decimal(18, 2)
-  plannedTotalCost Decimal                  @default(0) @db.Decimal(18, 2)
-  actualMaterialCost Decimal                @default(0) @db.Decimal(18, 2)
-  actualConversionCost Decimal              @default(0) @db.Decimal(18, 2)
-  actualTotalCost  Decimal                  @default(0) @db.Decimal(18, 2)
+  plannedMaterialCost      Decimal                  @default(0) @db.Decimal(18, 2)
+  plannedConversionCost    Decimal                  @default(0) @db.Decimal(18, 2)
+  plannedTotalCost         Decimal                  @default(0) @db.Decimal(18, 2)
+  actualMaterialCost       Decimal                  @default(0) @db.Decimal(18, 2)
+  actualConversionCost     Decimal                  @default(0) @db.Decimal(18, 2)
+  actualTotalCost          Decimal                  @default(0) @db.Decimal(18, 2)
   /// Set when production was authorised to start despite a material shortage.
-  shortageOverrideByUserId String?          @db.Uuid
+  shortageOverrideByUserId String?                  @db.Uuid
   shortageOverrideReason   String?
-  releasedByUserId String?                  @db.Uuid
-  releasedAt       DateTime?
-  closedByUserId   String?                  @db.Uuid
-  closedAt         DateTime?
-  cancelReason     String?
-  parentMoId       String?                  @db.Uuid
-  remarks          String?
-  idempotencyKey   String?
-  createdByUserId  String?                  @db.Uuid
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
+  releasedByUserId         String?                  @db.Uuid
+  releasedAt               DateTime?
+  closedByUserId           String?                  @db.Uuid
+  closedAt                 DateTime?
+  cancelReason             String?
+  parentMoId               String?                  @db.Uuid
+  remarks                  String?
+  idempotencyKey           String?
+  createdByUserId          String?                  @db.Uuid
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
 
-  organization          Organization              @relation(fields: [organizationId], references: [id])
-  product               Product                   @relation(fields: [productId], references: [id])
-  productVariant        ProductVariant?           @relation(fields: [productVariantId], references: [id])
-  bomVersion            BomVersion?               @relation(fields: [bomVersionId], references: [id])
-  route                 ProductionRoute?          @relation(fields: [routeId], references: [id])
-  destinationFacility   ExternalFacility?         @relation(fields: [destinationFacilityId], references: [id])
-  parentMo              ManufacturingOrder?       @relation("MoSplit", fields: [parentMoId], references: [id])
-  childMos              ManufacturingOrder[]      @relation("MoSplit")
-  items                 ManufacturingOrderItem[]
-  bomSnapshotLines      MoBomSnapshotLine[]
-  requirements          MaterialRequirement[]
-  reservations          MaterialReservation[]
-  allocations           DemandAllocation[]
-  batches               ProductionBatch[]
-  materialIssues        MaterialIssue[]
-  consumptions          MaterialConsumption[]
-  jobWorkOrders         JobWorkOrder[]
-  inspections           QualityInspection[]
-  finishedInwards       FinishedGoodsInward[]
-  costEntries           MoCostEntry[]
-  cuttingOrders         CuttingOrder[]
+  organization        Organization             @relation(fields: [organizationId], references: [id])
+  product             Product                  @relation(fields: [productId], references: [id])
+  productVariant      ProductVariant?          @relation(fields: [productVariantId], references: [id])
+  bomVersion          BomVersion?              @relation(fields: [bomVersionId], references: [id])
+  route               ProductionRoute?         @relation(fields: [routeId], references: [id])
+  destinationFacility ExternalFacility?        @relation(fields: [destinationFacilityId], references: [id])
+  parentMo            ManufacturingOrder?      @relation("MoSplit", fields: [parentMoId], references: [id])
+  childMos            ManufacturingOrder[]     @relation("MoSplit")
+  items               ManufacturingOrderItem[]
+  bomSnapshotLines    MoBomSnapshotLine[]
+  requirements        MaterialRequirement[]
+  reservations        MaterialReservation[]
+  allocations         DemandAllocation[]
+  batches             ProductionBatch[]
+  materialIssues      MaterialIssue[]
+  consumptions        MaterialConsumption[]
+  jobWorkOrders       JobWorkOrder[]
+  inspections         QualityInspection[]
+  finishedInwards     FinishedGoodsInward[]
+  costEntries         MoCostEntry[]
+  cuttingOrders       CuttingOrder[]
 
   @@unique([organizationId, moNo])
   @@unique([organizationId, idempotencyKey])
@@ -1698,22 +1704,22 @@ model ManufacturingOrderItem {
 /// Frozen copy of the BOM lines (and their costs) used by a released MO.
 /// Written once at release and never modified.
 model MoBomSnapshotLine {
-  id                   String   @id @default(uuid()) @db.Uuid
-  manufacturingOrderId String   @db.Uuid
-  bomVersionId         String   @db.Uuid
-  lineNo               Int
-  rawMaterialId        String   @db.Uuid
-  materialCode         String
-  materialName         String
-  consumptionQtyPerUnit Decimal @db.Decimal(18, 4)
-  wastageQtyPerUnit    Decimal  @db.Decimal(18, 4)
-  grossQtyPerUnit      Decimal  @db.Decimal(18, 4)
-  uom                  UomCode
-  unitCost             Decimal  @db.Decimal(18, 6)
-  plannedQty           Decimal  @db.Decimal(18, 4)
-  plannedCost          Decimal  @db.Decimal(18, 2)
-  productionStageCode  String?
-  createdAt            DateTime @default(now())
+  id                    String   @id @default(uuid()) @db.Uuid
+  manufacturingOrderId  String   @db.Uuid
+  bomVersionId          String   @db.Uuid
+  lineNo                Int
+  rawMaterialId         String   @db.Uuid
+  materialCode          String
+  materialName          String
+  consumptionQtyPerUnit Decimal  @db.Decimal(18, 4)
+  wastageQtyPerUnit     Decimal  @db.Decimal(18, 4)
+  grossQtyPerUnit       Decimal  @db.Decimal(18, 4)
+  uom                   UomCode
+  unitCost              Decimal  @db.Decimal(18, 6)
+  plannedQty            Decimal  @db.Decimal(18, 4)
+  plannedCost           Decimal  @db.Decimal(18, 2)
+  productionStageCode   String?
+  createdAt             DateTime @default(now())
 
   manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
   bomVersion         BomVersion         @relation(fields: [bomVersionId], references: [id])
@@ -1731,27 +1737,27 @@ model MoBomSnapshotLine {
 // =============================================================================
 
 model ProductionStage {
-  id              String       @id @default(uuid()) @db.Uuid
-  organizationId  String       @db.Uuid
-  code            String
-  name            String
-  sequenceHint    Int          @default(0)
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @db.Uuid
+  code              String
+  name              String
+  sequenceHint      Int          @default(0)
   /// Department / default location where work at this stage happens.
-  defaultLocationId String?    @db.Uuid
+  defaultLocationId String?      @db.Uuid
   /// Stage consumes material (cutting) and therefore can post consumption.
-  consumesMaterial Boolean     @default(false)
+  consumesMaterial  Boolean      @default(false)
   /// Stage can be performed by an external job worker.
-  allowsJobWork   Boolean      @default(false)
-  requiresQc      Boolean      @default(false)
+  allowsJobWork     Boolean      @default(false)
+  requiresQc        Boolean      @default(false)
   /// Unit serialisation happens when work is completed at this stage.
-  serialisesUnits Boolean      @default(false)
-  isTerminal      Boolean      @default(false)
-  status          RecordStatus @default(ACTIVE)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  serialisesUnits   Boolean      @default(false)
+  isTerminal        Boolean      @default(false)
+  status            RecordStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
-  organization    Organization         @relation(fields: [organizationId], references: [id])
-  defaultLocation MaterialLocation?    @relation(fields: [defaultLocationId], references: [id])
+  organization    Organization          @relation(fields: [organizationId], references: [id])
+  defaultLocation MaterialLocation?     @relation(fields: [defaultLocationId], references: [id])
   routeSteps      ProductionRouteStep[]
   stageTasks      ProductionStageTask[]
   bomItems        BomItem[]
@@ -1785,22 +1791,22 @@ model ProductionRoute {
 }
 
 model ProductionRouteStep {
-  id                String   @id @default(uuid()) @db.Uuid
-  routeId           String   @db.Uuid
-  productionStageId String   @db.Uuid
-  sequence          Int
-  isOptional        Boolean  @default(false)
+  id                 String   @id @default(uuid()) @db.Uuid
+  routeId            String   @db.Uuid
+  productionStageId  String   @db.Uuid
+  sequence           Int
+  isOptional         Boolean  @default(false)
   /// Planned standard minutes per garment, used for capacity and efficiency.
-  standardMinutes   Decimal? @db.Decimal(18, 4)
+  standardMinutes    Decimal? @db.Decimal(18, 4)
   /// Stage SLA: hours allowed at this step before it is flagged as delayed.
-  slaHours          Decimal? @db.Decimal(18, 2)
-  defaultJobWorkerId String? @db.Uuid
-  createdAt         DateTime @default(now())
+  slaHours           Decimal? @db.Decimal(18, 2)
+  defaultJobWorkerId String?  @db.Uuid
+  createdAt          DateTime @default(now())
 
-  route           ProductionRoute       @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  productionStage ProductionStage       @relation(fields: [productionStageId], references: [id])
-  defaultJobWorker JobWorker?           @relation(fields: [defaultJobWorkerId], references: [id])
-  stageTasks      ProductionStageTask[]
+  route            ProductionRoute       @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  productionStage  ProductionStage       @relation(fields: [productionStageId], references: [id])
+  defaultJobWorker JobWorker?            @relation(fields: [defaultJobWorkerId], references: [id])
+  stageTasks       ProductionStageTask[]
 
   @@unique([routeId, sequence])
   @@unique([routeId, productionStageId])
@@ -1926,15 +1932,15 @@ model ProductionStageTask {
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
-  productionBatch ProductionBatch           @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
-  routeStep       ProductionRouteStep       @relation(fields: [routeStepId], references: [id])
-  productionStage ProductionStage           @relation(fields: [productionStageId], references: [id])
-  assignedJobWorker JobWorker?              @relation(fields: [assignedJobWorkerId], references: [id])
-  movementsFrom   ProductionStageMovement[] @relation("StageMovementFrom")
-  movementsTo     ProductionStageMovement[] @relation("StageMovementTo")
-  inspections     QualityInspection[]
-  consumptions    MaterialConsumption[]
-  issues          MaterialIssue[]
+  productionBatch   ProductionBatch           @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  routeStep         ProductionRouteStep       @relation(fields: [routeStepId], references: [id])
+  productionStage   ProductionStage           @relation(fields: [productionStageId], references: [id])
+  assignedJobWorker JobWorker?                @relation(fields: [assignedJobWorkerId], references: [id])
+  movementsFrom     ProductionStageMovement[] @relation("StageMovementFrom")
+  movementsTo       ProductionStageMovement[] @relation("StageMovementTo")
+  inspections       QualityInspection[]
+  consumptions      MaterialConsumption[]
+  issues            MaterialIssue[]
 
   @@unique([productionBatchId, routeStepId])
   @@index([organizationId, productionStageId, status])
@@ -1981,25 +1987,25 @@ model ProductionStageMovement {
 // =============================================================================
 
 model BarcodeIdentifier {
-  id                 String       @id @default(uuid()) @db.Uuid
-  organizationId     String       @db.Uuid
-  code               String
-  kind               BarcodeKind
-  productionBatchId  String?      @unique @db.Uuid
-  productionUnitId   String?      @unique @db.Uuid
-  materialLotId      String?      @unique @db.Uuid
-  fabricRollId       String?      @unique @db.Uuid
-  receiptId          String?      @unique @db.Uuid
-  finishedInwardId   String?      @unique @db.Uuid
+  id                String      @id @default(uuid()) @db.Uuid
+  organizationId    String      @db.Uuid
+  code              String
+  kind              BarcodeKind
+  productionBatchId String?     @unique @db.Uuid
+  productionUnitId  String?     @unique @db.Uuid
+  materialLotId     String?     @unique @db.Uuid
+  fabricRollId      String?     @unique @db.Uuid
+  receiptId         String?     @unique @db.Uuid
+  finishedInwardId  String?     @unique @db.Uuid
   /// Human-readable label payload snapshot (MO/SKU/size/colour/qty context).
-  labelData          Json?
-  printCount         Int          @default(0)
-  lastPrintedAt      DateTime?
-  isActive           Boolean      @default(true)
-  revokedAt          DateTime?
-  revokeReason       String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  labelData         Json?
+  printCount        Int         @default(0)
+  lastPrintedAt     DateTime?
+  isActive          Boolean     @default(true)
+  revokedAt         DateTime?
+  revokeReason      String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   productionBatch ProductionBatch?     @relation("BatchBarcode", fields: [productionBatchId], references: [id], onDelete: Cascade)
   productionUnit  ProductionUnit?      @relation("UnitBarcode", fields: [productionUnitId], references: [id], onDelete: Cascade)
@@ -2063,21 +2069,21 @@ model BarcodeScanEvent {
 // =============================================================================
 
 model MaterialIssue {
-  id                   String   @id @default(uuid()) @db.Uuid
-  organizationId       String   @db.Uuid
-  issueNo              String
-  manufacturingOrderId String?  @db.Uuid
-  stageTaskId          String?  @db.Uuid
-  jobWorkOrderId       String?  @db.Uuid
-  sourceLocationId     String   @db.Uuid
-  destinationLocationId String  @db.Uuid
-  issueType            String   @default("PRODUCTION")
-  status               String   @default("POSTED")
-  issuedByUserId       String?  @db.Uuid
-  issuedAt             DateTime @default(now())
-  remarks              String?
-  idempotencyKey       String?
-  createdAt            DateTime @default(now())
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @db.Uuid
+  issueNo               String
+  manufacturingOrderId  String?  @db.Uuid
+  stageTaskId           String?  @db.Uuid
+  jobWorkOrderId        String?  @db.Uuid
+  sourceLocationId      String   @db.Uuid
+  destinationLocationId String   @db.Uuid
+  issueType             String   @default("PRODUCTION")
+  status                String   @default("POSTED")
+  issuedByUserId        String?  @db.Uuid
+  issuedAt              DateTime @default(now())
+  remarks               String?
+  idempotencyKey        String?
+  createdAt             DateTime @default(now())
 
   manufacturingOrder  ManufacturingOrder?  @relation(fields: [manufacturingOrderId], references: [id])
   stageTask           ProductionStageTask? @relation(fields: [stageTaskId], references: [id])
@@ -2162,33 +2168,33 @@ model MaterialConsumption {
 // =============================================================================
 
 model CuttingOrder {
-  id                   String   @id @default(uuid()) @db.Uuid
-  organizationId       String   @db.Uuid
-  cuttingOrderNo       String
-  manufacturingOrderId String   @db.Uuid
-  productionBatchId    String?  @db.Uuid
-  fabricMaterialId     String?  @db.Uuid
-  fabricLotId          String?  @db.Uuid
-  fabricRollId         String?  @db.Uuid
+  id                    String    @id @default(uuid()) @db.Uuid
+  organizationId        String    @db.Uuid
+  cuttingOrderNo        String
+  manufacturingOrderId  String    @db.Uuid
+  productionBatchId     String?   @db.Uuid
+  fabricMaterialId      String?   @db.Uuid
+  fabricLotId           String?   @db.Uuid
+  fabricRollId          String?   @db.Uuid
   /// Size-wise cutting plan: [{ size, plannedPieces, actualPieces }]
-  sizeBreakdown        Json     @default("[]")
-  fabricIssuedBaseQty  Decimal  @default(0) @db.Decimal(18, 4)
-  fabricUsedBaseQty    Decimal  @default(0) @db.Decimal(18, 4)
-  fabricWastageBaseQty Decimal  @default(0) @db.Decimal(18, 4)
-  fabricReturnedBaseQty Decimal @default(0) @db.Decimal(18, 4)
-  plannedPieces        Decimal  @default(0) @db.Decimal(18, 4)
-  actualPiecesCut      Decimal  @default(0) @db.Decimal(18, 4)
-  rejectedPieces       Decimal  @default(0) @db.Decimal(18, 4)
-  status               String   @default("PLANNED")
+  sizeBreakdown         Json      @default("[]")
+  fabricIssuedBaseQty   Decimal   @default(0) @db.Decimal(18, 4)
+  fabricUsedBaseQty     Decimal   @default(0) @db.Decimal(18, 4)
+  fabricWastageBaseQty  Decimal   @default(0) @db.Decimal(18, 4)
+  fabricReturnedBaseQty Decimal   @default(0) @db.Decimal(18, 4)
+  plannedPieces         Decimal   @default(0) @db.Decimal(18, 4)
+  actualPiecesCut       Decimal   @default(0) @db.Decimal(18, 4)
+  rejectedPieces        Decimal   @default(0) @db.Decimal(18, 4)
+  status                String    @default("PLANNED")
   /// Set once the consumption posting has happened, so completing a cutting
   /// order twice cannot deduct fabric twice.
-  consumptionPostedAt  DateTime?
-  operatorUserId       String?  @db.Uuid
-  startedAt            DateTime?
-  completedAt          DateTime?
-  remarks              String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  consumptionPostedAt   DateTime?
+  operatorUserId        String?   @db.Uuid
+  startedAt             DateTime?
+  completedAt           DateTime?
+  remarks               String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   manufacturingOrder ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
   productionBatch    ProductionBatch?   @relation(fields: [productionBatchId], references: [id])
@@ -2205,26 +2211,26 @@ model CuttingOrder {
 // =============================================================================
 
 model JobWorker {
-  id             String        @id @default(uuid()) @db.Uuid
-  organizationId String        @db.Uuid
-  code           String
-  name           String
-  kind           JobWorkerKind
-  contactPerson  String?
-  phone          String?
-  email          String?
-  address        String?
-  gstin          String?
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @db.Uuid
+  code            String
+  name            String
+  kind            JobWorkerKind
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  gstin           String?
   /// Default per-piece rate; overridable per job work order line.
-  defaultRate    Decimal?      @db.Decimal(18, 6)
-  capacityPerDay Decimal?      @db.Decimal(18, 4)
+  defaultRate     Decimal?      @db.Decimal(18, 6)
+  capacityPerDay  Decimal?      @db.Decimal(18, 4)
   /// Stock physically held by this worker lives at this JOB_WORKER location.
-  stockLocationId String?      @db.Uuid
-  rating         Int?
-  status         RecordStatus  @default(ACTIVE)
-  notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  stockLocationId String?       @db.Uuid
+  rating          Int?
+  status          RecordStatus  @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   organization  Organization          @relation(fields: [organizationId], references: [id])
   locations     MaterialLocation[]
@@ -2342,17 +2348,17 @@ model QualityInspection {
 }
 
 model QualityDefect {
-  id                  String         @id @default(uuid()) @db.Uuid
-  qualityInspectionId String         @db.Uuid
-  category            DefectCategory
-  defectCode          String?
-  description         String?
-  qty                 Decimal        @db.Decimal(18, 4)
-  severity            String?
-  photoUrls           String[]       @default([])
-  attributedStageId   String?        @db.Uuid
-  attributedJobWorkerId String?      @db.Uuid
-  createdAt           DateTime       @default(now())
+  id                    String         @id @default(uuid()) @db.Uuid
+  qualityInspectionId   String         @db.Uuid
+  category              DefectCategory
+  defectCode            String?
+  description           String?
+  qty                   Decimal        @db.Decimal(18, 4)
+  severity              String?
+  photoUrls             String[]       @default([])
+  attributedStageId     String?        @db.Uuid
+  attributedJobWorkerId String?        @db.Uuid
+  createdAt             DateTime       @default(now())
 
   qualityInspection QualityInspection @relation(fields: [qualityInspectionId], references: [id], onDelete: Cascade)
 
@@ -2419,23 +2425,23 @@ model FinishedGoodsBalance {
 }
 
 model FinishedGoodsMovement {
-  id               String                    @id @default(uuid()) @db.Uuid
-  organizationId   String                    @db.Uuid
-  movementNo       String
-  movementType     FinishedGoodsMovementType
-  productVariantId String                    @db.Uuid
-  sourceLocationId String?                   @db.Uuid
-  destinationLocationId String?              @db.Uuid
-  qty              Decimal                   @db.Decimal(18, 4)
-  unitCost         Decimal?                  @db.Decimal(18, 6)
-  referenceType    String?
-  referenceId      String?                   @db.Uuid
-  referenceNo      String?
-  operatorUserId   String?                   @db.Uuid
-  reason           String?
-  idempotencyKey   String
-  occurredAt       DateTime                  @default(now())
-  createdAt        DateTime                  @default(now())
+  id                    String                    @id @default(uuid()) @db.Uuid
+  organizationId        String                    @db.Uuid
+  movementNo            String
+  movementType          FinishedGoodsMovementType
+  productVariantId      String                    @db.Uuid
+  sourceLocationId      String?                   @db.Uuid
+  destinationLocationId String?                   @db.Uuid
+  qty                   Decimal                   @db.Decimal(18, 4)
+  unitCost              Decimal?                  @db.Decimal(18, 6)
+  referenceType         String?
+  referenceId           String?                   @db.Uuid
+  referenceNo           String?
+  operatorUserId        String?                   @db.Uuid
+  reason                String?
+  idempotencyKey        String
+  occurredAt            DateTime                  @default(now())
+  createdAt             DateTime                  @default(now())
 
   productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
 
@@ -2447,21 +2453,21 @@ model FinishedGoodsMovement {
 }
 
 model FinishedGoodsInward {
-  id                   String     @id @default(uuid()) @db.Uuid
-  organizationId       String     @db.Uuid
-  inwardNo             String
-  manufacturingOrderId String     @db.Uuid
-  manufacturingLocationId String  @db.Uuid
-  destinationFacilityId String?   @db.Uuid
-  inwardDate           DateTime   @default(now())
-  status               String     @default("DRAFT")
-  syncStatus           SyncStatus @default(SYNC_PENDING)
-  inwardByUserId       String?    @db.Uuid
-  postedAt             DateTime?
-  remarks              String?
-  idempotencyKey       String?
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+  id                      String     @id @default(uuid()) @db.Uuid
+  organizationId          String     @db.Uuid
+  inwardNo                String
+  manufacturingOrderId    String     @db.Uuid
+  manufacturingLocationId String     @db.Uuid
+  destinationFacilityId   String?    @db.Uuid
+  inwardDate              DateTime   @default(now())
+  status                  String     @default("DRAFT")
+  syncStatus              SyncStatus @default(SYNC_PENDING)
+  inwardByUserId          String?    @db.Uuid
+  postedAt                DateTime?
+  remarks                 String?
+  idempotencyKey          String?
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
 
   manufacturingOrder    ManufacturingOrder        @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
   manufacturingLocation MaterialLocation          @relation(fields: [manufacturingLocationId], references: [id])
@@ -2477,22 +2483,22 @@ model FinishedGoodsInward {
 }
 
 model FinishedGoodsInwardLine {
-  id                 String   @id @default(uuid()) @db.Uuid
-  finishedInwardId   String   @db.Uuid
-  lineNo             Int
-  productVariantId   String   @db.Uuid
-  productionBatchId  String?  @db.Uuid
-  acceptedQty        Decimal  @db.Decimal(18, 4)
-  rejectedQty        Decimal  @default(0) @db.Decimal(18, 4)
+  id                String   @id @default(uuid()) @db.Uuid
+  finishedInwardId  String   @db.Uuid
+  lineNo            Int
+  productVariantId  String   @db.Uuid
+  productionBatchId String?  @db.Uuid
+  acceptedQty       Decimal  @db.Decimal(18, 4)
+  rejectedQty       Decimal  @default(0) @db.Decimal(18, 4)
   /// Serial numbers inwarded, when the batch is unit-tracked.
-  unitIds            String[] @default([])
-  unitCost           Decimal? @db.Decimal(18, 6)
+  unitIds           String[] @default([])
+  unitCost          Decimal? @db.Decimal(18, 6)
   /// Quantity already accepted by Unicommerce. Guarded so the same quantity is
   /// never credited to external inventory twice.
-  pushedQty          Decimal  @default(0) @db.Decimal(18, 4)
-  movementId         String?  @db.Uuid
-  version            Int      @default(0)
-  remarks            String?
+  pushedQty         Decimal  @default(0) @db.Decimal(18, 4)
+  movementId        String?  @db.Uuid
+  version           Int      @default(0)
+  remarks           String?
 
   finishedInward  FinishedGoodsInward @relation(fields: [finishedInwardId], references: [id], onDelete: Cascade)
   productVariant  ProductVariant      @relation(fields: [productVariantId], references: [id])
@@ -2516,35 +2522,35 @@ model FinishedGoodsInwardLine {
 // =============================================================================
 
 model ExternalFacility {
-  id             String              @id @default(uuid()) @db.Uuid
-  organizationId String              @db.Uuid
-  provider       IntegrationProvider
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @db.Uuid
+  provider         IntegrationProvider
   /// Exact external facility identifier, preserved verbatim.
-  externalCode   String
-  externalName   String?
-  displayName    String
+  externalCode     String
+  externalName     String?
+  displayName      String
   /// Internal location that mirrors this facility, when one exists.
-  mirrorLocationId String?           @db.Uuid
-  isDefault      Boolean             @default(false)
+  mirrorLocationId String?             @db.Uuid
+  isDefault        Boolean             @default(false)
   /// Pushes are blocked unless the facility has been explicitly approved.
-  isPushEnabled  Boolean             @default(false)
-  address        Json?
-  rawPayload     Json?
-  status         RecordStatus        @default(ACTIVE)
-  syncedAt       DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  isPushEnabled    Boolean             @default(false)
+  address          Json?
+  rawPayload       Json?
+  status           RecordStatus        @default(ACTIVE)
+  syncedAt         DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
-  organization    Organization                      @relation(fields: [organizationId], references: [id])
-  pushJobs        InventoryPushJob[]
-  inwards         FinishedGoodsInward[]
-  demands         ManufacturingDemand[]
-  orders          ManufacturingOrder[]
-  reconciliations ExternalInventoryReconciliation[]
+  organization       Organization                      @relation(fields: [organizationId], references: [id])
+  pushJobs           InventoryPushJob[]
+  inwards            FinishedGoodsInward[]
+  demands            ManufacturingDemand[]
+  orders             ManufacturingOrder[]
+  reconciliations    ExternalInventoryReconciliation[]
   inventorySnapshots FacilityInventorySnapshot[]
-  unicommercePos  UnicommercePurchaseOrder[]
-  forecasts       DemandForecast[]
-  replenishments  ReplenishmentSuggestion[]
+  unicommercePos     UnicommercePurchaseOrder[]
+  forecasts          DemandForecast[]
+  replenishments     ReplenishmentSuggestion[]
 
   @@unique([organizationId, provider, externalCode])
   @@index([organizationId, provider, status])
@@ -2552,38 +2558,38 @@ model ExternalFacility {
 }
 
 model InventoryPushJob {
-  id                  String            @id @default(uuid()) @db.Uuid
-  organizationId      String            @db.Uuid
-  pushJobNo           String
-  provider            IntegrationProvider @default(UNICOMMERCE)
-  operationKind       PushOperationKind
-  externalFacilityId  String            @db.Uuid
-  status              PushJobStatus     @default(DRAFT)
+  id                             String              @id @default(uuid()) @db.Uuid
+  organizationId                 String              @db.Uuid
+  pushJobNo                      String
+  provider                       IntegrationProvider @default(UNICOMMERCE)
+  operationKind                  PushOperationKind
+  externalFacilityId             String              @db.Uuid
+  status                         PushJobStatus       @default(DRAFT)
   /// Client-generated id sent to the external API for its own de-duplication.
-  externalRequestId   String
+  externalRequestId              String
   /// External reference returned on success (e.g. the Unicommerce GRN number).
-  externalReference   String?
-  totalQty            Decimal           @default(0) @db.Decimal(18, 4)
-  successQty          Decimal           @default(0) @db.Decimal(18, 4)
-  failedQty           Decimal           @default(0) @db.Decimal(18, 4)
-  attemptCount        Int               @default(0)
-  lastAttemptAt       DateTime?
+  externalReference              String?
+  totalQty                       Decimal             @default(0) @db.Decimal(18, 4)
+  successQty                     Decimal             @default(0) @db.Decimal(18, 4)
+  failedQty                      Decimal             @default(0) @db.Decimal(18, 4)
+  attemptCount                   Int                 @default(0)
+  lastAttemptAt                  DateTime?
   /// Verbatim request and business response, for audit and dispute handling.
-  requestPayload      Json?
-  responsePayload     Json?
-  errorCode           String?
-  errorMessage        String?
+  requestPayload                 Json?
+  responsePayload                Json?
+  errorCode                      String?
+  errorMessage                   String?
   /// Set when an operator changed the destination facility; requires approval.
-  facilityChangeApprovedByUserId String? @db.Uuid
-  previewedByUserId   String?           @db.Uuid
-  approvedByUserId    String?           @db.Uuid
-  approvedAt          DateTime?
-  queuedAt            DateTime?
-  completedAt         DateTime?
-  idempotencyKey      String
-  createdByUserId     String?           @db.Uuid
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  facilityChangeApprovedByUserId String?             @db.Uuid
+  previewedByUserId              String?             @db.Uuid
+  approvedByUserId               String?             @db.Uuid
+  approvedAt                     DateTime?
+  queuedAt                       DateTime?
+  completedAt                    DateTime?
+  idempotencyKey                 String
+  createdByUserId                String?             @db.Uuid
+  createdAt                      DateTime            @default(now())
+  updatedAt                      DateTime            @updatedAt
 
   externalFacility ExternalFacility                  @relation(fields: [externalFacilityId], references: [id])
   lines            InventoryPushLine[]
@@ -2597,21 +2603,21 @@ model InventoryPushJob {
 }
 
 model InventoryPushLine {
-  id                  String     @id @default(uuid()) @db.Uuid
-  inventoryPushJobId  String     @db.Uuid
-  lineNo              Int
-  finishedInwardLineId String    @db.Uuid
-  productVariantId    String     @db.Uuid
+  id                   String     @id @default(uuid()) @db.Uuid
+  inventoryPushJobId   String     @db.Uuid
+  lineNo               Int
+  finishedInwardLineId String     @db.Uuid
+  productVariantId     String     @db.Uuid
   /// External SKU resolved at preview time; a push with a null value is refused.
-  externalSku         String?
-  qty                 Decimal    @db.Decimal(18, 4)
-  acceptedQty         Decimal    @default(0) @db.Decimal(18, 4)
-  status              SyncStatus @default(SYNC_PENDING)
-  externalLineRef     String?
-  errorCode           String?
-  errorMessage        String?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  externalSku          String?
+  qty                  Decimal    @db.Decimal(18, 4)
+  acceptedQty          Decimal    @default(0) @db.Decimal(18, 4)
+  status               SyncStatus @default(SYNC_PENDING)
+  externalLineRef      String?
+  errorCode            String?
+  errorMessage         String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
   inventoryPushJob   InventoryPushJob        @relation(fields: [inventoryPushJobId], references: [id], onDelete: Cascade)
   finishedInwardLine FinishedGoodsInwardLine @relation(fields: [finishedInwardLineId], references: [id])
@@ -2655,26 +2661,26 @@ model ExternalInventoryReconciliation {
 // =============================================================================
 
 model IntegrationConnection {
-  id             String              @id @default(uuid()) @db.Uuid
-  organizationId String              @db.Uuid
-  provider       IntegrationProvider
-  name           String
+  id                  String              @id @default(uuid()) @db.Uuid
+  organizationId      String              @db.Uuid
+  provider            IntegrationProvider
+  name                String
   /// Non-secret configuration (shop domain, base url, api version, facility...).
-  config         Json                @default("{}")
+  config              Json                @default("{}")
   /// Opaque reference to the secret in the configured secret store. Secrets are
   /// NEVER stored in this column or in this database in plaintext.
-  credentialRef  String?
+  credentialRef       String?
   /// Supported API version pinned for this connection.
-  apiVersion     String?
-  isEnabled      Boolean             @default(false)
+  apiVersion          String?
+  isEnabled           Boolean             @default(false)
   /// Blocks any write/mutating call to the external system.
-  allowExternalWrites Boolean        @default(false)
-  healthStatus   String              @default("UNKNOWN")
-  lastHealthCheckAt DateTime?
-  lastSyncAt     DateTime?
-  rateLimitState Json?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  allowExternalWrites Boolean             @default(false)
+  healthStatus        String              @default("UNKNOWN")
+  lastHealthCheckAt   DateTime?
+  lastSyncAt          DateTime?
+  rateLimitState      Json?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   organization Organization       @relation(fields: [organizationId], references: [id])
   events       IntegrationEvent[]
@@ -2857,45 +2863,45 @@ enum BundleComponentRole {
 // =============================================================================
 
 model FabricRoll {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @db.Uuid
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @db.Uuid
   rollNo         String
-  rawMaterialId  String           @db.Uuid
-  materialLotId  String           @db.Uuid
-  locationId     String           @db.Uuid
-  supplierId     String?          @db.Uuid
-  receiptLineId  String?          @db.Uuid
+  rawMaterialId  String            @db.Uuid
+  materialLotId  String            @db.Uuid
+  locationId     String            @db.Uuid
+  supplierId     String?           @db.Uuid
+  receiptLineId  String?           @db.Uuid
   shade          String?
   color          String?
-  width          Decimal?         @db.Decimal(10, 2)
+  width          Decimal?          @db.Decimal(10, 2)
   widthUom       String?
   gsm            Int?
   /// Length as received. Immutable.
-  originalLength Decimal          @db.Decimal(18, 4)
+  originalLength Decimal           @db.Decimal(18, 4)
   /// Physical length remaining on the roll right now.
-  currentLength  Decimal          @db.Decimal(18, 4)
+  currentLength  Decimal           @db.Decimal(18, 4)
   /// Portion of currentLength committed to manufacturing orders.
-  reservedLength Decimal          @default(0) @db.Decimal(18, 4)
-  lengthUom      UomCode          @default(METER)
-  purchaseRate   Decimal?         @db.Decimal(18, 6)
+  reservedLength Decimal           @default(0) @db.Decimal(18, 4)
+  lengthUom      UomCode           @default(METER)
+  purchaseRate   Decimal?          @db.Decimal(18, 6)
   qcStatus       InspectionResult?
-  status         FabricRollStatus @default(RECEIVED)
+  status         FabricRollStatus  @default(RECEIVED)
   defectNotes    String?
   receivedAt     DateTime?
-  version        Int              @default(0)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  version        Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  rawMaterial    RawMaterial             @relation(fields: [rawMaterialId], references: [id])
-  materialLot    MaterialLot             @relation(fields: [materialLotId], references: [id])
-  location       MaterialLocation        @relation(fields: [locationId], references: [id])
-  supplier       Supplier?               @relation(fields: [supplierId], references: [id])
-  receiptLine    RawMaterialReceiptLine? @relation(fields: [receiptLineId], references: [id])
-  barcode        BarcodeIdentifier?      @relation("RollBarcode")
-  issueLines     MaterialIssueLine[]
-  movements      MaterialMovement[]
-  consumptions   MaterialConsumption[]
-  cuttingOrders  CuttingOrder[]
+  rawMaterial   RawMaterial             @relation(fields: [rawMaterialId], references: [id])
+  materialLot   MaterialLot             @relation(fields: [materialLotId], references: [id])
+  location      MaterialLocation        @relation(fields: [locationId], references: [id])
+  supplier      Supplier?               @relation(fields: [supplierId], references: [id])
+  receiptLine   RawMaterialReceiptLine? @relation(fields: [receiptLineId], references: [id])
+  barcode       BarcodeIdentifier?      @relation("RollBarcode")
+  issueLines    MaterialIssueLine[]
+  movements     MaterialMovement[]
+  consumptions  MaterialConsumption[]
+  cuttingOrders CuttingOrder[]
 
   @@unique([organizationId, rollNo])
   @@index([organizationId, rawMaterialId, status])
@@ -2913,17 +2919,17 @@ model FabricRoll {
 // =============================================================================
 
 model ProductBundleComponent {
-  id                       String              @id @default(uuid()) @db.Uuid
-  organizationId           String              @db.Uuid
-  bundleVariantId          String              @db.Uuid
-  componentVariantId       String              @db.Uuid
-  qtyPerBundle             Decimal             @default(1) @db.Decimal(18, 4)
-  role                     BundleComponentRole @default(COMPONENT)
-  sequence                 Int                 @default(1)
+  id                    String              @id @default(uuid()) @db.Uuid
+  organizationId        String              @db.Uuid
+  bundleVariantId       String              @db.Uuid
+  componentVariantId    String              @db.Uuid
+  qtyPerBundle          Decimal             @default(1) @db.Decimal(18, 4)
+  role                  BundleComponentRole @default(COMPONENT)
+  sequence              Int                 @default(1)
   /// When true the component must be manufactured, not drawn from stock.
-  requiresManufacturing    Boolean             @default(true)
-  createdAt                DateTime            @default(now())
-  updatedAt                DateTime            @updatedAt
+  requiresManufacturing Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   bundleVariant    ProductVariant @relation("BundleParent", fields: [bundleVariantId], references: [id], onDelete: Cascade)
   componentVariant ProductVariant @relation("BundleChild", fields: [componentVariantId], references: [id])
@@ -2942,46 +2948,46 @@ model ProductBundleComponent {
 // =============================================================================
 
 model ShopifyOrder {
-  id                 String              @id @default(uuid()) @db.Uuid
-  organizationId     String              @db.Uuid
+  id                     String              @id @default(uuid()) @db.Uuid
+  organizationId         String              @db.Uuid
   /// Shopify order GID, preserved verbatim.
-  externalId         String
-  orderNumber        String
-  orderName          String?
+  externalId             String
+  orderNumber            String
+  orderName              String?
   /// ONLINE / POS / CUSTOM / DRAFT - classified on import.
-  channel            DemandChannel
+  channel                DemandChannel
   /// How `channel` was decided: RETAIL_LOCATION / SOURCE_NAME / TAG / DEFAULT.
   /// Kept so a wrong classification can be traced to the rule that made it
   /// rather than re-derived from a payload that may since have changed.
-  channelBasis       String?
+  channelBasis           String?
   /// Bespoke, independently of `channel`. A made-to-measure garment sold in a
   /// shop is both POS and CUSTOM, and `channel` holds one value; this keeps
   /// the other half of that fact without unnesting `tags` on every query.
-  isCustomised       Boolean             @default(false)
-  posLocationId      String?
-  posLocationName    String?
-  orderedAt          DateTime
-  financialStatus    String?
-  fulfillmentStatus  String?
-  status             ExternalOrderStatus @default(OPEN)
-  currency           String?
-  totalAmount        Decimal?            @db.Decimal(18, 2)
-  requiredByDate     DateTime?
-  customerRef        String?
-  note               String?
-  tags               String[]            @default([])
-  cancelledAt        DateTime?
+  isCustomised           Boolean             @default(false)
+  posLocationId          String?
+  posLocationName        String?
+  orderedAt              DateTime
+  financialStatus        String?
+  fulfillmentStatus      String?
+  status                 ExternalOrderStatus @default(OPEN)
+  currency               String?
+  totalAmount            Decimal?            @db.Decimal(18, 2)
+  requiredByDate         DateTime?
+  customerRef            String?
+  note                   String?
+  tags                   String[]            @default([])
+  cancelledAt            DateTime?
   /// Verbatim payload of the last import, for audit and replay.
-  rawPayload         Json?
+  rawPayload             Json?
   /// Shopify updated_at of the version we have processed, for stale-write guard.
-  externalUpdatedAt  DateTime?
+  externalUpdatedAt      DateTime?
   /// What Unicommerce last reported for this order (PROCESSING, COMPLETE,
   /// CANCELLED...). Unicommerce fulfils, so this is the shipping truth; it is
   /// matched by order number, the join both systems share.
-  externalShipmentStatus   String?
-  externalStatusSyncedAt   DateTime?
-  importedAt         DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  externalShipmentStatus String?
+  externalStatusSyncedAt DateTime?
+  importedAt             DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
 
   lines ShopifyOrderLine[]
 
@@ -2993,36 +2999,36 @@ model ShopifyOrder {
 }
 
 model ShopifyOrderLine {
-  id                  String                      @id @default(uuid()) @db.Uuid
-  organizationId      String                      @db.Uuid
-  shopifyOrderId      String                      @db.Uuid
+  id                    String                      @id @default(uuid()) @db.Uuid
+  organizationId        String                      @db.Uuid
+  shopifyOrderId        String                      @db.Uuid
   /// Shopify line item GID, preserved verbatim.
-  externalLineId      String
-  productVariantId    String?                     @db.Uuid
-  externalSku         String?
-  externalVariantId   String?
-  title               String?
-  size                String?
-  color               String?
-  orderedQty          Decimal                     @db.Decimal(18, 4)
-  cancelledQty        Decimal                     @default(0) @db.Decimal(18, 4)
-  fulfilledQty        Decimal                     @default(0) @db.Decimal(18, 4)
-  refundedQty         Decimal                     @default(0) @db.Decimal(18, 4)
+  externalLineId        String
+  productVariantId      String?                     @db.Uuid
+  externalSku           String?
+  externalVariantId     String?
+  title                 String?
+  size                  String?
+  color                 String?
+  orderedQty            Decimal                     @db.Decimal(18, 4)
+  cancelledQty          Decimal                     @default(0) @db.Decimal(18, 4)
+  fulfilledQty          Decimal                     @default(0) @db.Decimal(18, 4)
+  refundedQty           Decimal                     @default(0) @db.Decimal(18, 4)
   /// Result of the facility stock check. Availability != reservation.
-  availabilityStatus  InventoryAvailabilityStatus @default(PENDING_CHECK)
-  availableQty        Decimal                     @default(0) @db.Decimal(18, 4)
+  availabilityStatus    InventoryAvailabilityStatus @default(PENDING_CHECK)
+  availableQty          Decimal                     @default(0) @db.Decimal(18, 4)
   /// Quantity an external allocation/reservation call actually confirmed.
-  allocatedQty        Decimal                     @default(0) @db.Decimal(18, 4)
+  allocatedQty          Decimal                     @default(0) @db.Decimal(18, 4)
   /// orderedQty - cancelled - covered by confirmed stock.
-  manufacturingQty    Decimal                     @default(0) @db.Decimal(18, 4)
+  manufacturingQty      Decimal                     @default(0) @db.Decimal(18, 4)
   /// Timestamp of the snapshot the availability figures came from.
   availabilityCheckedAt DateTime?
-  availabilityError   String?
-  customization       Json?
-  priority            Priority                    @default(NORMAL)
-  rawPayload          Json?
-  createdAt           DateTime                    @default(now())
-  updatedAt           DateTime                    @updatedAt
+  availabilityError     String?
+  customization         Json?
+  priority              Priority                    @default(NORMAL)
+  rawPayload            Json?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
 
   shopifyOrder ShopifyOrder @relation(fields: [shopifyOrderId], references: [id], onDelete: Cascade)
 
@@ -3034,28 +3040,28 @@ model ShopifyOrderLine {
 }
 
 model UnicommercePurchaseOrder {
-  id                  String              @id @default(uuid()) @db.Uuid
-  organizationId      String              @db.Uuid
+  id                    String              @id @default(uuid()) @db.Uuid
+  organizationId        String              @db.Uuid
   /// Unicommerce purchase order code, preserved verbatim.
-  externalId          String
-  poNumber            String
-  poDate              DateTime
-  supplierName        String?
-  supplierCode        String?
-  destinationFacilityId String?           @db.Uuid
-  externalFacilityCode String?
-  status              ExternalOrderStatus @default(OPEN)
-  expectedDeliveryDate DateTime?
-  totalQty            Decimal             @default(0) @db.Decimal(18, 4)
-  receivedQty         Decimal             @default(0) @db.Decimal(18, 4)
-  pendingQty          Decimal             @default(0) @db.Decimal(18, 4)
+  externalId            String
+  poNumber              String
+  poDate                DateTime
+  supplierName          String?
+  supplierCode          String?
+  destinationFacilityId String?             @db.Uuid
+  externalFacilityCode  String?
+  status                ExternalOrderStatus @default(OPEN)
+  expectedDeliveryDate  DateTime?
+  totalQty              Decimal             @default(0) @db.Decimal(18, 4)
+  receivedQty           Decimal             @default(0) @db.Decimal(18, 4)
+  pendingQty            Decimal             @default(0) @db.Decimal(18, 4)
   /// Amendment counter from the external document, used for stale-write guard.
-  externalVersion     String?
-  rawPayload          Json?
-  importedAt          DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  externalVersion       String?
+  rawPayload            Json?
+  importedAt            DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
-  destinationFacility ExternalFacility?            @relation(fields: [destinationFacilityId], references: [id])
+  destinationFacility ExternalFacility?              @relation(fields: [destinationFacilityId], references: [id])
   lines               UnicommercePurchaseOrderLine[]
 
   @@unique([organizationId, externalId])
@@ -3064,25 +3070,25 @@ model UnicommercePurchaseOrder {
 }
 
 model UnicommercePurchaseOrderLine {
-  id                   String   @id @default(uuid()) @db.Uuid
-  organizationId       String   @db.Uuid
-  unicommercePoId      String   @db.Uuid
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @db.Uuid
+  unicommercePoId      String    @db.Uuid
   /// External line identifier, preserved verbatim.
   externalLineId       String
-  productVariantId     String?  @db.Uuid
+  productVariantId     String?   @db.Uuid
   externalSku          String?
   itemName             String?
   size                 String?
   color                String?
-  orderedQty           Decimal  @db.Decimal(18, 4)
-  receivedQty          Decimal  @default(0) @db.Decimal(18, 4)
-  pendingQty           Decimal  @default(0) @db.Decimal(18, 4)
-  cancelledQty         Decimal  @default(0) @db.Decimal(18, 4)
-  manufacturingQty     Decimal  @default(0) @db.Decimal(18, 4)
+  orderedQty           Decimal   @db.Decimal(18, 4)
+  receivedQty          Decimal   @default(0) @db.Decimal(18, 4)
+  pendingQty           Decimal   @default(0) @db.Decimal(18, 4)
+  cancelledQty         Decimal   @default(0) @db.Decimal(18, 4)
+  manufacturingQty     Decimal   @default(0) @db.Decimal(18, 4)
   expectedDeliveryDate DateTime?
   rawPayload           Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   unicommercePo UnicommercePurchaseOrder @relation(fields: [unicommercePoId], references: [id], onDelete: Cascade)
 
@@ -3150,25 +3156,25 @@ model DemandForecast {
 }
 
 model ReplenishmentSuggestion {
-  id                 String   @id @default(uuid()) @db.Uuid
-  organizationId     String   @db.Uuid
-  productVariantId   String   @db.Uuid
-  externalFacilityId String?  @db.Uuid
-  demandForecastId   String?  @db.Uuid
-  availableQty       Decimal  @default(0) @db.Decimal(18, 4)
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @db.Uuid
+  productVariantId     String    @db.Uuid
+  externalFacilityId   String?   @db.Uuid
+  demandForecastId     String?   @db.Uuid
+  availableQty         Decimal   @default(0) @db.Decimal(18, 4)
   /// Already-confirmed incoming quantity (open MOs and confirmed transfers).
-  incomingQty        Decimal  @default(0) @db.Decimal(18, 4)
-  leadTimeDays       Int      @default(0)
+  incomingQty          Decimal   @default(0) @db.Decimal(18, 4)
+  leadTimeDays         Int       @default(0)
   /// Expected demand over the lead-time horizon.
-  leadTimeDemandQty  Decimal  @default(0) @db.Decimal(18, 4)
-  safetyStockQty     Decimal  @default(0) @db.Decimal(18, 4)
-  suggestedQty       Decimal  @db.Decimal(18, 4)
-  rationale          String?
-  status             String   @default("OPEN")
-  actionedByUserId   String?  @db.Uuid
-  actionedAt         DateTime?
-  manufacturingOrderId String? @db.Uuid
-  createdAt          DateTime @default(now())
+  leadTimeDemandQty    Decimal   @default(0) @db.Decimal(18, 4)
+  safetyStockQty       Decimal   @default(0) @db.Decimal(18, 4)
+  suggestedQty         Decimal   @db.Decimal(18, 4)
+  rationale            String?
+  status               String    @default("OPEN")
+  actionedByUserId     String?   @db.Uuid
+  actionedAt           DateTime?
+  manufacturingOrderId String?   @db.Uuid
+  createdAt            DateTime  @default(now())
 
   externalFacility ExternalFacility? @relation(fields: [externalFacilityId], references: [id])
 
@@ -3182,26 +3188,26 @@ model ReplenishmentSuggestion {
 // =============================================================================
 
 model AlertRule {
-  id             String        @id @default(uuid()) @db.Uuid
-  organizationId String        @db.Uuid
-  code           String
-  name           String
+  id               String                @id @default(uuid()) @db.Uuid
+  organizationId   String                @db.Uuid
+  code             String
+  name             String
   /// LOW_STOCK / REORDER_POINT / ROLL_SHORTAGE / BOM_SHORTAGE /
   /// PRODUCTION_DELAY / PO_OVERDUE / JOB_WORKER_DELAY / QC_HOLD /
   /// HIGH_WASTAGE / SYNC_FAILED / RECONCILIATION_VARIANCE
-  alertType      String
-  severity       AlertSeverity @default(WARNING)
+  alertType        String
+  severity         AlertSeverity         @default(WARNING)
   /// Rule parameters, e.g. { "thresholdPct": 20, "graceDays": 2 }
-  conditions     Json          @default("{}")
-  channels       NotificationChannel[]
+  conditions       Json                  @default("{}")
+  channels         NotificationChannel[]
   /// Recipients by role code; resolved to users at send time.
-  recipientRoles String[]      @default([])
-  recipientUserIds String[]    @default([])
+  recipientRoles   String[]              @default([])
+  recipientUserIds String[]              @default([])
   /// Minimum minutes between two notifications for the same dedupe key.
-  cooldownMinutes Int          @default(1440)
-  isEnabled      Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  cooldownMinutes  Int                   @default(1440)
+  isEnabled        Boolean               @default(true)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   notifications Notification[]
 
@@ -3211,27 +3217,27 @@ model AlertRule {
 }
 
 model Notification {
-  id             String              @id @default(uuid()) @db.Uuid
-  organizationId String              @db.Uuid
-  alertRuleId    String?             @db.Uuid
-  channel        NotificationChannel @default(IN_APP)
-  severity       AlertSeverity       @default(INFO)
-  title          String
-  body           String
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @db.Uuid
+  alertRuleId      String?             @db.Uuid
+  channel          NotificationChannel @default(IN_APP)
+  severity         AlertSeverity       @default(INFO)
+  title            String
+  body             String
   /// Stable key over (rule, subject, bucket). Unique, so the same alert is not
   /// delivered twice within its cooldown window.
-  dedupeKey      String
-  recipientUserId String?            @db.Uuid
+  dedupeKey        String
+  recipientUserId  String?             @db.Uuid
   recipientAddress String?
-  entityType     String?
-  entityId       String?
-  actionUrl      String?
-  status         NotificationStatus  @default(QUEUED)
-  sentAt         DateTime?
-  readAt         DateTime?
-  failureReason  String?
-  payload        Json?
-  createdAt      DateTime            @default(now())
+  entityType       String?
+  entityId         String?
+  actionUrl        String?
+  status           NotificationStatus  @default(QUEUED)
+  sentAt           DateTime?
+  readAt           DateTime?
+  failureReason    String?
+  payload          Json?
+  createdAt        DateTime            @default(now())
 
   alertRule AlertRule? @relation(fields: [alertRuleId], references: [id])
 
@@ -3270,23 +3276,23 @@ model ApprovalRule {
 }
 
 model ApprovalRequest {
-  id              String         @id @default(uuid()) @db.Uuid
-  organizationId  String         @db.Uuid
-  approvalRuleId  String?        @db.Uuid
-  subjectType     String
-  subjectId       String         @db.Uuid
-  subjectRef      String?
+  id                String         @id @default(uuid()) @db.Uuid
+  organizationId    String         @db.Uuid
+  approvalRuleId    String?        @db.Uuid
+  subjectType       String
+  subjectId         String         @db.Uuid
+  subjectRef        String?
   /// Snapshot of what is being approved, so the approver sees the exact state.
-  requestPayload  Json           @default("{}")
-  reason          String?
-  status          ApprovalStatus @default(PENDING)
-  requestedByUserId String?      @db.Uuid
-  decidedByUserId String?        @db.Uuid
-  decidedAt       DateTime?
-  decisionNote    String?
-  expiresAt       DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  requestPayload    Json           @default("{}")
+  reason            String?
+  status            ApprovalStatus @default(PENDING)
+  requestedByUserId String?        @db.Uuid
+  decidedByUserId   String?        @db.Uuid
+  decidedAt         DateTime?
+  decisionNote      String?
+  expiresAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   approvalRule ApprovalRule? @relation(fields: [approvalRuleId], references: [id])
 
@@ -3300,19 +3306,19 @@ model ApprovalRequest {
 // =============================================================================
 
 model DocumentAttachment {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @db.Uuid
-  entityType     String
-  entityId       String   @db.Uuid
-  category       String?
-  fileName       String
-  contentType    String
-  byteSize       Int
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  entityType       String
+  entityId         String   @db.Uuid
+  category         String?
+  fileName         String
+  contentType      String
+  byteSize         Int
   /// Object-storage key. Binary content never lives in the database.
-  storageKey     String
-  checksumSha256 String?
-  uploadedByUserId String? @db.Uuid
-  createdAt      DateTime @default(now())
+  storageKey       String
+  checksumSha256   String?
+  uploadedByUserId String?  @db.Uuid
+  createdAt        DateTime @default(now())
 
   @@index([organizationId, entityType, entityId])
   @@map("document_attachments")

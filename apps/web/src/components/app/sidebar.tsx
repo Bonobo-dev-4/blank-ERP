@@ -9,6 +9,7 @@ import { NAVIGATION, type NavItem } from '@dnd/contracts';
 import { cn } from '@/lib/utils';
 import { GlassTooltip } from '@/components/ui/tooltip';
 import { useAuth } from './auth-context';
+import { BrandMark } from './brand-mark';
 
 function Icon({ name, className }: { name: string; className?: string }) {
   const Cmp = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name];
@@ -132,9 +133,9 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
           href="/"
           onClick={onNavigate}
           aria-label="DASH AND DOT — dashboard"
-          className="grid size-8 shrink-0 place-items-center rounded-lg bg-ink text-[11px] font-bold tracking-tighter text-canvas"
+          className="shrink-0 rounded-lg"
         >
-          D·D
+          <BrandMark size={32} />
         </Link>
         {!collapsed ? (
           <div className="min-w-0 leading-tight">
