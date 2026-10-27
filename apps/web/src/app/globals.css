@@ -25,71 +25,74 @@
   --font-mono: var(--font-mono-face), ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
 
   /*
-   * Daylight on linen.
+   * Liquid glass, in greys.
    *
-   * A warm off-white ground rather than a cool one: this is a fashion house,
-   * and every surface it cares about is cloth. Pure grey would read as
-   * software; the warmth reads as a studio with the blinds open.
+   * The ground is a true mid-grey — not off-white. That is the whole trick:
+   * frosted panes only read as glass when the surface behind them is
+   * meaningfully darker, and an earlier pass that used a near-white ground
+   * looked washed out rather than layered. Mid-grey under bright panes gives
+   * depth AND contrast at the same time, which is what the brief asks for in
+   * the same breath.
    */
-  --color-canvas: oklch(0.86 0.022 72);
+  --color-canvas: oklch(0.775 0 0);
 
-  /* Frosted linen. White at partial alpha so it picks up the ground. */
-  --color-surface: oklch(1 0 0 / 0.78);
+  /* Frosted panes. Bright, so type on them is near-black on near-white. */
+  --color-surface: oklch(1 0 0 / 0.8);
   --color-surface-muted: oklch(1 0 0 / 0.5);
 
-  --color-line: oklch(0.3 0.01 85 / 0.1);
-  --color-line-strong: oklch(0.3 0.01 85 / 0.26);
+  --color-line: oklch(0.32 0 0 / 0.1);
+  --color-line-strong: oklch(0.32 0 0 / 0.28);
 
-  /* Warm dark text. Never pure black — it looks like a hole on this ground. */
-  --color-ink: oklch(0.24 0.008 75);
-  --color-ink-muted: oklch(0.48 0.008 75);
-  --color-ink-subtle: oklch(0.62 0.008 75);
+  /* Type. Near-black on bright glass: contrast is a requirement here. */
+  --color-ink: oklch(0.2 0 0);
+  --color-ink-muted: oklch(0.44 0 0);
+  --color-ink-subtle: oklch(0.58 0 0);
 
-  /* The rail: deep and warm, so the page reads as lit and it does not. */
-  --color-rail: oklch(0.23 0.012 75);
+  /* The rail: graphite, so the page reads as lit and it does not. */
+  --color-rail: oklch(0.26 0 0);
   --color-rail-hover: oklch(1 0 0 / 0.1);
   --color-rail-active: oklch(1 0 0);
-  --color-rail-ink: oklch(0.9 0.004 85);
-  --color-rail-ink-muted: oklch(0.63 0.006 85);
+  --color-rail-ink: oklch(0.92 0 0);
+  --color-rail-ink-muted: oklch(0.65 0 0);
 
   /*
-   * Jade. The one accent, and the whole reason the system has colour again.
-   *
-   * Deeper than the mint in the reference on purpose: a bright mint cannot
-   * hold white text, and this fills solid cards and buttons that must. It
-   * passes AA on white at 4.9:1 and carries white type at 5.6:1.
+   * No accent colour. The strongest mark available is graphite, so that is
+   * what "brand" means — solid fills, active states, the emphasised series on
+   * a chart.
    */
-  --color-brand: oklch(0.47 0.1 168);
-  --color-brand-strong: oklch(0.4 0.1 168);
-  --color-brand-soft: oklch(0.47 0.1 168 / 0.12);
+  --color-brand: oklch(0.24 0 0);
+  --color-brand-strong: oklch(0.16 0 0);
+  --color-brand-soft: oklch(0.32 0 0 / 0.1);
 
   /*
-   * Semantics. Jade means good, warm clay means wrong, amber means waiting —
-   * but every state still carries a WORD, so none of them depends on hue
-   * alone. That rule survived the repaint and should keep surviving it.
+   * Semantics, in greys. Severity is carried by FILL and by a WORD — a solid
+   * graphite chip demands action, an outlined one waits, a quiet grey one is
+   * normal. That rule has survived three repaints now and is the reason
+   * losing hue costs nothing in legibility.
    */
-  --color-ok: oklch(0.47 0.1 168);
-  --color-ok-soft: oklch(0.47 0.1 168 / 0.12);
-  --color-warn: oklch(0.52 0.1 70);
-  --color-warn-soft: oklch(0.52 0.1 70 / 0.14);
-  --color-danger: oklch(0.5 0.14 28);
-  --color-danger-soft: oklch(0.5 0.14 28 / 0.12);
-  --color-info: oklch(0.48 0.008 75);
-  --color-info-soft: oklch(1 0 0 / 0.5);
-  --color-neutral-soft: oklch(1 0 0 / 0.5);
+  --color-ok: oklch(0.44 0 0);
+  --color-ok-soft: oklch(1 0 0 / 0.55);
+  --color-warn: oklch(0.2 0 0);
+  --color-warn-soft: oklch(0.32 0 0 / 0.1);
+  --color-danger: oklch(0.2 0 0);
+  --color-danger-soft: oklch(0.32 0 0 / 0.16);
+  --color-info: oklch(0.44 0 0);
+  --color-info-soft: oklch(1 0 0 / 0.55);
+  --color-neutral-soft: oklch(1 0 0 / 0.55);
 
-  /* The production strip: solid jade, the one surface that is not glass. */
-  --color-vat: oklch(0.47 0.1 168);
-  --color-vat-deep: oklch(0.4 0.1 168);
+  /* The production strip: solid graphite, the one surface that is not glass. */
+  --color-vat: oklch(0.22 0 0);
+  --color-vat-deep: oklch(0.14 0 0);
   --color-vat-line: oklch(1 0 0 / 0.3);
-  --color-chalk: oklch(0.99 0.004 160);
-  --color-chalk-muted: oklch(0.88 0.03 168);
+  --color-chalk: oklch(0.985 0 0);
+  --color-chalk-muted: oklch(0.72 0 0);
   --color-zari: oklch(1 0 0);
-  --color-madder: oklch(0.86 0.04 60);
+  --color-madder: oklch(0.78 0 0);
 
-  --radius-sm: 0.5rem;
-  --radius: 0.875rem;
-  --radius-lg: 1.25rem;
+  /* Soft edges, per the brief. Nothing in this interface is sharp. */
+  --radius-sm: 0.625rem;
+  --radius: 1rem;
+  --radius-lg: 1.375rem;
 }
 
 * { border-color: var(--color-line); }
@@ -105,13 +108,12 @@ html, body {
 }
 
 /*
- * The ground the glass refracts.
+ * Soft ambient lighting.
  *
- * The reference puts a blurred photograph back here. A stock photo in a
- * factory tool would be decoration someone has to look past eight hours a
- * day, and a full-bleed image is a download and a paint on every tablet. So
- * this is four soft pools of warm light instead — sand, clay and a wash of
- * jade — fixed so they do not scroll. Same job, none of the cost.
+ * Four pools of light and one shadow, fixed so they do not scroll. Without
+ * variation behind it, frosted glass has nothing to refract and the blur is
+ * pure cost — this is what makes the panes look lit from somewhere rather
+ * than merely pale.
  */
 body::before {
   content: '';
@@ -120,11 +122,11 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(1200px 760px at 6% -10%, oklch(0.95 0.045 88 / 0.95), transparent 58%),
-    radial-gradient(1000px 720px at 96% -4%, oklch(0.78 0.07 42 / 0.75), transparent 58%),
-    radial-gradient(900px 900px at 78% 104%, oklch(0.52 0.09 168 / 0.3), transparent 60%),
-    radial-gradient(820px 620px at 18% 106%, oklch(0.66 0.07 52 / 0.45), transparent 58%),
-    linear-gradient(168deg, oklch(0.9 0.025 80) 0%, oklch(0.82 0.03 58) 100%);
+    radial-gradient(1200px 820px at 10% -12%, oklch(1 0 0 / 0.62), transparent 58%),
+    radial-gradient(1000px 760px at 94% -6%, oklch(1 0 0 / 0.42), transparent 56%),
+    radial-gradient(900px 900px at 80% 106%, oklch(0.38 0 0 / 0.2), transparent 58%),
+    radial-gradient(760px 620px at 14% 104%, oklch(1 0 0 / 0.3), transparent 56%),
+    linear-gradient(165deg, oklch(0.83 0 0) 0%, oklch(0.73 0 0) 100%);
 }
 
 /* ---------------------------------------------------------------------------
@@ -133,25 +135,24 @@ body::before {
 
 .glass {
   background: var(--color-surface);
-  backdrop-filter: blur(24px) saturate(165%);
-  -webkit-backdrop-filter: blur(24px) saturate(165%);
-  border: 1px solid oklch(1 0 0 / 0.65);
-  /*
-   * Lit from above and dropping a soft warm shadow. Glass without a lit edge
-   * reads as a flat translucent rectangle; the highlight sells the material.
-   */
+  backdrop-filter: blur(28px) saturate(135%);
+  -webkit-backdrop-filter: blur(28px) saturate(135%);
+  /* A bright rim, brightest along the top edge where the light falls. */
+  border: 1px solid oklch(1 0 0 / 0.7);
   box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.9),
-    0 1px 2px oklch(0.28 0.03 60 / 0.1),
-    0 18px 40px -16px oklch(0.28 0.03 60 / 0.3);
+    inset 0 1px 0 0 oklch(1 0 0 / 0.95),
+    inset 0 -1px 0 0 oklch(1 0 0 / 0.3),
+    0 1px 2px oklch(0.2 0 0 / 0.1),
+    0 20px 44px -18px oklch(0.2 0 0 / 0.34);
 }
 
-/* For controls that sit ON glass and must not dissolve into it. */
+/* Controls that sit ON glass and must not dissolve into it. */
 .glass-raised {
-  background: oklch(1 0 0 / 0.82);
-  backdrop-filter: blur(28px) saturate(165%);
-  -webkit-backdrop-filter: blur(28px) saturate(165%);
-  border: 1px solid oklch(1 0 0 / 0.9);
+  background: oklch(1 0 0 / 0.86);
+  backdrop-filter: blur(30px) saturate(135%);
+  -webkit-backdrop-filter: blur(30px) saturate(135%);
+  border: 1px solid oklch(1 0 0 / 0.92);
+  box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.9), 0 2px 8px -2px oklch(0.2 0 0 / 0.16);
 }
 
 /*
@@ -159,42 +160,37 @@ body::before {
  * has to be sharp, and blurred text behind blurred text is neither.
  */
 .glass-solid {
-  background: oklch(1 0 0 / 0.93);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: oklch(1 0 0 / 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--color-line);
 }
 
 /*
  * The one card that is NOT glass.
  *
- * Taken from the reference, where a single solid emerald card sits among the
- * frosted ones. Reserved for the single figure that matters most on a screen —
- * on the dashboard, what is on the floor right now. Use it twice and it stops
- * meaning anything.
+ * In a system made entirely of translucency, the loudest thing available is
+ * something solid. Reserved for the single figure that matters most on a
+ * screen. Use it twice and it stops meaning anything.
+ *
+ * The weave and the gradient are declared together: they were once split
+ * between this class and an inline style, and the inline image silently
+ * replaced the gradient, leaving white text on a transparent card.
  */
 .solid-accent {
-  /*
-   * The weave and the gradient are BOTH declared here, layered.
-   *
-   * They used to be split — gradient in this class, weave as an inline
-   * `backgroundImage` on the element — and the inline image silently replaced
-   * the gradient, leaving white text on a transparent card. Anything that
-   * paints this surface has to be in one declaration.
-   */
-  background-color: oklch(0.47 0.1 168);
+  background-color: oklch(0.22 0 0);
   background-image:
-    repeating-linear-gradient(45deg, oklch(1 0 0 / 0.05) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(-45deg, oklch(1 0 0 / 0.04) 0 1px, transparent 1px 3px),
-    linear-gradient(152deg, oklch(0.53 0.1 168) 0%, oklch(0.42 0.1 168) 100%);
-  color: oklch(0.99 0.004 160);
-  border: 1px solid oklch(0.58 0.1 168);
+    repeating-linear-gradient(45deg, oklch(1 0 0 / 0.045) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, oklch(1 0 0 / 0.035) 0 1px, transparent 1px 3px),
+    linear-gradient(152deg, oklch(0.28 0 0) 0%, oklch(0.16 0 0) 100%);
+  color: oklch(0.985 0 0);
+  border: 1px solid oklch(0.36 0 0);
   box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.22),
-    0 12px 32px -12px oklch(0.47 0.1 168 / 0.5);
+    inset 0 1px 0 0 oklch(1 0 0 / 0.14),
+    0 20px 44px -18px oklch(0.2 0 0 / 0.55);
 }
 .solid-accent .text-ink-muted,
-.solid-accent .text-ink-subtle { color: oklch(0.9 0.03 168) !important; }
+.solid-accent .text-ink-subtle { color: oklch(0.74 0 0) !important; }
 
 /*
  * Fallbacks. Where blur is unavailable the panes go opaque rather than
@@ -202,7 +198,7 @@ body::before {
  */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass, .glass-raised, .glass-solid {
-    background: oklch(0.99 0.004 85);
+    background: oklch(0.985 0 0);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -210,7 +206,7 @@ body::before {
 
 @media (prefers-reduced-transparency: reduce) {
   .glass, .glass-raised, .glass-solid {
-    background: oklch(0.995 0.003 85);
+    background: oklch(0.985 0 0);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -234,16 +230,16 @@ body::before {
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.3 0.01 85 / 0.22);
+  background: oklch(0.32 0 0 / 0.3);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
-::-webkit-scrollbar-thumb:hover { background: oklch(0.3 0.01 85 / 0.38); background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.32 0 0 / 0.45); background-clip: content-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -268,11 +264,11 @@ body::before {
  * sits beside a word.
  * ------------------------------------------------------------------------ */
 
-/* Needs action now. */
+/* Needs action now. The strongest mark here is solid graphite. */
 .sev-critical {
-  background: var(--color-danger);
+  background: var(--color-ink);
   color: oklch(0.99 0 0);
-  border-color: var(--color-danger);
+  border-color: var(--color-ink);
 }
 
 /* Waiting on someone. Present, not shouting. */
@@ -292,7 +288,7 @@ body::before {
 }
 
 /* A row that needs attention earns a rule, not a tint. */
-.row-flag { box-shadow: inset 2px 0 0 0 var(--color-danger); }
+.row-flag { box-shadow: inset 2px 0 0 0 var(--color-ink); }
 
 /* Quantity lost. Struck, because the palette has no red to spend. */
 .struck {
@@ -354,7 +350,7 @@ body::before {
 
 .slab {
   position: absolute;
-  background: var(--color-brand);
+  background: var(--color-ink);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
               width 260ms cubic-bezier(0.22, 1, 0.36, 1),
               height 260ms cubic-bezier(0.22, 1, 0.36, 1);

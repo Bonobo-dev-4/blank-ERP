@@ -125,7 +125,7 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
         aria-label="Sections"
         className="flex w-[58px] shrink-0 flex-col items-center gap-1 bg-rail py-2.5"
       >
-        <div className="mb-1.5 grid size-9 place-items-center rounded-xl bg-brand text-[11px] font-bold tracking-tighter text-white">
+        <div className="mb-1.5 grid size-9 place-items-center rounded-xl bg-white text-[11px] font-bold tracking-tighter text-rail">
           D·D
         </div>
 
@@ -305,7 +305,7 @@ function NavLink({
       title={item.description}
       className={cn(
         shared,
-        active ? 'bg-brand font-medium text-white' : 'text-rail-ink hover:bg-white/8 hover:text-white',
+        active ? 'bg-white/16 font-semibold text-white' : 'text-rail-ink hover:bg-white/8 hover:text-white',
       )}
     >
       {body}
