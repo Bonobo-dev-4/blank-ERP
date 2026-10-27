@@ -11,6 +11,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, ErrorPanel, Field, Input, LoadingBlock,
   NativeSelect, PageHeader, StatusBadge,
 } from '@/components/ui/primitives';
+import { CsvImportButton } from '@/components/app/csv-import';
 import { CodeCell } from '@/components/ui/data-table';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '@/components/app/auth-context';
@@ -54,12 +55,15 @@ export default function LocationsPage() {
         title="Stock Locations"
         description="Warehouse, room, rack, bin and department floors, plus the virtual counter-accounts that make the ledger balance to zero."
         actions={
-          can('admin.manage_locations') ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvImportButton type="locations" invalidate={['locations']} />
+            {can('admin.manage_locations') ? (
             <Button variant="primary" onClick={() => setCreating(true)}>
               <Plus />
               New location
             </Button>
-          ) : null
+            ) : null}
+          </div>
         }
       />
 

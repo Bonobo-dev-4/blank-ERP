@@ -9,6 +9,7 @@ import { createSupplierRequest } from '@dnd/contracts';
 import { api, ApiError } from '@/lib/api';
 import { useListQuery, useListState, paginationProps } from '@/lib/hooks';
 import { Button, ErrorPanel, Field, Input, PageHeader, QtyInput, StatusBadge, Textarea } from '@/components/ui/primitives';
+import { CsvImportButton } from '@/components/app/csv-import';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '@/components/app/auth-context';
@@ -71,12 +72,15 @@ export default function SuppliersPage() {
         title="Vendor Management"
         description="Raw material suppliers. Lead time feeds the MRP arrival estimates, so keeping it accurate is what makes shortage warnings trustworthy."
         actions={
-          can('purchasing.manage_suppliers') ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvImportButton type="suppliers" invalidate={['suppliers']} />
+            {can('purchasing.manage_suppliers') ? (
             <Button variant="primary" onClick={() => setCreating(true)}>
               <Plus />
               New supplier
             </Button>
-          ) : null
+            ) : null}
+          </div>
         }
       />
       {error ? <ErrorPanel error={error} onRetry={() => void refetch()} className="mb-3" /> : null}

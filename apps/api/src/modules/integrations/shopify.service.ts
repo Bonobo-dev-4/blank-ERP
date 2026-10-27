@@ -492,14 +492,32 @@ export class ShopifyService {
           orderCancelled: cancelled,
         });
 
-        // Map to an internal SKU where one exists. Where it does not, the
-        // line is still stored — it just cannot become demand yet.
-        const mapping = sku
+        // Map to an internal SKU where one exists. Where it does not, an
+        // explicit mapping still links it — by Shopify variant id first, then
+        // by a mapped SKU. Otherwise the line is stored but cannot become
+        // demand yet.
+        let mapping = sku
           ? await tx.productVariant.findFirst({
               where: { organizationId, sku },
               select: { id: true, size: true, color: true },
             })
           : null;
+        if (!mapping && (line.variant?.id || sku)) {
+          const linked = await tx.externalProductMapping.findFirst({
+            where: {
+              organizationId,
+              provider: 'SHOPIFY',
+              OR: [
+                ...(line.variant?.id ? [{ identifierKind: 'VARIANT_GID', externalId: line.variant.id }] : []),
+                ...(sku ? [{ identifierKind: 'VARIANT_SKU', externalId: sku }] : []),
+              ],
+            },
+            // VARIANT_GID sorts before VARIANT_SKU: the id is the stronger link.
+            orderBy: [{ identifierKind: 'asc' }, { isPrimary: 'desc' }],
+            select: { productVariant: { select: { id: true, size: true, color: true } } },
+          });
+          mapping = linked?.productVariant ?? null;
+        }
         if (sku && !mapping) unmappedSkus.add(sku);
 
         const lineData = {

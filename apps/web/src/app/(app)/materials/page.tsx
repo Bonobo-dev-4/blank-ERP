@@ -8,6 +8,7 @@ import { MATERIAL_CATEGORIES, RECORD_STATUSES } from '@dnd/contracts';
 import { useListQuery, useListState, paginationProps } from '@/lib/hooks';
 import { fmtMoney, fmtQty, humanise, uomShort } from '@/lib/utils';
 import { Button, ErrorPanel, NativeSelect, PageHeader, StatusBadge } from '@/components/ui/primitives';
+import { CsvImportButton } from '@/components/app/csv-import';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { useAuth } from '@/components/app/auth-context';
 import { MaterialFormDialog } from './material-form';
@@ -137,12 +138,15 @@ export default function MaterialsPage() {
         title="Raw Material Master"
         description="Every material, with the live stock position from the ledger. Available excludes stock reserved, in QC hold, or already issued to production."
         actions={
-          can('materials.write') ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvImportButton type="raw-materials" invalidate={['materials']} />
+            {can('materials.write') ? (
             <Button variant="primary" onClick={() => setCreating(true)}>
               <Plus />
               New material
             </Button>
-          ) : null
+            ) : null}
+          </div>
         }
       />
 

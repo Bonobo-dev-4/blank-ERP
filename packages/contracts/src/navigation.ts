@@ -155,6 +155,8 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Integrations', href: '/admin/integrations', icon: 'Plug', permission: 'admin.manage_integrations', status: 'BUILT', phase: 4,
         description: 'Connection status and contracts; live connectors land in phase 4' },
       { label: 'Settings', href: '/admin/settings', icon: 'Settings', permission: 'admin.manage_settings', status: 'BUILT', phase: 1 },
+      { label: 'Data Import', href: '/admin/imports', icon: 'FileUp', status: 'BUILT', phase: 6,
+        description: 'Create and edit records in bulk from CSV — materials, suppliers, locations, products, mappings, stock adjustments' },
       { label: 'Audit Logs', href: '/admin/audit', icon: 'ScrollText', permission: 'admin.view_audit_log', status: 'BUILT', phase: 1 },
     ],
   },

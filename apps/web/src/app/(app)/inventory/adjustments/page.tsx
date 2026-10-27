@@ -11,6 +11,7 @@ import { fmtDateTime, fmtQty, newIdempotencyKey, uomShort } from '@/lib/utils';
 import {
   Badge, Button, Card, CardBody, ErrorPanel, Field, NativeSelect, PageHeader, QtyInput, Textarea,
 } from '@/components/ui/primitives';
+import { CsvImportButton } from '@/components/app/csv-import';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '@/components/app/auth-context';
@@ -90,12 +91,15 @@ export default function AdjustmentsPage() {
         title="Stock Adjustments"
         description="Corrections posted against the adjustment counter-account. Every one is a normal ledger movement with a mandatory reason, so a correction is as visible and as reversible as any other stock change."
         actions={
-          can('inventory.adjust') ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvImportButton type="stock-adjustments" invalidate={['adj-in', 'adj-out', 'materials']} />
+            {can('inventory.adjust') ? (
             <Button variant="elevated" onClick={() => setOpen(true)}>
               <SlidersHorizontal />
               New adjustment
             </Button>
-          ) : null
+            ) : null}
+          </div>
         }
       />
 

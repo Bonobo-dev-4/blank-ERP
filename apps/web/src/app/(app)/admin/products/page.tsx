@@ -12,6 +12,7 @@ import { humanise } from '@/lib/utils';
 import {
   Badge, Button, ErrorPanel, Field, Input, NativeSelect, PageHeader, StatusBadge, Textarea,
 } from '@/components/ui/primitives';
+import { CsvImportButton } from '@/components/app/csv-import';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
@@ -88,12 +89,15 @@ export default function ProductsPage() {
         title="Product Master"
         description="Styles and their SKUs. One canonical SKU per variant, with Shopify and Unicommerce identifiers held as mappings - which is what stops the same SKU arriving from two systems creating two products."
         actions={
-          can('products.write') ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvImportButton type="products" invalidate={['products']} />
+            {can('products.write') ? (
             <Button variant="primary" onClick={() => setCreating(true)}>
               <Plus />
               New style
             </Button>
-          ) : null
+            ) : null}
+          </div>
         }
       />
       {error ? <ErrorPanel error={error} onRetry={() => void refetch()} className="mb-3" /> : null}

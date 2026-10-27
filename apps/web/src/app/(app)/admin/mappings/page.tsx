@@ -13,6 +13,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, ErrorPanel, Field, Input, NativeSelect,
   PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { CsvImportButton } from '@/components/app/csv-import';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '@/components/app/auth-context';
@@ -121,6 +122,7 @@ export default function MappingsPage() {
       <PageHeader
         title="SKU Mappings"
         description="External identifiers for each canonical SKU. An unmapped SKU cannot take part in an order import or an inventory push, so these gaps are blockers rather than cosmetic."
+        actions={<CsvImportButton type="product-mappings" invalidate={['mapping-issues', 'shopify-orders', 'demand']} label="Import mappings" />}
       />
 
       {issues ? (

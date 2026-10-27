@@ -333,22 +333,44 @@ export class ShopifyProductService {
    */
   async relinkOrderLines(organizationId: string) {
     const unmapped = await this.prisma.shopifyOrderLine.findMany({
-      where: { organizationId, productVariantId: null, externalSku: { not: null } },
-      select: { id: true, externalSku: true, orderedQty: true, cancelledQty: true, fulfilledQty: true },
+      where: {
+        organizationId, productVariantId: null,
+        OR: [{ externalSku: { not: null } }, { externalVariantId: { not: null } }],
+      },
+      select: { id: true, externalSku: true, externalVariantId: true, orderedQty: true, cancelledQty: true, fulfilledQty: true },
       take: 5000,
     });
     if (unmapped.length === 0) return { scanned: 0, linked: 0, stillUnmapped: 0 };
 
-    const skus = [...new Set(unmapped.map((l) => l.externalSku as string))];
-    const variants = await this.prisma.productVariant.findMany({
-      where: { organizationId, sku: { in: skus } },
-      select: { id: true, sku: true },
-    });
+    const skus = [...new Set(unmapped.map((l) => l.externalSku).filter((s): s is string => !!s))];
+    const gids = [...new Set(unmapped.map((l) => l.externalVariantId).filter((s): s is string => !!s))];
+    const [variants, mappings] = await Promise.all([
+      this.prisma.productVariant.findMany({
+        where: { organizationId, sku: { in: skus } },
+        select: { id: true, sku: true },
+      }),
+      // Explicit mappings — uploaded or made on screen — for what SKU equality misses.
+      this.prisma.externalProductMapping.findMany({
+        where: {
+          organizationId, provider: 'SHOPIFY',
+          OR: [
+            { identifierKind: 'VARIANT_GID', externalId: { in: gids } },
+            { identifierKind: 'VARIANT_SKU', externalId: { in: skus } },
+          ],
+        },
+        select: { identifierKind: true, externalId: true, productVariantId: true },
+      }),
+    ]);
     const bySku = new Map(variants.map((v) => [v.sku, v.id] as const));
+    const byGid = new Map(mappings.filter((m) => m.identifierKind === 'VARIANT_GID').map((m) => [m.externalId, m.productVariantId] as const));
+    const byMappedSku = new Map(mappings.filter((m) => m.identifierKind === 'VARIANT_SKU').map((m) => [m.externalId, m.productVariantId] as const));
 
     let linked = 0;
     for (const line of unmapped) {
-      const variantId = bySku.get(line.externalSku as string);
+      const variantId =
+        (line.externalSku ? bySku.get(line.externalSku) : undefined) ??
+        (line.externalVariantId ? byGid.get(line.externalVariantId) : undefined) ??
+        (line.externalSku ? byMappedSku.get(line.externalSku) : undefined);
       if (!variantId) continue;
       await this.prisma.shopifyOrderLine.update({
         where: { id: line.id },
