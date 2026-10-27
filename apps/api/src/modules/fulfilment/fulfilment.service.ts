@@ -98,7 +98,11 @@ export class FulfilmentService {
         productVariant: {
           select: { id: true, sku: true, size: true, color: true, product: { select: { name: true } } },
         },
-        sourceMappings: { select: { sourceDocNo: true }, take: 1 },
+        sourceMappings: {
+          select: { sourceDocNo: true, sourceSystem: true, sourceDocType: true, sourceDocId: true, sourceLineId: true },
+          orderBy: { isPrimary: 'desc' },
+          take: 1,
+        },
       },
       orderBy: [{ requiredByDate: 'asc' }, { createdAt: 'desc' }],
       take: limit,
@@ -171,6 +175,7 @@ export class FulfilmentService {
         demandId: d.id,
         demandNo: d.demandNo,
         orderRef: d.sourceMappings[0]?.sourceDocNo ?? null,
+        ...shopifySource(d.sourceMappings[0]),
         channel: d.channel,
         sku,
         productName: d.productVariant?.product?.name ?? null,
@@ -269,4 +274,11 @@ export class FulfilmentService {
     });
     return { demandId, demandNo: demand.demandNo, isRejectedForDispatch: false };
   }
+}
+
+/** The ERP order and line behind a demand, when it came from a Shopify order. */
+export function shopifySource(m: { sourceSystem: string; sourceDocType: string; sourceDocId: string; sourceLineId: string } | undefined) {
+  return m && m.sourceSystem === 'SHOPIFY' && m.sourceDocType === 'ORDER'
+    ? { orderId: m.sourceDocId, orderLineId: m.sourceLineId }
+    : { orderId: null, orderLineId: null };
 }

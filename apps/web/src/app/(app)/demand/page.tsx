@@ -11,6 +11,7 @@ import {
   LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
 import { FilterBar, SortTh, nextSort, type SortState } from '@/components/ui/table-controls';
+import { SwitchFacilityButton } from '@/components/app/switch-facility';
 
 interface Demand {
   id: string; demandNo: string; channel: string; sku: string | null; productName: string | null;
@@ -18,7 +19,10 @@ interface Demand {
   requestedQty: string; manufacturingQty: string; allocatedQty: string; openQty: string;
   status: string; priority: string; requiredByDate: string | null;
   decisionReason: string | null; createdAt: string;
-  sources: { system: string; docNo: string | null; qty: string; isPrimary: boolean }[];
+  sources: {
+    system: string; docNo: string | null; qty: string; isPrimary: boolean;
+    orderId: string | null; orderLineId: string | null;
+  }[];
 }
 interface Page {
   data: Demand[]; page: number; pageSize: number; total: number; totalPages: number;
@@ -187,6 +191,7 @@ export default function DemandPage() {
                         <SortTh label="Status" sortKey="status" sort={sort} onSort={onSort} />
                         <th className="px-3 py-1.5 text-left font-semibold">Sources</th>
                         <SortTh label="Needed" sortKey="requiredByDate" sort={sort} onSort={onSort} />
+                        <th className="w-10 px-2 py-1.5"><span className="sr-only">Actions</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -210,6 +215,12 @@ export default function DemandPage() {
                           </td>
                           <td className="px-3 py-1.5 text-ink-muted">
                             {d.requiredByDate ? fmtDate(d.requiredByDate) : '—'}
+                          </td>
+                          <td className="px-2 py-1">
+                            {(() => {
+                              const src = d.sources.find((x) => x.orderId) ?? null;
+                              return src ? <SwitchFacilityButton orderId={src.orderId} lineId={src.orderLineId} compact /> : null;
+                            })()}
                           </td>
                         </tr>
                       ))}

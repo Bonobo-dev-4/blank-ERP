@@ -99,10 +99,10 @@ async function request<T>(
   method: string,
   path: string,
   body?: unknown,
-  options: { retryOn401?: boolean; raw?: boolean } = {},
+  options: { retryOn401?: boolean; raw?: boolean; headers?: Record<string, string> } = {},
 ): Promise<T> {
   const token = tokenStore.get();
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (token) headers.authorization = `Bearer ${token}`;
 
@@ -141,7 +141,8 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string, query?: Query) => request<T>('GET', `${path}${qs(query)}`),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  post: <T>(path: string, body?: unknown, opts?: { headers?: Record<string, string> }) =>
+    request<T>('POST', path, body, { headers: opts?.headers }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   del: <T>(path: string) => request<T>('DELETE', path),

@@ -10,6 +10,7 @@ import { loadConfiguration } from './config/configuration';
 import { AdminModule } from './modules/admin/admin.module';
 import { BrandingModule } from './modules/branding/branding.module';
 import { ImportsModule } from './modules/imports/imports.module';
+import { FacilitySwitchModule } from './modules/facility-switch/facility-switch.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BarcodesModule } from './modules/barcodes/barcodes.module';
 import { BomModule } from './modules/bom/bom.module';
@@ -54,6 +55,7 @@ import { QualityModule } from './modules/quality/quality.module';
     AdminModule,
     BrandingModule,
     ImportsModule,
+    FacilitySwitchModule,
     ProductsModule,
     MaterialsModule,
     InventoryModule,

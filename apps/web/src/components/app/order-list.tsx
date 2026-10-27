@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/app/auth-context';
+import { SwitchFacilityButton } from '@/components/app/switch-facility';
 import { fmtDateTime, fmtMoneyCompact, fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Button, Card, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
@@ -301,6 +302,7 @@ export function OrderList({
                     <SortTh label="Status" sortKey="status" sort={sort} onSort={onSort} />
                     <th scope="col" className="px-3 py-2.5 text-left font-semibold">Shipping</th>
                     <SortTh label="Placed" sortKey="orderedAt" sort={sort} onSort={onSort} numeric />
+                    <th scope="col" className="w-10 px-2 py-2.5"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -347,6 +349,10 @@ export function OrderList({
                           : <span className="text-[12px] text-ink-subtle">not synced</span>}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-ink-muted">{fmtDateTime(o.orderedAt)}</td>
+                      {/* Clicks inside the dialog bubble through the portal; stop them reaching the row. */}
+                      <td className="px-2 py-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <SwitchFacilityButton orderId={o.id} compact />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

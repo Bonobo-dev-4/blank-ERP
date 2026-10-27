@@ -35,6 +35,7 @@ export * from './finished-goods/inward';
 export * from './integrations/dedupe';
 export * from './integrations/shopify-order';
 export * from './integrations/shopify-order-details';
+export * from './integrations/facility-switch';
 export * from './integrations/push';
 
 export * from './costing/rollup';

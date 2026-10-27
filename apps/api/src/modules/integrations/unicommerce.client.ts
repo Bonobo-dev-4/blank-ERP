@@ -29,6 +29,8 @@ export const UC_PATHS = {
   saleOrderSearch: '/services/rest/v1/oms/saleOrder/search',
   saleOrderGet: '/services/rest/v1/oms/saleorder/get',
   itemTypeGet: '/services/rest/v1/catalog/itemType/get',
+  /** A WRITE. Only `switchFacility()` may send it, behind its own gates. */
+  facilitySwitch: '/services/rest/v1/oms/saleorder/facility/switch',
 } as const;
 
 /**
@@ -42,7 +44,19 @@ const UC_WRITE_PATHS = [
   '/services/rest/v1/purchase/purchaseOrder/create',
   '/services/rest/v1/purchase/grn/create',
   '/services/rest/v1/oms/saleOrder/create',
+  UC_PATHS.facilitySwitch,
 ];
+
+/** How long a switch request may take before its outcome is treated as unknown. */
+const SWITCH_TIMEOUT_MS = 25_000;
+
+/**
+ * What came back from a switch request. Never "it failed" for a timeout: the
+ * request may have been applied, and only reading the order can say.
+ */
+export type FacilitySwitchTransportResult =
+  | { readonly kind: 'RESPONSE'; readonly httpStatus: number; readonly body: UniwareEnvelope | null }
+  | { readonly kind: 'NO_RESPONSE'; readonly reason: string };
 
 interface CachedToken {
   readonly accessToken: string;
@@ -220,6 +234,74 @@ export class UnicommerceClient {
           : null,
         status: details?.status ?? 0,
       };
+    }
+  }
+
+  /**
+   * Send ONE facility switch. The only write this transport will carry.
+   *
+   * Refuses before sending unless INTEGRATION_ALLOW_EXTERNAL_WRITES is true;
+   * the caller enforces the connection flag, the operator's permission and a
+   * validated preflight. Never retries: a retried write is how one switch
+   * becomes two. Business failures arrive as HTTP 200 and are returned, not
+   * raised, so the caller records them verbatim.
+   */
+  async switchFacility(
+    body: { facilityCode: string; saleOrderCode: string; saleOrderItemCodes: string[] },
+    facilityHeader: string,
+  ): Promise<FacilitySwitchTransportResult> {
+    const config = this.resolveConfig();
+    this.assertConfigured(config);
+    if (!config.allowExternalWrites) {
+      throw new ServiceUnavailableException({
+        code: 'UNICOMMERCE_WRITES_DISABLED',
+        message: 'Writes to Unicommerce are switched off for this ERP (INTEGRATION_ALLOW_EXTERNAL_WRITES=false).',
+        details: { path: UC_PATHS.facilitySwitch },
+      });
+    }
+    if (body.saleOrderItemCodes.length !== 1) {
+      // One item per operation: a list here would switch items nobody chose.
+      throw new ServiceUnavailableException({
+        code: 'UNICOMMERCE_SWITCH_ONE_ITEM',
+        message: 'A facility switch moves exactly one sale-order item.',
+      });
+    }
+
+    // Authentication happens before the write is attempted, so a sign-in
+    // failure is a clean refusal rather than an unknown outcome.
+    const token = await this.accessToken(config);
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      accept: 'application/json',
+      authorization: `Bearer ${token}`,
+      Facility: facilityHeader,
+    };
+    if (config.proxySecret) headers['X-Proxy-Secret'] = config.proxySecret;
+
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), SWITCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${config.baseUrl}${UC_PATHS.facilitySwitch}`, {
+        method: 'POST', headers, body: JSON.stringify(body), signal: abort.signal,
+      });
+      const text = await res.text();
+      let parsed: UniwareEnvelope | null = null;
+      try {
+        parsed = text ? (JSON.parse(text) as UniwareEnvelope) : null;
+      } catch {
+        parsed = null;
+      }
+      if (res.status === 401) this.token = null;
+      return { kind: 'RESPONSE', httpStatus: res.status, body: parsed };
+    } catch (error) {
+      return {
+        kind: 'NO_RESPONSE',
+        reason: abort.signal.aborted
+          ? `No answer within ${SWITCH_TIMEOUT_MS / 1000}s`
+          : `The connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    } finally {
+      clearTimeout(timer);
     }
   }
 

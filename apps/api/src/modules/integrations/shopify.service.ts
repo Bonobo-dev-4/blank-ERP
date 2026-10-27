@@ -929,6 +929,16 @@ export class ShopifyService {
 
     const details = shopifyOrderDetails(order.rawPayload);
     const admin = this.adminUrl();
+    // Where Unicommerce last said each item sits. A projection, refreshed
+    // whenever the order is read live; never the basis of a decision.
+    const ucItems = await this.prisma.unicommerceOrderItem.findMany({
+      where: { organizationId, shopifyOrderId: order.id },
+      orderBy: { itemCode: 'asc' },
+      select: {
+        itemCode: true, shopifyOrderLineId: true, facilityCode: true, facilityName: true,
+        statusCode: true, shippingPackageStatus: true, syncedAt: true,
+      },
+    });
     const customer = viewer.canSeeCustomer && details.customer
       ? {
           ...details.customer,
@@ -957,6 +967,7 @@ export class ShopifyService {
       importedAt: order.importedAt.toISOString(),
       externalShipmentStatus: order.externalShipmentStatus,
       externalStatusSyncedAt: order.externalStatusSyncedAt?.toISOString() ?? null,
+      unicommerceSaleOrderCode: order.unicommerceSaleOrderCode,
       shopify: {
         orderId: details.orderId ?? order.externalId,
         legacyId: details.legacyId,
@@ -1026,6 +1037,9 @@ export class ShopifyService {
           styleCode: variant?.product?.styleCode ?? null,
           imageUrl: variant?.imageUrl ?? shop.imageUrl,
           isMapped: l.productVariantId !== null,
+          unicommerceItems: ucItems
+            .filter((u) => u.shopifyOrderLineId === l.id)
+            .map(({ shopifyOrderLineId: _line, syncedAt, ...u }) => ({ ...u, syncedAt: syncedAt.toISOString() })),
           shopify: {
             lineId: shop.lineId ?? l.externalLineId,
             name: shop.name,

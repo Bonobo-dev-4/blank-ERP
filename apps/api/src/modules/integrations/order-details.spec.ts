@@ -54,6 +54,7 @@ function setup() {
     },
     productVariant: { findMany: jest.fn().mockResolvedValue([]) },
     demandSourceMapping: { findMany: jest.fn().mockResolvedValue([]) },
+    unicommerceOrderItem: { findMany: jest.fn().mockResolvedValue([]) },
   };
   const client = { describe: () => ({ shopDomain: 'dash-and-dot.myshopify.com' }) };
   const service = new ShopifyService(prisma as never, client as never, {} as never);

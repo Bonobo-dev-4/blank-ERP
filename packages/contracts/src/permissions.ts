@@ -78,6 +78,7 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   p('demand.import', 'Trigger an order import'),
   p('demand.view_customer', "See a customer's contact details and addresses on orders"),
   p('demand.approve', 'Approve demand for manufacturing', true),
+  p('demand.switch_facility', "Move an order item to another Unicommerce fulfilment facility", true),
 
   // --- manufacturing -------------------------------------------------------
   p('manufacturing.read', 'View manufacturing orders'),
@@ -168,7 +169,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleCode, readonly string[]>> = {
   SUPER_ADMIN: PERMISSION_CODES,
 
   PRODUCTION_HEAD: [
-    ...READ_ONLY_CORE, 'demand.read', 'demand.view_customer', 'demand.approve', 'manufacturing.write',
+    ...READ_ONLY_CORE, 'demand.read', 'demand.view_customer', 'demand.approve', 'demand.switch_facility',
+    'manufacturing.write',
     'manufacturing.release', 'manufacturing.release_with_shortage', 'manufacturing.cancel',
     'manufacturing.split', 'mrp.run', 'mrp.reserve', 'production.assign',
     'production.override_stage', 'production.print_labels', 'quality.approve_final',

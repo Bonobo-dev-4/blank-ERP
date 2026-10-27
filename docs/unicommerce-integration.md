@@ -555,6 +555,63 @@ rendering an empty grid, because an empty grid reads as *no bulk orders exist*
 It also narrows, without closing, the open question about where bulk
 manufacturing demand comes from. It is not reachable through this API today.
 
+## 8h. Facility switch — moving one sale-order item to another facility
+
+`POST /services/rest/v1/oms/saleorder/facility/switch` with
+`{facilityCode, saleOrderCode, saleOrderItemCodes[]}` and a `Facility` header
+(the item's current facility). Tenant level. Documented, **never yet sent from
+this ERP**: the endpoint is on the transport's refused-write list, and only
+`UnicommerceClient.switchFacility()` can carry it.
+
+### Measured on the live tenant, 28 Oct 2026 (read-only)
+
+- A Shopify order's Unicommerce `code` **is the Shopify order id**
+  (`legacyResourceId`); its `displayOrderCode` is the order name (`#170717`).
+  Six of six orders checked.
+- Each sale-order item's `code` **is the Shopify line-item id**, one item per
+  unit; the SKU ends in the Shopify variant id.
+- Fresh items are `CREATED` with no shipping package; `UNFULFILLABLE` and
+  `DISPATCHED`/`SHIPPED` were also seen.
+
+The ERP uses these only to *find and prove* the pairing. The codes sent are
+always the ones Unicommerce returned.
+
+### Rules
+
+- **Eligibility** (`evaluateFacilitySwitch` in `@dnd/domain`): order
+  `CREATED`/`PROCESSING`; item `CREATED`/`FULFILLABLE`/`UNFULFILLABLE`, not on
+  hold; no shipping package or one still `CREATED`; item matched to its ERP line;
+  Shopify still shows units open; target configured, visible and enabled; target
+  stock read within two minutes and at least one unit; no other switch holding
+  the item; writes enabled. Unicommerce documents no preconditions, so these are
+  deliberately conservative — widen them only after a verified switch.
+- **Stock** is Unicommerce's documented `inventory` ("Available quantity").
+  `openSale` and the held buckets are shown beside it, never subtracted again.
+  It is not a reservation.
+- **Gates.** `INTEGRATION_ALLOW_EXTERNAL_WRITES=true` *and*
+  `IntegrationConnection(UNICOMMERCE).allowExternalWrites=true` *and* the
+  `demand.switch_facility` permission *and* a 30-second preflight token bound to
+  the operator, order, item, source and target. Both write flags are **off**.
+- **Once only.** The operation is stored before sending, with a unique per-item
+  lock; `submittedAt` is written before the request and nothing re-sends.
+- **Success is what Unicommerce shows afterwards.** `successful:true` is a
+  claim; the order is read back (three attempts) and only the item at the
+  target counts. A timeout or an acceptance that did not take is
+  `VERIFICATION_PENDING` until a person checks or confirms it was not applied.
+- **Production is reviewed, never changed.** A verified switch with live demand
+  behind it becomes `RECONCILIATION_REQUIRED` with what production has done
+  (stage, issues, scans, completions); nothing is cancelled or reversed.
+- **History is append-only** at the database: `facility_switch_events` refuses
+  UPDATE and DELETE, and operations cannot be deleted.
+
+### Still unverified
+
+- The response to a real switch, and whether the `Facility` header must be the
+  source facility. Both need one authorised switch on a test order.
+- Whether Unicommerce allows a switch once a package exists in `CREATED`.
+- Five facilities are invisible to the service account (§8a), so they can never
+  be targets: their stock cannot be read.
+
 ## 9. Implementation checklist
 
 Phase 4 — **done, verified against the live tenant 23 Oct 2026**:

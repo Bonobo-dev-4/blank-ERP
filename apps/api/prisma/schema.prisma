@@ -3008,7 +3008,11 @@ model ShopifyOrder {
   importedAt             DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
 
-  lines ShopifyOrderLine[]
+  /// Unicommerce sale order code, once matched and verified by order number.
+  unicommerceSaleOrderCode String?
+
+  lines            ShopifyOrderLine[]
+  facilitySwitches FacilitySwitchOperation[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId, channel, orderedAt])
@@ -3371,4 +3375,124 @@ model SavedView {
   @@unique([organizationId, ownerUserId, resource, name])
   @@index([organizationId, resource])
   @@map("saved_views")
+}
+
+// -----------------------------------------------------------------------------
+// Unicommerce facility switch
+// -----------------------------------------------------------------------------
+
+enum FacilitySwitchStatus {
+  CREATED
+  PREFLIGHT_CHECKING
+  READY
+  BLOCKED
+  EXECUTING
+  API_ACCEPTED
+  VERIFYING
+  VERIFIED_SUCCESS
+  VERIFIED_FAILURE
+  VERIFICATION_PENDING
+  RECONCILIATION_REQUIRED
+}
+
+/// One request to move one Unicommerce sale-order item to another facility.
+/// Durable before anything is sent, so a crash or a timeout leaves a record
+/// of what may have happened rather than nothing at all.
+model FacilitySwitchOperation {
+  id                      String               @id @default(uuid()) @db.Uuid
+  organizationId          String               @db.Uuid
+  shopifyOrderId          String               @db.Uuid
+  shopifyOrderLineId      String?              @db.Uuid
+  saleOrderCode           String
+  /// Exactly as Unicommerce returned it; never derived.
+  saleOrderItemCode       String
+  sku                     String?
+  quantity                Decimal              @db.Decimal(18, 4)
+  sourceFacilityCode      String
+  targetFacilityCode      String
+  operatorUserId          String               @db.Uuid
+  reason                  String
+  status                  FacilitySwitchStatus @default(CREATED)
+  idempotencyKey          String
+  requestFingerprint      String
+  /// The preflight token's nonce: a token can start one operation, once.
+  preflightNonce          String               @unique
+  /// Set while the operation owns its item, cleared at an outcome. Unique, so
+  /// two operators cannot run switches on the same item at once.
+  activeLockKey           String?              @unique
+  preflightAt             DateTime
+  executionStartedAt      DateTime?
+  /// Set immediately BEFORE the request leaves. Once set the request is never
+  /// sent again, whatever happens next.
+  submittedAt             DateTime?
+  apiRespondedAt          DateTime?
+  apiSuccessful           Boolean?
+  apiMessage              String?
+  apiErrors               Json?
+  apiWarnings             Json?
+  verificationCompletedAt DateTime?
+  verifiedFacilityCode    String?
+  failureCode             String?
+  failureMessage          String?
+  manufacturingDemandId   String?              @db.Uuid
+  reconciliation          Json?
+  reconciledAt            DateTime?
+  reconciledByUserId      String?              @db.Uuid
+  reconciliationNote      String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  shopifyOrder ShopifyOrder          @relation(fields: [shopifyOrderId], references: [id], onDelete: Restrict)
+  events       FacilitySwitchEvent[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, shopifyOrderId, createdAt])
+  @@index([organizationId, status])
+  @@index([operatorUserId, createdAt])
+  @@map("facility_switch_operations")
+}
+
+/// Append-only history of an operation. The database refuses updates and
+/// deletes, so the record of what was sent and seen cannot be rewritten.
+model FacilitySwitchEvent {
+  id                   String                @id @default(uuid()) @db.Uuid
+  operationId          String                @db.Uuid
+  eventType            String
+  statusBefore         FacilitySwitchStatus?
+  statusAfter          FacilitySwitchStatus?
+  at                   DateTime              @default(now())
+  actorUserId          String?               @db.Uuid
+  integrationReference String?
+  errorCode            String?
+  details              Json?
+
+  operation FacilitySwitchOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([operationId, at])
+  @@map("facility_switch_events")
+}
+
+/// Last-known Unicommerce state of each sale-order item, refreshed whenever an
+/// order is read live. A projection for display — decisions re-read live.
+model UnicommerceOrderItem {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @db.Uuid
+  saleOrderCode         String
+  itemCode              String
+  shopifyOrderId        String?  @db.Uuid
+  shopifyOrderLineId    String?  @db.Uuid
+  sku                   String?
+  itemName              String?
+  facilityCode          String?
+  facilityName          String?
+  statusCode            String?
+  shippingPackageCode   String?
+  shippingPackageStatus String?
+  onHold                Boolean  @default(false)
+  syncedAt              DateTime
+
+  @@unique([organizationId, saleOrderCode, itemCode])
+  @@index([shopifyOrderLineId])
+  @@index([shopifyOrderId])
+  @@map("unicommerce_order_items")
 }

@@ -11,11 +11,13 @@ import {
 } from '@/components/ui/primitives';
 import { Tabs } from '@/components/ui/tabs';
 import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
+import { SwitchFacilityButton } from '@/components/app/switch-facility';
 
 type Route = 'DISPATCH' | 'SWITCH_FACILITY' | 'MANUFACTURE' | 'NEEDS_CHECK';
 
 interface Line {
   demandId: string; demandNo: string; orderRef: string | null; channel: string;
+  orderId: string | null; orderLineId: string | null;
   sku: string; productName: string | null; size: string | null; color: string | null;
   isMapped: boolean; status: string; priority: string; requiredByDate: string | null;
   openQty: string; route: Route;
@@ -247,9 +249,14 @@ export default function FulfilmentBoardPage() {
                                 <RotateCcw /> Undo
                               </Button>
                             ) : l.route === 'DISPATCH' || l.route === 'SWITCH_FACILITY' ? (
-                              <Button size="sm" variant="default" onClick={() => { setRejecting(l.demandId); setReason(''); }}>
-                                Send to production
-                              </Button>
+                              <span className="inline-flex items-center gap-1.5">
+                                {l.route === 'SWITCH_FACILITY' ? (
+                                  <SwitchFacilityButton orderId={l.orderId} lineId={l.orderLineId} />
+                                ) : null}
+                                <Button size="sm" variant="default" onClick={() => { setRejecting(l.demandId); setReason(''); }}>
+                                  Send to production
+                                </Button>
+                              </span>
                             ) : null}
                           </td>
                         </tr>

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, ArrowUpRight, Check, Copy, ExternalLink, Lock, RefreshCw, Truck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/app/auth-context';
+import { FacilitySwitchHistory, SwitchFacilityButton } from '@/components/app/switch-facility';
 import { fmtDateTime, fmtMoney, fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Button, Card, CardBody, CardHeader, DescList, EmptyState, ErrorPanel,
@@ -40,6 +41,10 @@ interface Line {
   productVariantId: string | null; sku: string | null; productId: string | null;
   productName: string | null; styleCode: string | null; imageUrl: string | null; isMapped: boolean;
   shopify: ShopifyLine;
+  unicommerceItems: {
+    itemCode: string; facilityCode: string | null; facilityName: string | null;
+    statusCode: string | null; shippingPackageStatus: string | null; syncedAt: string;
+  }[];
   orderedQty: string; cancelledQty: string; fulfilledQty: string; manufacturingQty: string;
   availabilityStatus: string;
   demand: {
@@ -191,6 +196,8 @@ export default function OrderDetailPage() {
         <DeliveryCard order={data} />
       </div>
 
+      <FacilitySwitchHistory orderId={data.id} />
+
       {data.attributes.length > 0 ? (
         <Card>
           <CardHeader title="Order attributes" description="Extra fields captured at checkout." />
@@ -209,7 +216,7 @@ export default function OrderDetailPage() {
           <EmptyState title="This order has no lines" description="Nothing was imported against it." />
         ) : (
           <ul className="divide-y divide-line">
-            {data.lines.map((l) => <LineRow key={l.id} line={l} />)}
+            {data.lines.map((l) => <LineRow key={l.id} line={l} orderId={data.id} />)}
           </ul>
         )}
       </Card>
@@ -219,7 +226,7 @@ export default function OrderDetailPage() {
 
 /* -------------------------------------------------------------------------- */
 
-function LineRow({ line: l }: { line: Line }) {
+function LineRow({ line: l, orderId }: { line: Line; orderId: string }) {
   const owed = Number(l.manufacturingQty);
   return (
     <li className={`px-3.5 py-3 ${l.demand?.isRejectedForDispatch ? 'row-flag' : ''}`}>
@@ -257,13 +264,29 @@ function LineRow({ line: l }: { line: Line }) {
           </p>
         </div>
 
+        <div className="flex items-start gap-4">
         <dl className="flex gap-5 text-[12px]">
           <Figure label="Ordered" value={l.orderedQty} />
           <Figure label="Shipped" value={l.fulfilledQty} muted />
           {Number(l.cancelledQty) > 0 ? <Figure label="Cancelled" value={l.cancelledQty} struck /> : null}
           <Figure label="Still owed" value={l.manufacturingQty} strong={owed > 0} />
         </dl>
+        <SwitchFacilityButton orderId={orderId} lineId={l.id} />
+        </div>
       </div>
+
+      {l.unicommerceItems.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-muted">
+          <span className="font-medium text-ink-subtle">Unicommerce</span>
+          {l.unicommerceItems.map((u) => (
+            <span key={u.itemCode} title={`Item ${u.itemCode} · as of ${fmtDateTime(u.syncedAt)}`}>
+              <span className="font-mono text-ink">{u.facilityCode ?? '—'}</span>
+              {u.statusCode ? ` · ${humanise(u.statusCode)}` : ''}
+            </span>
+          ))}
+          <span className="text-ink-subtle">as of {fmtDateTime(l.unicommerceItems[0]!.syncedAt)}</span>
+        </div>
+      ) : null}
 
       <ShopifyLineDetails line={l} />
 

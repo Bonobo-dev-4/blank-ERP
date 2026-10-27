@@ -71,6 +71,31 @@ export class NotificationsService {
           : 0,
       ]);
 
+    // Facility switches a person has to finish: an outcome Unicommerce has not
+    // confirmed, or production to review after a confirmed one.
+    if (can('demand.switch_facility')) {
+      const [pending, review] = await Promise.all([
+        this.prisma.facilitySwitchOperation.count({ where: { organizationId: org, status: 'VERIFICATION_PENDING' } }),
+        this.prisma.facilitySwitchOperation.count({ where: { organizationId: org, status: 'RECONCILIATION_REQUIRED' } }),
+      ]);
+      if (pending > 0) {
+        items.push({
+          kind: 'SWITCH_UNVERIFIED', count: pending, severity: 'critical',
+          title: `${pending} facility ${pending === 1 ? 'switch needs' : 'switches need'} verification`,
+          detail: 'Unicommerce did not confirm the outcome. Check status before switching the item again.',
+          href: '/orders/facility-switches?open=true',
+        });
+      }
+      if (review > 0) {
+        items.push({
+          kind: 'SWITCH_PRODUCTION_REVIEW', count: review, severity: 'attention',
+          title: `${review} switched ${review === 1 ? 'item needs' : 'items need'} a production review`,
+          detail: 'The item moved facility while manufacturing demand for it is still live.',
+          href: '/orders/facility-switches?open=true',
+        });
+      }
+    }
+
     if (outOfStock > 0) {
       items.push({
         kind: 'OUT_OF_STOCK', count: outOfStock, severity: 'critical',

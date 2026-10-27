@@ -49,6 +49,8 @@ export const NAVIGATION: readonly NavGroup[] = [
           'Unicommerce exposes no purchase-order READ endpoint to this service account - six documented paths were probed live and all returned 404 while create responded. The screen explains the block rather than showing an empty table, which would read as "no bulk orders exist".' },
       { label: 'Fulfilment Board', href: '/orders/fulfilment', icon: 'LayoutGrid', permission: 'demand.read', status: 'BUILT', phase: 4 },
       { label: 'Stock Availability', href: '/orders/availability', icon: 'PackageSearch', permission: 'demand.read', status: 'BUILT', phase: 4 },
+      { label: 'Facility Switches', href: '/orders/facility-switches', icon: 'ArrowLeftRight', permission: 'demand.switch_facility', status: 'BUILT', phase: 4,
+        description: 'Every request to move an order item between Unicommerce facilities, and the ones waiting on a person.' },
       { label: 'Manufacturing Demand', href: '/demand', icon: 'ListChecks', permission: 'demand.read', status: 'BUILT', phase: 4 },
       { label: 'Demand Forecast', href: '/demand/forecast', icon: 'TrendingUp', permission: 'reports.read', status: 'BUILT', phase: 6 },
     ],

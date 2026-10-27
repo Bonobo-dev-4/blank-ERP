@@ -1162,3 +1162,140 @@ html.theme-transition *::before {
   .ai-drawer[data-state='open'], .ai-drawer[data-state='closed'] { animation-duration: 1ms; }
   .ai-scrim[data-state='open'], .ai-scrim[data-state='closed'] { animation-duration: 1ms; }
 }
+
+/* ------------------------------------------------------------- facility switch
+ * The Switch Facility dialog. Its own surface tokens per theme, because a
+ * confirmation that moves a customer's garment between buildings should read
+ * as a distinct, deliberate moment rather than another panel.
+ */
+:root {
+  --fsw-surface: rgb(35 49 73 / 0.92);
+  --fsw-elevated: rgb(255 255 255 / 0.09);
+  --fsw-border: rgb(255 255 255 / 0.18);
+  --fsw-text: #F5F7FB;
+  --fsw-text-2: #C4CDDB;
+  --fsw-accent: #78A0FF;
+  --fsw-ok: #43D6A0;
+  --fsw-warn: #F0BE62;
+  --fsw-err: #FF718A;
+  --fsw-scrim: rgb(5 8 14 / 0.42);
+  --fsw-shadow: rgb(0 0 0 / 0.38);
+}
+:root[data-theme='day'] {
+  --fsw-surface: rgb(255 255 255 / 0.76);
+  --fsw-elevated: rgb(255 255 255 / 0.56);
+  --fsw-border: rgb(255 255 255 / 0.80);
+  --fsw-text: #182231;
+  --fsw-text-2: #435166;
+  --fsw-accent: #4776DC;
+  --fsw-ok: #168B63;
+  --fsw-warn: #B88325;
+  --fsw-err: #CC405A;
+  --fsw-scrim: rgb(52 46 38 / 0.18);
+  --fsw-shadow: rgb(43 49 61 / 0.18);
+}
+
+.fsw-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: var(--fsw-scrim);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+}
+.fsw-overlay[data-state='open'] { animation: fsw-fade-in 230ms ease-out; }
+.fsw-overlay[data-state='closed'] { animation: fsw-fade-out 170ms ease-in forwards; }
+
+.fsw-panel {
+  position: fixed; z-index: 61; left: 50%; top: 50%;
+  display: flex; flex-direction: column;
+  width: 560px; max-width: calc(100vw - 32px); max-height: 90dvh;
+  transform: translate(-50%, -50%);
+  border-radius: 20px;
+  border: 1px solid var(--fsw-border);
+  background: var(--fsw-surface);
+  color: var(--fsw-text);
+  backdrop-filter: blur(28px) saturate(150%); -webkit-backdrop-filter: blur(28px) saturate(150%);
+  box-shadow: 0 24px 64px -16px var(--fsw-shadow), inset 0 1px 0 rgb(255 255 255 / 0.10);
+  font-family: var(--font-sans); font-size: 13.5px;
+  outline: none;
+}
+.fsw-panel[data-state='open'] { animation: fsw-in 230ms ease-out; }
+.fsw-panel[data-state='closed'] { animation: fsw-out 170ms ease-in forwards; }
+@keyframes fsw-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.97); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes fsw-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -50%) scale(0.97); } }
+@keyframes fsw-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fsw-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* A bottom sheet on phones: the thumb reaches the footer. */
+@media (max-width: 640px) {
+  .fsw-panel {
+    left: 0; right: 0; top: auto; bottom: 0;
+    width: 100%; max-width: 100%; max-height: 92dvh;
+    transform: none;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+  .fsw-panel[data-state='open'] { animation: fsw-sheet-in 230ms ease-out; }
+  .fsw-panel[data-state='closed'] { animation: fsw-sheet-out 170ms ease-in forwards; }
+}
+@keyframes fsw-sheet-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes fsw-sheet-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(24px); } }
+
+.fsw-title { font-family: var(--font-display); font-size: 20px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+.fsw-h { font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.fsw-muted { color: var(--fsw-text-2); }
+.fsw-card { background: var(--fsw-elevated); border: 1px solid var(--fsw-border); border-radius: 14px; }
+.fsw-ok { color: var(--fsw-ok); }
+.fsw-warn { color: var(--fsw-warn); }
+.fsw-err { color: var(--fsw-err); }
+.fsw-accent { color: var(--fsw-accent); }
+.fsw-panel-tone-ok { border-color: color-mix(in srgb, var(--fsw-ok) 45%, transparent); background: color-mix(in srgb, var(--fsw-ok) 10%, transparent); }
+.fsw-panel-tone-warn { border-color: color-mix(in srgb, var(--fsw-warn) 45%, transparent); background: color-mix(in srgb, var(--fsw-warn) 10%, transparent); }
+.fsw-panel-tone-err { border-color: color-mix(in srgb, var(--fsw-err) 45%, transparent); background: color-mix(in srgb, var(--fsw-err) 10%, transparent); }
+
+.fsw-option {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  width: 100%; min-height: 48px; padding: 10px 12px; text-align: left;
+  border-radius: 12px; border: 1px solid var(--fsw-border); background: transparent; color: var(--fsw-text);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.fsw-option:hover:not(:disabled) { background: var(--fsw-elevated); }
+.fsw-option[aria-checked='true'] { border-color: var(--fsw-accent); background: color-mix(in srgb, var(--fsw-accent) 12%, transparent); }
+.fsw-option:disabled { opacity: 0.62; cursor: not-allowed; }
+.fsw-option:focus-visible, .fsw-btn:focus-visible { outline: 2px solid var(--fsw-accent); outline-offset: 2px; }
+.fsw-radio { width: 16px; height: 16px; border-radius: 999px; border: 1.5px solid var(--fsw-text-2); display: grid; place-items: center; }
+.fsw-option[aria-checked='true'] .fsw-radio { border-color: var(--fsw-accent); }
+.fsw-option[aria-checked='true'] .fsw-radio::after { content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--fsw-accent); }
+
+.fsw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 16px; border-radius: 12px;
+  font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  border: 1px solid var(--fsw-border); background: transparent; color: var(--fsw-text);
+}
+.fsw-btn:hover:not(:disabled) { background: var(--fsw-elevated); }
+.fsw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.fsw-btn-primary { background: var(--fsw-accent); border-color: transparent; color: #fff; }
+.fsw-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--fsw-accent) 88%, #000); }
+.fsw-field {
+  width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--fsw-border); background: var(--fsw-elevated); color: var(--fsw-text); font-size: 13.5px;
+}
+.fsw-field:focus { outline: 2px solid var(--fsw-accent); outline-offset: 1px; }
+
+/* Progress: a thin bar that sweeps, and verification steps that fill in. */
+.fsw-progress { position: relative; height: 3px; overflow: hidden; border-radius: 999px; background: var(--fsw-elevated); }
+.fsw-progress::after {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 38%;
+  border-radius: 999px; background: var(--fsw-accent);
+  animation: fsw-sweep 1.15s ease-in-out infinite;
+}
+@keyframes fsw-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(270%); } }
+.fsw-pulse { animation: fsw-pulse 1.4s ease-in-out infinite; }
+@keyframes fsw-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+.fsw-pop { animation: fsw-pop 360ms cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes fsw-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fsw-overlay[data-state], .fsw-panel[data-state] { animation-duration: 1ms !important; }
+  .fsw-progress::after { animation: none; width: 100%; opacity: 0.5; }
+  .fsw-pulse, .fsw-pop { animation: none; }
+}

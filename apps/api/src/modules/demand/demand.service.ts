@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   Decimal, dec, demandFingerprint, reconcileIncomingDemand,
 } from '@dnd/domain';
+import { shopifySource } from '../fulfilment/fulfilment.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { IdempotencyService } from '../../common/services/idempotency.service';
 
@@ -86,7 +87,10 @@ export class DemandService {
             select: { id: true, sku: true, size: true, color: true, product: { select: { name: true } } },
           },
           sourceMappings: {
-            select: { sourceSystem: true, sourceDocNo: true, sourceLineQty: true, isPrimary: true },
+            select: {
+              sourceSystem: true, sourceDocNo: true, sourceLineQty: true, isPrimary: true,
+              sourceDocType: true, sourceDocId: true, sourceLineId: true,
+            },
           },
         },
       }),
@@ -128,6 +132,7 @@ export class DemandService {
           docNo: m.sourceDocNo,
           qty: m.sourceLineQty.toFixed(),
           isPrimary: m.isPrimary,
+          ...shopifySource(m),
         })),
       })),
       page,
