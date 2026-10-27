@@ -20,13 +20,15 @@ import { cn } from '@/lib/utils';
  * frame; a grid competing with the bars is a grid drawn for its own sake.
  */
 
-const INK = 'oklch(0.985 0 0)';
-const MUTED = 'oklch(1 0 0 / 0.38)';
-const FAINT = 'oklch(1 0 0 / 0.1)';
+// Jade reads the series you are meant to look at; warm grey reads the rest.
+// Two fills, not six — see the note above about monochrome's honest limit.
+const JADE = 'oklch(0.47 0.1 168)';
+const MUTED = 'oklch(0.34 0.012 70 / 0.55)';
+const FAINT = 'oklch(0.3 0.01 85 / 0.12)';
 
 const axis = {
   stroke: 'transparent',
-  tick: { fill: 'oklch(0.72 0 0)', fontSize: 11 },
+  tick: { fill: 'oklch(0.52 0.008 75)', fontSize: 11 },
   tickLine: false,
   axisLine: false,
 } as const;
@@ -83,14 +85,14 @@ export function BarSeries({
           <XAxis dataKey="label" {...axis} interval="preserveStartEnd" />
           <YAxis {...axis} width={44} />
           <Tooltip
-            cursor={{ fill: 'oklch(1 0 0 / 0.06)' }}
+            cursor={{ fill: 'oklch(0.3 0.01 85 / 0.05)' }}
             content={<ChartTooltip unit={unit} />}
           />
           <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={34}>
             {data.map((d, i) => (
               <Cell
                 key={i}
-                fill={d.emphasis ?? (highlightMax && d.value === max && max > 0) ? INK : MUTED}
+                fill={d.emphasis ?? (highlightMax && d.value === max && max > 0) ? JADE : MUTED}
               />
             ))}
           </Bar>
@@ -115,8 +117,8 @@ export function TrendSeries({
         <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
           <defs>
             <linearGradient id="dnd-trend" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={INK} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={INK} stopOpacity={0} />
+              <stop offset="0%" stopColor={JADE} stopOpacity={0.28} />
+              <stop offset="100%" stopColor={JADE} stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke={FAINT} />
@@ -126,11 +128,11 @@ export function TrendSeries({
           <Area
             type="monotone"
             dataKey="value"
-            stroke={INK}
+            stroke={JADE}
             strokeWidth={1.75}
             fill="url(#dnd-trend)"
             dot={false}
-            activeDot={{ r: 3, fill: INK, stroke: 'none' }}
+            activeDot={{ r: 3, fill: JADE, stroke: 'none' }}
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -156,7 +158,7 @@ export function ShareBar({
   }
   return (
     <div className={className}>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
         {segments.map((s, i) => (
           s.value > 0 ? (
             <div
@@ -164,7 +166,9 @@ export function ShareBar({
               className="h-full"
               style={{
                 width: `${(s.value / total) * 100}%`,
-                background: `oklch(0.985 0 0 / ${Math.max(0.22, 1 - i * 0.26)})`,
+                background: i === 0
+                  ? 'oklch(0.47 0.1 168)'
+                  : `oklch(0.42 0.01 75 / ${Math.max(0.16, 0.5 - (i - 1) * 0.16)})`,
               }}
               title={`${s.label}: ${s.value}`}
             />
@@ -176,7 +180,11 @@ export function ShareBar({
           <li key={s.label} className="flex items-center gap-1.5 text-[11.5px]">
             <span
               className="size-2 shrink-0 rounded-sm"
-              style={{ background: `oklch(0.985 0 0 / ${Math.max(0.22, 1 - i * 0.26)})` }}
+              style={{
+                background: i === 0
+                  ? 'oklch(0.47 0.1 168)'
+                  : `oklch(0.42 0.01 75 / ${Math.max(0.16, 0.5 - (i - 1) * 0.16)})`,
+              }}
             />
             <span className="text-ink-muted">{s.label}</span>
             <span className="num font-medium text-ink">{s.value}</span>

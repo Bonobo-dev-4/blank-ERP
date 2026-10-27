@@ -41,7 +41,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             aria-hidden="true"
           />
           <div className="relative z-10 h-full">
-            <Sidebar onNavigate={() => setNavOpen(false)} />
+            {/* forceOpen: a tablet has no hover, so the drawer shows labels. */}
+            <Sidebar forceOpen onNavigate={() => setNavOpen(false)} />
           </div>
         </div>
       ) : null}

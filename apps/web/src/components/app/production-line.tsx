@@ -58,17 +58,11 @@ export function ProductionLine({
   return (
     <section
       aria-label="Production line"
-      className="relative overflow-hidden rounded-lg bg-vat text-chalk"
-      style={{
-        backgroundImage:
-          // A woven texture, at the threshold of visible. Cloth, not a gradient.
-          'repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px),' +
-          'repeating-linear-gradient(-45deg, rgba(255,255,255,.024) 0 1px, transparent 1px 3px)',
-      }}
+      className="solid-accent relative overflow-hidden rounded-lg"
     >
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 pt-4 sm:px-5">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 pt-3.5 sm:px-5">
         <div>
-          <h2 className="font-display text-[17px] font-semibold tracking-tight text-chalk sm:text-[19px]">
+          <h2 className="font-display text-[15px] font-semibold tracking-tight text-chalk sm:text-[16px]">
             The line
           </h2>
           <p className="mt-0.5 text-[12px] text-chalk-muted">
@@ -99,7 +93,7 @@ export function ProductionLine({
             reads as a mistake; a fixed three-up keeps the baselines true at
             every width.
           */}
-          <div className="grid grid-cols-3 items-start gap-x-3 px-4 pb-1 pt-4 sm:flex sm:flex-wrap sm:items-end sm:gap-x-8 sm:px-5">
+          <div className="grid grid-cols-3 items-start gap-x-3 px-4 pb-1 pt-3 sm:flex sm:flex-wrap sm:items-end sm:gap-x-7 sm:px-5">
             <Figure
               delay={0}
               value={pieces(wipTotal)}
@@ -142,7 +136,7 @@ function Figure({
   return (
     <div className="line-figure" style={{ animationDelay: `${delay}ms` }}>
       <div
-        className={`font-display text-[26px] leading-none font-semibold tracking-tight num sm:text-[38px] ${colour}`}
+        className={`font-display text-[24px] leading-none font-semibold tracking-tight num sm:text-[30px] ${colour}`}
       >
         {value}
       </div>
@@ -220,7 +214,7 @@ function StitchTrack({ stages, peak }: { stages: LineStage[]; peak: number }) {
 
       {/* Tablet and up: horizontal */}
       <div className="hidden sm:block">
-        <div className="scroll-x px-5 pb-5 pt-4">
+        <div className="scroll-x px-5 pb-4 pt-3">
           <div
             // Columns cap rather than stretch. Three active stages spread
             // across a wide monitor turn the meters into long empty bars that
