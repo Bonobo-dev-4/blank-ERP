@@ -1,12 +1,14 @@
 /**
- * Seed: MASTER DATA ONLY.
+ * Seed: CONFIGURATION ONLY.
  *
- * This script creates no stock balances, no material movements and no
- * production records. The specification is explicit that there must be no mock
- * production transactions, and seeded stock would also make every figure on
- * the dashboard a lie. To get real stock into a development database, raise a
- * purchase order and receive it through the application (or run
- * `pnpm --filter @dnd/api demo:transactions`, which drives the real services).
+ * The organisation, permission catalogue, roles, the administrator, stock
+ * locations, production stages and routes, unit conversions, alert and
+ * approval rules, and the (disabled, read-only) integration connections.
+ *
+ * No sample data of any kind: no suppliers, raw materials or products, no
+ * stock and no transactions. Sample records appear in every list and every
+ * figure as if they were real. Suppliers and materials are entered through
+ * the application; products are imported from Shopify.
  *
  * The script is idempotent: run it as often as you like.
  */
@@ -297,231 +299,12 @@ async function main(): Promise<void> {
   console.log(`  uom conversions       ${conversions.length} (roll lengths are per-material by design)`);
 
   // -------------------------------------------------------------------------
-  // supplier
+  // No sample suppliers, raw materials or products.
+  //
+  // Suppliers and raw materials are entered by the business; products come in
+  // from Shopify. A seeded "example" record would show up in every list and
+  // every figure as if it were real.
   // -------------------------------------------------------------------------
-  const supplier = await prisma.supplier.upsert({
-    where: { organizationId_supplierCode: { organizationId: org.id, supplierCode: 'SUP-0001' } },
-    update: {},
-    create: {
-      organizationId: org.id,
-      supplierCode: 'SUP-0001',
-      name: 'Example Fabric Mills',
-      contactPerson: 'Sales Desk',
-      city: 'Surat',
-      state: 'Gujarat',
-      paymentTerms: '30 days',
-      leadTimeDays: 14,
-      notes: 'Placeholder supplier created by the seed. Replace with real supplier records.',
-    },
-  });
-  console.log(`  suppliers             1`);
-
-  // -------------------------------------------------------------------------
-  // raw materials - the DASH AND DOT kurta bill of materials
-  // -------------------------------------------------------------------------
-  const materials: {
-    code: string; name: string; category: Prisma.RawMaterialCreateInput['category'];
-    baseUom: Prisma.RawMaterialCreateInput['baseUom']; purchaseUom?: Prisma.RawMaterialCreateInput['baseUom'];
-    minimumStock: string; reorderLevel: string; reorderQty: string; leadTimeDays: number;
-    location: string; lotTracked: boolean; shadeTracked?: boolean;
-    color?: string; composition?: string; width?: string; gsm?: number; rate?: string;
-    /** Material-specific roll conversion, where one genuinely applies. */
-    rollMetres?: string;
-  }[] = [
-    {
-      code: 'FAB-001', name: 'Cotton Poplin 58"', category: 'FABRIC', baseUom: 'METER', purchaseUom: 'METER',
-      minimumStock: '200', reorderLevel: '400', reorderQty: '500', leadTimeDays: 14,
-      location: 'RM-WH-FAB', lotTracked: true, shadeTracked: true,
-      color: 'Indigo Blue', composition: '100% Cotton', width: '58', gsm: 120, rate: '245.50',
-      rollMetres: '100',
-    },
-    {
-      code: 'FAB-002', name: 'Chanderi Silk 44"', category: 'FABRIC', baseUom: 'METER', purchaseUom: 'METER',
-      minimumStock: '100', reorderLevel: '250', reorderQty: '300', leadTimeDays: 21,
-      location: 'RM-WH-FAB', lotTracked: true, shadeTracked: true,
-      color: 'Ivory', composition: '60% Silk, 40% Cotton', width: '44', gsm: 80, rate: '820.00',
-      rollMetres: '45',
-    },
-    {
-      code: 'LIN-001', name: 'Cotton Cambric Lining 58"', category: 'LINING', baseUom: 'METER',
-      minimumStock: '150', reorderLevel: '300', reorderQty: '400', leadTimeDays: 10,
-      location: 'RM-WH-FAB', lotTracked: true, color: 'Natural', composition: '100% Cotton',
-      width: '58', gsm: 70, rate: '85.00', rollMetres: '100',
-    },
-    {
-      code: 'BTN-001', name: 'Wooden Button 18L', category: 'BUTTON', baseUom: 'PIECE', purchaseUom: 'PACKET',
-      minimumStock: '2000', reorderLevel: '5000', reorderQty: '10000', leadTimeDays: 7,
-      location: 'RM-WH-TRM', lotTracked: false, color: 'Natural Wood', rate: '3.25',
-    },
-    {
-      code: 'ZIP-001', name: 'Concealed Zipper 8 inch', category: 'ZIPPER', baseUom: 'PIECE',
-      minimumStock: '500', reorderLevel: '1000', reorderQty: '2000', leadTimeDays: 7,
-      location: 'RM-WH-TRM', lotTracked: false, rate: '12.00',
-    },
-    {
-      code: 'THR-001', name: 'Polyester Thread 40/2 Cone', category: 'THREAD', baseUom: 'PIECE',
-      minimumStock: '100', reorderLevel: '200', reorderQty: '300', leadTimeDays: 5,
-      location: 'RM-WH-TRM', lotTracked: false, rate: '18.00',
-    },
-    {
-      code: 'LBL-001', name: 'Brand Label - Woven', category: 'LABEL', baseUom: 'PIECE',
-      minimumStock: '2000', reorderLevel: '5000', reorderQty: '10000', leadTimeDays: 12,
-      location: 'RM-WH-TRM', lotTracked: false, rate: '4.50',
-    },
-    {
-      code: 'LBL-002', name: 'Care Label - Printed', category: 'LABEL', baseUom: 'PIECE',
-      minimumStock: '2000', reorderLevel: '5000', reorderQty: '10000', leadTimeDays: 12,
-      location: 'RM-WH-TRM', lotTracked: false, rate: '2.00',
-    },
-    {
-      code: 'TAG-001', name: 'Price Tag with String', category: 'TAG', baseUom: 'PIECE',
-      minimumStock: '2000', reorderLevel: '5000', reorderQty: '10000', leadTimeDays: 10,
-      location: 'RM-WH-TRM', lotTracked: false, rate: '3.00',
-    },
-    {
-      code: 'PKG-001', name: 'Garment Packaging Set', category: 'PACKAGING', baseUom: 'SET',
-      minimumStock: '500', reorderLevel: '1500', reorderQty: '3000', leadTimeDays: 10,
-      location: 'RM-WH-TRM', lotTracked: false, rate: '22.00',
-    },
-  ];
-
-  for (const m of materials) {
-    const material = await prisma.rawMaterial.upsert({
-      where: { organizationId_materialCode: { organizationId: org.id, materialCode: m.code } },
-      update: { name: m.name },
-      create: {
-        organizationId: org.id,
-        materialCode: m.code,
-        name: m.name,
-        category: m.category,
-        baseUom: m.baseUom,
-        purchaseUom: m.purchaseUom ?? m.baseUom,
-        color: m.color ?? null,
-        fabricComposition: m.composition ?? null,
-        width: m.width ? new Prisma.Decimal(m.width) : null,
-        widthUom: m.width ? 'INCH' : null,
-        gsm: m.gsm ?? null,
-        purchaseRate: m.rate ? new Prisma.Decimal(m.rate) : null,
-        minimumStock: new Prisma.Decimal(m.minimumStock),
-        reorderLevel: new Prisma.Decimal(m.reorderLevel),
-        reorderQty: new Prisma.Decimal(m.reorderQty),
-        leadTimeDays: m.leadTimeDays,
-        defaultSupplierId: supplier.id,
-        defaultLocationId: locationIdByCode.get(m.location) ?? null,
-        lotTracked: m.lotTracked,
-        shadeTracked: m.shadeTracked ?? false,
-      },
-    });
-
-    // The implicit GENERAL lot keeps the ledger shape uniform for materials
-    // nobody tracks by batch.
-    const general = await prisma.materialLot.findFirst({
-      where: { organizationId: org.id, rawMaterialId: material.id, isGeneral: true },
-      select: { id: true },
-    });
-    if (!general) {
-      await prisma.materialLot.create({
-        data: {
-          organizationId: org.id,
-          rawMaterialId: material.id,
-          lotCode: `${m.code}-GENERAL`,
-          isGeneral: true,
-          unitCost: m.rate ? new Prisma.Decimal(m.rate) : new Prisma.Decimal(0),
-        },
-      });
-    }
-
-    // Roll conversions are per material, because roll length is.
-    if (m.rollMetres) {
-      const existing = await prisma.uomConversion.findFirst({
-        where: { organizationId: org.id, rawMaterialId: material.id, fromUom: 'ROLL', toUom: 'METER' },
-        select: { id: true },
-      });
-      if (!existing) {
-        await prisma.uomConversion.create({
-          data: {
-            organizationId: org.id,
-            rawMaterialId: material.id,
-            fromUom: 'ROLL',
-            toUom: 'METER',
-            factor: new Prisma.Decimal(m.rollMetres),
-            note: `Standard roll length for ${m.code}`,
-          },
-        });
-      }
-    }
-  }
-  console.log(`  raw materials         ${materials.length}`);
-
-  // -------------------------------------------------------------------------
-  // product master
-  // -------------------------------------------------------------------------
-  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-
-  const products: {
-    styleCode: string; name: string; collection: string; category: string;
-    route: string; colors: string[]; fabric: string; days: number;
-  }[] = [
-    {
-      styleCode: 'DD-KRT-001', name: 'Dash and Dot Kurta', collection: 'Core Essentials',
-      category: 'Kurta', route: 'STD-GARMENT', colors: ['Indigo', 'Ivory'],
-      fabric: 'Cotton Poplin', days: 12,
-    },
-    {
-      styleCode: 'DD-TRS-001', name: 'Dash and Dot Tapered Trouser', collection: 'Core Essentials',
-      category: 'Trouser', route: 'PLAIN-GARMENT', colors: ['Indigo'],
-      fabric: 'Cotton Poplin', days: 9,
-    },
-  ];
-
-  let variantCount = 0;
-  for (const p of products) {
-    const product = await prisma.product.upsert({
-      where: { organizationId_styleCode: { organizationId: org.id, styleCode: p.styleCode } },
-      update: { name: p.name },
-      create: {
-        organizationId: org.id,
-        styleCode: p.styleCode,
-        name: p.name,
-        collection: p.collection,
-        category: p.category,
-        sizeSet: SIZES.join(','),
-        fabricDescription: p.fabric,
-        productionType: 'IN_HOUSE',
-        standardManufacturingDays: p.days,
-        defaultRouteId: routeIdByCode.get(p.route) ?? null,
-        status: 'ACTIVE',
-      },
-    });
-
-    for (const color of p.colors) {
-      for (let i = 0; i < SIZES.length; i += 1) {
-        const size = SIZES[i]!;
-        const sku = `${p.styleCode}-${color.slice(0, 3).toUpperCase()}-${size}`;
-        const existing = await prisma.productVariant.findFirst({
-          where: { organizationId: org.id, sku },
-          select: { id: true },
-        });
-        if (existing) continue;
-        await prisma.productVariant.create({
-          data: {
-            organizationId: org.id,
-            productId: product.id,
-            sku,
-            name: `${p.name} - ${color} / ${size}`,
-            color,
-            size,
-            sizeSortOrder: i,
-            fabric: p.fabric,
-            sizeSet: SIZES.join(','),
-            status: 'ACTIVE',
-          },
-        });
-        variantCount += 1;
-      }
-    }
-  }
-  console.log(`  products              ${products.length} styles, ${variantCount} new SKUs`);
 
   // -------------------------------------------------------------------------
   // integration connections - created DISABLED and read-only
@@ -607,9 +390,8 @@ async function main(): Promise<void> {
   }
   console.log(`  approval rules        ${approvals.length}`);
 
-  console.log('\nSeed complete. No stock, movements or production records were created.');
-  console.log('To get real stock in: raise a purchase order and receive it through the app,');
-  console.log('or run  pnpm --filter @dnd/api demo:transactions\n');
+  console.log('\nSeed complete. Configuration only — no sample suppliers, materials, products or stock.');
+  console.log('Add suppliers and raw materials in the app, and import products from Shopify.\n');
 
   if (generatedPassword) {
     console.log('='.repeat(64));

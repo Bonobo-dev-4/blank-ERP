@@ -20,3 +20,6 @@ apps/api/prisma/generated/
 # Local PGlite data directory
 .pgdata/
 .devlogs/
+
+# Local database backups (never commit)
+.backups/
