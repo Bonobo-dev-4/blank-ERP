@@ -102,7 +102,7 @@ export function Tabs<T extends string>({
                   'num rounded px-1.5 py-px text-[11px] font-medium tabular-nums',
                   // The count inverts on the active tab: the number you are
                   // looking at should be the heaviest mark in the strip.
-                  active ? 'bg-ink text-surface' : 'bg-surface-muted text-ink-muted',
+                  active ? 'bg-ink text-canvas' : 'bg-surface-muted text-ink-muted',
                 )}
               >
                 {t.count}

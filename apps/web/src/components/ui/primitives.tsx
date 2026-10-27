@@ -20,7 +20,7 @@ const buttonVariants = cva(
        * mistaken for `primary`, which is solid from the start.
        */
       variant: {
-        primary: 'bg-ink text-canvas font-medium hover:bg-brand-strong',
+        primary: 'bg-ink text-canvas font-medium hover:bg-ink/85',
         default: 'glass-raised text-ink hover:border-ink hover:bg-surface-muted',
         ghost: 'text-ink-muted hover:bg-surface-muted hover:text-ink',
         danger:

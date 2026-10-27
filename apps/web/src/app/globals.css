@@ -4,7 +4,9 @@
 /*
  * DASH AND DOT Manufacturing ERP — design tokens.
  *
- * Frosted glass over carbon. Monochrome: ink, paper and the greys between.
+ * Midnight Sapphire. A deep blue ambient ground (#121C32 / #304766 /
+ * #7184A0) lit by soft radial pools, under neutral colourless frosted
+ * glass. The glass itself carries no hue — only white light at low alpha.
  *
  * Two constraints shaped this, and they pull against each other.
  *
@@ -34,7 +36,7 @@
    * depth AND contrast at the same time, which is what the brief asks for in
    * the same breath.
    */
-  --color-canvas: oklch(0.92 0.014 65);
+  --color-canvas: #121C32;
 
   /*
    * Frosted panes, calibrated the third time and now from the right end.
@@ -44,33 +46,34 @@
    * panes near white, so the glow bleeds through at the edges while type
    * sits on an almost-paper surface.
    */
-  --color-surface: oklch(1 0 0 / 0.72);
-  --color-surface-muted: oklch(1 0 0 / 0.45);
+  --color-surface: oklch(1 0 0 / 0.09);
+  --color-surface-muted: oklch(1 0 0 / 0.05);
 
-  --color-line: oklch(0.35 0.03 60 / 0.12);
-  --color-line-strong: oklch(0.35 0.03 60 / 0.28);
+  --color-line: oklch(1 0 0 / 0.14);
+  --color-line-strong: oklch(1 0 0 / 0.3);
 
   /* Type. Near-black on bright glass: contrast is a requirement here. */
-  /* Deep navy rather than black — the reference's text colour. */
-  --color-ink: oklch(0.25 0.04 278);
-  --color-ink-muted: oklch(0.45 0.028 278);
-  --color-ink-subtle: oklch(0.56 0.02 278);
+  /* Near-white on midnight: WCAG is the constraint, so the scale starts
+     high and even the subtle step stays readable. */
+  --color-ink: oklch(0.95 0.012 250);
+  --color-ink-muted: oklch(0.79 0.025 250);
+  --color-ink-subtle: oklch(0.67 0.03 250);
 
   /* The rail: graphite, so the page reads as lit and it does not. */
-  --color-rail: oklch(0.25 0.02 50);
+  --color-rail: #0E1830;
   --color-rail-hover: oklch(1 0 0 / 0.1);
   --color-rail-active: oklch(1 0 0);
-  --color-rail-ink: oklch(0.92 0 0);
-  --color-rail-ink-muted: oklch(0.65 0 0);
+  --color-rail-ink: oklch(0.93 0.015 250);
+  --color-rail-ink-muted: oklch(0.68 0.03 250);
 
   /*
-   * Amber, the reference's orange. One accent: active states, the emphasised
-   * series on a chart, the figure that is doing well. Deep enough to carry
-   * white text, which the reference's lighter orange could not.
+   * No warm accent. Emphasis stays inside the sapphire family — the slate
+   * of #7184A0, deepened enough to carry white text. Active states and the
+   * emphasised chart series use it; everything else is white at some alpha.
    */
-  --color-brand: oklch(0.63 0.14 55);
-  --color-brand-strong: oklch(0.55 0.14 50);
-  --color-brand-soft: oklch(0.63 0.14 55 / 0.14);
+  --color-brand: oklch(0.58 0.055 255);
+  --color-brand-strong: oklch(0.47 0.055 258);
+  --color-brand-soft: oklch(0.71 0.05 252 / 0.22);
 
   /*
    * Semantics, in greys. Severity is carried by FILL and by a WORD — a solid
@@ -78,25 +81,25 @@
    * normal. That rule has survived three repaints now and is the reason
    * losing hue costs nothing in legibility.
    */
-  --color-ok: oklch(0.55 0.1 155);
-  --color-ok-soft: oklch(0.55 0.1 155 / 0.12);
-  --color-warn: oklch(0.58 0.13 70);
-  --color-warn-soft: oklch(0.58 0.13 70 / 0.14);
-  --color-danger: oklch(0.54 0.16 32);
-  --color-danger-soft: oklch(0.54 0.16 32 / 0.12);
-  --color-info: oklch(0.45 0.028 278);
-  --color-info-soft: oklch(1 0 0 / 0.55);
-  --color-neutral-soft: oklch(1 0 0 / 0.55);
+  --color-ok: oklch(0.75 0.1 155);
+  --color-ok-soft: oklch(0.75 0.1 155 / 0.14);
+  --color-warn: oklch(0.8 0.11 90);
+  --color-warn-soft: oklch(0.8 0.11 90 / 0.15);
+  --color-danger: oklch(0.58 0.17 22);
+  --color-danger-soft: oklch(0.65 0.17 22 / 0.16);
+  --color-info: oklch(0.78 0.025 250);
+  --color-info-soft: oklch(1 0 0 / 0.08);
+  --color-neutral-soft: oklch(1 0 0 / 0.08);
 
   /* The production strip: solid graphite, the one surface that is not glass. */
-  --color-vat: oklch(0.24 0.025 50);
-  --color-vat-deep: oklch(0.16 0.02 50);
+  --color-vat: oklch(0.2 0.04 262);
+  --color-vat-deep: oklch(0.14 0.035 262);
   --color-vat-line: oklch(1 0 0 / 0.3);
-  --color-chalk: oklch(0.985 0.005 75);
-  --color-chalk-muted: oklch(0.74 0.03 60);
-  /* The live stage marker is the accent — the reference's orange-on-dark. */
-  --color-zari: oklch(0.75 0.14 60);
-  --color-madder: oklch(0.78 0.06 45);
+  --color-chalk: oklch(0.985 0.005 250);
+  --color-chalk-muted: oklch(0.72 0.03 250);
+  /* The live stage marker: ice light, the brightest thing on the dark card. */
+  --color-zari: oklch(0.88 0.04 250);
+  --color-madder: oklch(0.62 0.04 255);
 
   /*
    * A whisper of rounding. Fully square proved too severe in use, so every
@@ -143,11 +146,11 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(1100px 760px at 12% -10%, oklch(1 0 0 / 0.9), transparent 55%),
-    radial-gradient(1000px 720px at 90% 0%, oklch(0.93 0.03 55 / 0.8), transparent 54%),
-    radial-gradient(900px 860px at 84% 108%, oklch(0.72 0.06 40 / 0.5), transparent 60%),
-    radial-gradient(760px 620px at 8% 104%, oklch(0.85 0.045 70 / 0.6), transparent 55%),
-    linear-gradient(158deg, oklch(0.95 0.012 75) 0%, oklch(0.89 0.028 60) 55%, oklch(0.84 0.04 50) 100%);
+    radial-gradient(1200px 820px at 14% -12%, rgb(48 71 102 / 0.9), transparent 60%),
+    radial-gradient(1000px 700px at 88% -6%, rgb(113 132 160 / 0.42), transparent 55%),
+    radial-gradient(1500px 1000px at 50% 42%, rgb(113 132 160 / 0.1), transparent 70%),
+    radial-gradient(960px 900px at 86% 110%, rgb(48 71 102 / 0.85), transparent 62%),
+    radial-gradient(820px 640px at 4% 106%, rgb(113 132 160 / 0.28), transparent 55%);
 }
 
 /* ---------------------------------------------------------------------------
@@ -162,26 +165,26 @@ body::before {
    * is just a translucent rectangle.
    */
   background:
-    linear-gradient(132deg, oklch(1 0 0 / 0.55) 0%, oklch(1 0 0 / 0.08) 45%, oklch(1 0 0 / 0) 70%),
+    linear-gradient(132deg, oklch(1 0 0 / 0.13) 0%, oklch(1 0 0 / 0.035) 45%, oklch(1 0 0 / 0) 70%),
     var(--color-surface);
-  backdrop-filter: blur(26px) saturate(140%);
-  -webkit-backdrop-filter: blur(26px) saturate(140%);
-  border: 1px solid oklch(1 0 0 / 0.85);
-  /* Soft and diffuse, the way the reference floats its cards — a hard dark
-     drop under bright glass reads as cardboard, not depth. */
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  /* A fine white rim and an inset top highlight: the reflection cues. */
+  border: 1px solid oklch(1 0 0 / 0.18);
   box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.95),
-    0 2px 6px oklch(0.3 0 0 / 0.05),
-    0 18px 40px -18px oklch(0.3 0 0 / 0.22);
+    inset 0 1px 0 0 oklch(1 0 0 / 0.26),
+    inset 0 0 0 0.5px oklch(1 0 0 / 0.05),
+    0 2px 6px oklch(0 0 0 / 0.18),
+    0 24px 48px -18px oklch(0 0 0 / 0.5);
 }
 
 /* Controls that sit ON glass and must not dissolve into it. */
 .glass-raised {
-  background: oklch(1 0 0 / 0.85);
-  backdrop-filter: blur(30px) saturate(135%);
-  -webkit-backdrop-filter: blur(30px) saturate(135%);
-  border: 1px solid oklch(1 0 0 / 0.92);
-  box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.9), 0 2px 8px -2px oklch(0.2 0 0 / 0.16);
+  background: oklch(1 0 0 / 0.13);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid oklch(1 0 0 / 0.26);
+  box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.32), 0 2px 8px -2px oklch(0 0 0 / 0.4);
 }
 
 /*
@@ -189,10 +192,17 @@ body::before {
  * has to be sharp, and blurred text behind blurred text is neither.
  */
 .glass-solid {
-  background: oklch(1 0 0 / 0.95);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--color-line);
+  background: oklch(1 0 0 / 0.1);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid oklch(1 0 0 / 0.16);
+}
+
+/* The rail is glass too: the utility sets the colour, this adds the blur. */
+.bg-rail {
+  background-color: rgb(10 17 34 / 0.62);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
 }
 
 /*
@@ -207,20 +217,22 @@ body::before {
  * replaced the gradient, leaving white text on a transparent card.
  */
 .solid-accent {
-  background-color: oklch(0.24 0.025 50);
-  background-image:
-    repeating-linear-gradient(45deg, oklch(1 0 0 / 0.045) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(-45deg, oklch(1 0 0 / 0.035) 0 1px, transparent 1px 3px),
-    radial-gradient(500px 300px at 92% 110%, oklch(0.63 0.14 55 / 0.3), transparent 65%),
-    linear-gradient(152deg, oklch(0.3 0.03 50) 0%, oklch(0.17 0.02 45) 100%);
-  color: oklch(0.985 0.005 75);
-  border: 1px solid oklch(0.38 0.035 50);
+  /* Smoked glass, not paint: still translucent, just darker than its peers. */
+  background:
+    repeating-linear-gradient(45deg, oklch(1 0 0 / 0.04) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, oklch(1 0 0 / 0.03) 0 1px, transparent 1px 3px),
+    radial-gradient(520px 320px at 90% 112%, rgb(113 132 160 / 0.35), transparent 65%),
+    linear-gradient(152deg, rgb(16 26 50 / 0.55) 0%, rgb(6 11 22 / 0.6) 100%);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  color: oklch(0.985 0.005 250);
+  border: 1px solid oklch(1 0 0 / 0.14);
   box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.14),
-    0 20px 44px -18px oklch(0.25 0.04 50 / 0.5);
+    inset 0 1px 0 0 oklch(1 0 0 / 0.12),
+    0 24px 48px -18px oklch(0 0 0 / 0.6);
 }
 .solid-accent .text-ink-muted,
-.solid-accent .text-ink-subtle { color: oklch(0.74 0.03 60) !important; }
+.solid-accent .text-ink-subtle { color: oklch(0.72 0.03 250) !important; }
 
 /*
  * Fallbacks. Where blur is unavailable the panes go opaque rather than
@@ -228,18 +240,21 @@ body::before {
  */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass, .glass-raised, .glass-solid {
-    background: oklch(0.985 0 0);
+    background: #243150;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+  .bg-rail { background-color: #0E1830; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .solid-accent { background: #0C1526; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .glass, .glass-raised, .glass-solid {
-    background: oklch(0.985 0 0);
+    background: #243150;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+  .bg-rail { background-color: #0E1830; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -260,16 +275,16 @@ body::before {
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.32 0 0 / 0.3);
+  background: oklch(1 0 0 / 0.25);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
-::-webkit-scrollbar-thumb:hover { background: oklch(0.32 0 0 / 0.45); background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.4); background-clip: content-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid oklch(0.82 0.05 250);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -280,6 +295,12 @@ body::before {
 
 @media print {
   .no-print { display: none !important; }
+  :root {
+    --color-ink: oklch(0.15 0 0);
+    --color-ink-muted: oklch(0.35 0 0);
+    --color-ink-subtle: oklch(0.48 0 0);
+    --color-line: oklch(0 0 0 / 0.15);
+  }
   body { background: white; color: black; font-size: 11px; }
   body::before { display: none; }
   .glass, .glass-raised, .glass-solid {
