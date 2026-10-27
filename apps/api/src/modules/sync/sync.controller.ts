@@ -1,7 +1,8 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../common/auth/guards';
-import { OrgId } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '@dnd/contracts';
+import { CurrentUser, OrgId } from '../../common/decorators/current-user.decorator';
 import { SyncService } from './sync.service';
 
 @ApiTags('Sync')
@@ -35,5 +36,16 @@ export class SyncController {
     @Query('limit') limit?: string,
   ) {
     return this.sync.reconciliation(orgId, { facilityCode, limit: Number(limit) || 25 });
+  }
+
+  @Post('orders/resync')
+  @RequirePermissions('demand.import')
+  @ApiOperation({
+    summary: 'Refresh order state from Shopify and Unicommerce',
+    description:
+      'Re-imports Shopify orders changed since the newest version held (overlap is safe: the stale-version guard refuses older copies), and carries Unicommerce statuses onto ours, matched by order number. One side failing does not stop the other.',
+  })
+  resyncOrders(@OrgId() orgId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.sync.resyncOrders(orgId, user.id);
   }
 }

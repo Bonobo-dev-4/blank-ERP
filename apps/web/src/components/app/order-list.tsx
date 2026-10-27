@@ -1,14 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { fmtDateTime, fmtMoneyCompact, fmtQty, humanise } from '@/lib/utils';
 import {
-  Badge, Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
+  Badge, Button, Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
 
 interface Line {
@@ -18,6 +18,7 @@ interface Line {
 }
 interface Order {
   id: string; orderNumber: string; orderName: string | null; channel: string;
+  externalShipmentStatus: string | null;
   channelBasis: string | null; isCustomised: boolean;
   posLocationName: string | null; orderedAt: string; status: string;
   financialStatus: string | null; fulfillmentStatus: string | null;
@@ -39,12 +40,22 @@ export function OrderList({
   title: string; description: string; channel?: 'ONLINE' | 'POS' | 'CUSTOM';
 }) {
   const router = useRouter();
+  const qc = useQueryClient();
   const [page, setPage] = React.useState(1);
   const qs = new URLSearchParams({ page: String(page), pageSize: '25', ...(channel ? { channel } : {}) });
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['shopify-orders', channel ?? 'all', page],
     queryFn: () => api.get<Page>(`/integrations/shopify/orders?${qs}`),
+  });
+
+  const resync = useMutation({
+    mutationFn: () =>
+      api.post<{
+        shopify: { imported?: number; skippedStale?: number; error?: string };
+        unicommerce: { checked?: number; matched?: number; updated?: number; error?: string; skipped?: string };
+      }>('/sync/orders/resync', {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['shopify-orders'] }),
   });
 
   const unmapped = (data?.data ?? []).reduce((n, o) => n + o.unmappedLineCount, 0);
@@ -56,14 +67,35 @@ export function OrderList({
         title={title}
         description={description}
         actions={
-          <Link
-            href="/admin/integrations"
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-brand hover:underline"
-          >
-            Import orders <ArrowUpRight className="size-3.5" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="default" onClick={() => resync.mutate()} disabled={resync.isPending}>
+              <RefreshCw className={resync.isPending ? 'animate-spin' : ''} />
+              {resync.isPending ? 'Resyncing…' : 'Resync status'}
+            </Button>
+            <Link
+              href="/admin/integrations"
+              className="inline-flex items-center gap-1 text-[12px] font-medium text-ink hover:underline"
+            >
+              Import orders <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
         }
       />
+
+      {resync.data ? (
+        <p className="glass rounded-xl px-3.5 py-2.5 text-[12px] text-ink">
+          {resync.data.shopify.error
+            ? `Shopify: ${resync.data.shopify.error}`
+            : `Shopify: ${resync.data.shopify.imported ?? 0} orders refreshed`}
+          {' · '}
+          {resync.data.unicommerce.error
+            ? `Unicommerce: ${resync.data.unicommerce.error}`
+            : resync.data.unicommerce.skipped
+            ? `Unicommerce: ${resync.data.unicommerce.skipped}`
+            : `Unicommerce: ${resync.data.unicommerce.matched ?? 0} matched, ${resync.data.unicommerce.updated ?? 0} status changes`}
+        </p>
+      ) : null}
+      {resync.error ? <ErrorPanel error={resync.error} /> : null}
 
       {isLoading ? <LoadingBlock label="Loading orders" /> : null}
       {error ? <ErrorPanel error={error} onRetry={() => void refetch()} /> : null}
@@ -111,6 +143,7 @@ export function OrderList({
                         <th className="px-3 py-1.5 text-right font-semibold">Demand</th>
                         <th className="px-3 py-1.5 text-right font-semibold">Value</th>
                         <th className="px-3 py-1.5 text-left font-semibold">Status</th>
+                        <th className="px-3 py-1.5 text-left font-semibold">Shipping</th>
                         <th className="px-3 py-1.5 text-left font-semibold">Placed</th>
                       </tr>
                     </thead>
@@ -151,6 +184,11 @@ export function OrderList({
                             {o.totalAmount ? fmtMoneyCompact(o.totalAmount) : '—'}
                           </td>
                           <td className="px-3 py-1.5"><StatusBadge status={o.status} /></td>
+                          <td className="px-3 py-1.5">
+                            {o.externalShipmentStatus
+                              ? <Badge tone="outline">{humanise(o.externalShipmentStatus)}</Badge>
+                              : <span className="text-[11px] text-ink-subtle">not synced</span>}
+                          </td>
                           <td className="px-3 py-1.5 text-ink-muted">{fmtDateTime(o.orderedAt)}</td>
                         </tr>
                       ))}

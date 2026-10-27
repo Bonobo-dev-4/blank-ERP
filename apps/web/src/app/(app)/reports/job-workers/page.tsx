@@ -7,6 +7,7 @@ import { fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
 interface Worker {
@@ -39,6 +40,15 @@ export default function JobWorkerReportPage() {
         description="Counted from the stage tasks assigned to each worker, which is where the work happened. An order can be raised and never worked, so order counts alone would flatter."
       />
       <ReportWindow value={w} onChange={setW}>
+        <ExportCsvButton
+          filename="job-worker-performance"
+          disabled={rows.length === 0}
+          headers={['Code', 'Worker', 'Kind', 'Tasks', 'Taken in', 'Completed', 'Rejected', 'Rework open', 'Quality %']}
+          rows={() => rows.map((x) => [
+            x.code, x.name, x.workerType, x.taskCount, x.receivedQty,
+            x.completedQty, x.rejectedQty, x.reworkOpenQty, x.qualityPct,
+          ])}
+        />
         {idle > 0 ? (
           <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted">
             <input

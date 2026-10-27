@@ -7,6 +7,7 @@ import { fmtQty } from '@/lib/utils';
 import {
   Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
 interface StageRow {
@@ -43,7 +44,17 @@ export default function ProductionReportPage() {
         title="Production reports"
         description="Throughput and where it is being lost. Stage figures are never summed — a garment passes through every stage, so adding them counts it once per stage."
       />
-      <ReportWindow value={w} onChange={setW} />
+      <ReportWindow value={w} onChange={setW}>
+        <ExportCsvButton
+          filename="production-report"
+          disabled={!data || active.length === 0}
+          headers={['Stage', 'Taken in', 'Completed', 'On the floor', 'Rejected', 'Rework open', 'Reject %', 'First-pass yield %']}
+          rows={() => active.map((s) => [
+            s.name, s.receivedQty, s.completedQty, s.wipQty, s.rejectedQty,
+            s.reworkOpenQty, s.rejectionPct, s.firstPassYieldPct,
+          ])}
+        />
+      </ReportWindow>
 
       {isLoading ? <LoadingBlock label="Running the report" /> : null}
       {error ? <ErrorPanel error={error} onRetry={() => void refetch()} /> : null}

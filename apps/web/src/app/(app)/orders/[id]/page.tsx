@@ -118,6 +118,22 @@ function LineRow({ line: l }: { line: Line }) {
   return (
     <li className={`px-3.5 py-3 ${l.demand?.isRejectedForDispatch ? 'row-flag' : ''}`}>
       <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+        {/* The garment itself. A style number tells a system what this is; a
+            picture tells a person. Greyed placeholder when the catalogue has
+            no image, so the row keeps its shape. */}
+        {l.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={l.imageUrl}
+            alt={l.productName ?? l.sku ?? ''}
+            loading="lazy"
+            className="size-14 shrink-0 rounded-lg border border-line object-cover"
+          />
+        ) : (
+          <div className="grid size-14 shrink-0 place-items-center rounded-lg border border-line bg-surface-muted text-[9px] uppercase tracking-wide text-ink-subtle">
+            no image
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[12px]">{l.sku ?? '—'}</span>

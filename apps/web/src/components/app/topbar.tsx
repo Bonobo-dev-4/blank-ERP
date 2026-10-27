@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ALL_NAV_ITEMS, BUILD_STATUS_SUMMARY, DELIVERED_PHASES } from '@dnd/contracts';
 import { Badge, Button } from '@/components/ui/primitives';
 import { useAuth } from './auth-context';
+import { NotificationBell } from './notification-bell';
 
 /**
  * How much of the roadmap is actually delivered.
@@ -56,6 +57,7 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
         <span className="hidden sm:inline-flex" title={PHASE_BADGE_TITLE}>
           <Badge tone="outline">{PHASE_BADGE}</Badge>
         </span>
+      <NotificationBell />
         <Button variant="ghost" size="icon" onClick={refreshAll} aria-label="Refresh data" title="Refresh all data">
           <RefreshCw className={refreshing ? 'animate-spin' : undefined} />
         </Button>

@@ -7,6 +7,7 @@ import { fmtMoney, fmtMoneyCompact, fmtQty } from '@/lib/utils';
 import {
   Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
 interface Row {
@@ -37,7 +38,17 @@ export default function CostingReportPage() {
         title="Production costing"
         description="Planned from the frozen BOM, actual from the ledger. Unit cost divides by accepted units, so rejected garments carry their own cost rather than spreading it across good ones."
       />
-      <ReportWindow value={w} onChange={setW} />
+      <ReportWindow value={w} onChange={setW}>
+        <ExportCsvButton
+          filename="production-costing"
+          disabled={!data || data.orders.length === 0}
+          headers={['Order', 'Product', 'Status', 'Accepted', 'Planned', 'Actual', 'Variance', 'Variance %', 'Cost per accepted unit']}
+          rows={() => (data?.orders ?? []).map((o) => [
+            o.orderNo, o.productName, o.status, o.acceptedQty, o.plannedTotal,
+            o.actualTotal, o.varianceAmount, o.variancePct, o.costPerAcceptedUnit,
+          ])}
+        />
+      </ReportWindow>
 
       {isLoading ? <LoadingBlock label="Running the report" /> : null}
       {error ? <ErrorPanel error={error} onRetry={() => void refetch()} /> : null}

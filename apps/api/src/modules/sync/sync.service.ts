@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { Decimal, dec, reconcile } from '@dnd/domain';
+import { Injectable, Logger } from '@nestjs/common';
+import { Decimal, dec, normaliseCommerceRef, reconcile } from '@dnd/domain';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { ShopifyService } from '../integrations/shopify.service';
 import { UnicommerceClient } from '../integrations/unicommerce.client';
 import { UnicommerceService } from '../integrations/unicommerce.service';
 
@@ -16,11 +17,108 @@ import { UnicommerceService } from '../integrations/unicommerce.service';
  */
 @Injectable()
 export class SyncService {
+  private readonly logger = new Logger(SyncService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly client: UnicommerceClient,
     private readonly unicommerce: UnicommerceService,
+    private readonly shopify: ShopifyService,
   ) {}
+
+  /**
+   * Refresh order state from BOTH external systems.
+   *
+   * Someone edits an order in Shopify, or a parcel moves in Unicommerce, and
+   * this ERP's copy goes quietly stale. One call brings both up to date:
+   *
+   *  - Shopify: re-import everything updated since the newest version we
+   *    hold, less an hour of overlap. Re-importing is safe by construction -
+   *    the importer upserts, and the stale-version guard refuses to let an
+   *    older copy overwrite a newer one, so overlap costs nothing and a gap
+   *    would cost a missed change.
+   *  - Unicommerce: read the last 35 days of sale orders and carry their
+   *    status onto ours, matched by order number - the join both systems
+   *    share. Unicommerce fulfils, so for shipping its word is the truth.
+   */
+  async resyncOrders(organizationId: string, actorUserId: string) {
+    const started = Date.now();
+
+    // --- Shopify: changed orders since the newest we hold --------------------
+    const newest = await this.prisma.shopifyOrder.aggregate({
+      where: { organizationId },
+      _max: { externalUpdatedAt: true },
+    });
+    const since = newest._max.externalUpdatedAt
+      ? new Date(newest._max.externalUpdatedAt.getTime() - 60 * 60 * 1000)
+      : new Date(Date.now() - 7 * 86_400_000);
+
+    let shopifyResult: { imported: number; skippedStale: number } | { error: string };
+    try {
+      const r = (await this.shopify.importOrders(organizationId, actorUserId, {
+        since: since.toISOString(),
+        pageSize: 50,
+      })) as { imported?: number; skippedStale?: number };
+      shopifyResult = { imported: r.imported ?? 0, skippedStale: r.skippedStale ?? 0 };
+    } catch (error) {
+      // One side failing must not stop the other: a Shopify outage is no
+      // reason to skip the Unicommerce statuses, and vice versa.
+      shopifyResult = { error: errorMessage(error) };
+      this.logger.warn(`Shopify resync failed: ${errorMessage(error)}`);
+    }
+
+    // --- Unicommerce: shipment status by order number ------------------------
+    let unicommerceResult:
+      | { checked: number; matched: number; updated: number }
+      | { error: string }
+      | { skipped: string };
+    const uc = this.client.describe();
+    if (!uc.isConfigured || !uc.enabled) {
+      unicommerceResult = { skipped: 'Unicommerce is not configured.' };
+    } else {
+      try {
+        const to = new Date();
+        const from = new Date(to.getTime() - 35 * 86_400_000);
+        const external = await this.unicommerce.searchOrders(from, to);
+
+        // Match on normalised order number: "#167939", "167939" and
+        // "DD-167939" all reduce to the same key.
+        const ours = await this.prisma.shopifyOrder.findMany({
+          where: { organizationId, orderedAt: { gte: new Date(from.getTime() - 86_400_000) } },
+          select: { id: true, orderName: true, orderNumber: true, externalShipmentStatus: true },
+        });
+        const byRef = new Map(
+          ours.map((o) => [normaliseCommerceRef(o.orderName ?? o.orderNumber), o] as const),
+        );
+
+        let matched = 0;
+        let updated = 0;
+        for (const ext of external) {
+          if (!ext.displayOrderCode || !ext.status) continue;
+          const ours2 = byRef.get(normaliseCommerceRef(ext.displayOrderCode));
+          if (!ours2) continue;
+          matched += 1;
+          if (ours2.externalShipmentStatus === ext.status) continue;
+          await this.prisma.shopifyOrder.update({
+            where: { id: ours2.id },
+            data: { externalShipmentStatus: ext.status, externalStatusSyncedAt: new Date() },
+          });
+          updated += 1;
+        }
+        unicommerceResult = { checked: external.length, matched, updated };
+      } catch (error) {
+        unicommerceResult = { error: errorMessage(error) };
+        this.logger.warn(`Unicommerce status resync failed: ${errorMessage(error)}`);
+      }
+    }
+
+    return {
+      sinceShopify: since.toISOString(),
+      shopify: shopifyResult,
+      unicommerce: unicommerceResult,
+      tookMs: Date.now() - started,
+    };
+  }
 
   /**
    * What is waiting to go out.
@@ -189,4 +287,12 @@ export class SyncService {
       totals: { compared: rows.length, matched, shortfall, overage, unreadable },
     };
   }
+}
+
+function errorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const r = (error as { response?: { message?: string } }).response;
+    if (r?.message) return r.message;
+  }
+  return error instanceof Error ? error.message : String(error);
 }

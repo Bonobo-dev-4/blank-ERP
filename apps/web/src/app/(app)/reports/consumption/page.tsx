@@ -7,6 +7,7 @@ import { fmtMoneyCompact, fmtQty, uomShort } from '@/lib/utils';
 import {
   Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
 interface Line {
@@ -35,7 +36,17 @@ export default function ConsumptionReportPage() {
         title="Material consumption"
         description="What was actually consumed, against the BOM frozen at release. Comparing to the live BOM would measure later edits rather than the production run."
       />
-      <ReportWindow value={w} onChange={setW} />
+      <ReportWindow value={w} onChange={setW}>
+        <ExportCsvButton
+          filename="material-consumption"
+          disabled={!data || data.lines.length === 0}
+          headers={['Material code', 'Material', 'Consumed', 'Wastage', 'Wastage %', 'BOM standard', 'Variance', 'Variance %', 'Value']}
+          rows={() => (data?.lines ?? []).map((l) => [
+            l.materialCode, l.name, l.consumedQty, l.wastageQty, l.wastagePct,
+            l.standardQty, l.varianceQty, l.variancePct, l.totalCost,
+          ])}
+        />
+      </ReportWindow>
 
       {isLoading ? <LoadingBlock label="Running the report" /> : null}
       {error ? <ErrorPanel error={error} onRetry={() => void refetch()} /> : null}

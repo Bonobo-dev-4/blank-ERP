@@ -680,6 +680,8 @@ export class ShopifyService {
       orderedAt: order.orderedAt.toISOString(),
       cancelledAt: order.cancelledAt?.toISOString() ?? null,
       importedAt: order.importedAt.toISOString(),
+      externalShipmentStatus: order.externalShipmentStatus,
+      externalStatusSyncedAt: order.externalStatusSyncedAt?.toISOString() ?? null,
       lines: order.lines.map((l) => {
         const demand = demandByLine.get(l.id) ?? null;
         const variant = l.productVariantId ? variantById.get(l.productVariantId) ?? null : null;

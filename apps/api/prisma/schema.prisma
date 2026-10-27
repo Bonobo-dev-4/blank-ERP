@@ -2975,6 +2975,11 @@ model ShopifyOrder {
   rawPayload         Json?
   /// Shopify updated_at of the version we have processed, for stale-write guard.
   externalUpdatedAt  DateTime?
+  /// What Unicommerce last reported for this order (PROCESSING, COMPLETE,
+  /// CANCELLED...). Unicommerce fulfils, so this is the shipping truth; it is
+  /// matched by order number, the join both systems share.
+  externalShipmentStatus   String?
+  externalStatusSyncedAt   DateTime?
   importedAt         DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
