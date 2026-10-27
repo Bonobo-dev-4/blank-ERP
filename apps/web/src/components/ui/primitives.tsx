@@ -20,15 +20,15 @@ const buttonVariants = cva(
        * mistaken for `primary`, which is solid from the start.
        */
       variant: {
-        primary: 'bg-ink text-surface hover:bg-brand-strong',
-        default: 'bg-surface text-ink border border-line-strong hover:border-ink hover:bg-surface-muted',
+        primary: 'bg-ink text-canvas font-medium hover:bg-brand-strong',
+        default: 'glass-raised text-ink hover:border-ink hover:bg-surface-muted',
         ghost: 'text-ink-muted hover:bg-surface-muted hover:text-ink',
         danger:
-          'border-2 border-ink bg-surface font-semibold text-ink hover:bg-ink hover:text-surface',
+          'border-2 border-ink bg-transparent font-semibold text-ink hover:bg-ink hover:text-canvas',
         // An unusual action, not a dangerous one: dashed, so it reads as
         // deliberate without borrowing the destructive treatment.
         elevated:
-          'border border-dashed border-ink bg-surface text-ink hover:bg-surface-muted',
+          'border border-dashed border-ink bg-transparent text-ink hover:bg-surface-muted',
       },
       size: {
         sm: 'h-7 px-2.5 text-[12px] [&_svg]:size-3.5',
@@ -192,7 +192,7 @@ export function Field({
 
 export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('rounded-lg border border-line bg-surface', className)} {...props}>
+    <div className={cn('glass rounded-lg', className)} {...props}>
       {children}
     </div>
   );
@@ -242,10 +242,10 @@ const badgeVariants = cva(
     variants: {
       tone: {
         neutral: 'bg-surface-muted text-ink-muted',
-        brand: 'bg-ink text-surface',
+        brand: 'bg-ink text-canvas',
         ok: 'bg-surface-muted text-ink-muted',
         warn: 'border-[1.5px] border-ink bg-transparent font-semibold text-ink',
-        danger: 'bg-ink font-semibold text-surface',
+        danger: 'bg-ink font-semibold text-canvas',
         info: 'bg-surface-muted text-ink-muted',
         outline: 'border border-line-strong bg-surface text-ink-muted',
       },
@@ -485,14 +485,20 @@ export function Stat({
   // hue available this is what separates "look here" from "this is fine",
   // and it survives a bad panel and a colour-blind reader alike.
   const flagged = tone === 'danger' || tone === 'warn';
-  const shell = cn(
-    'rounded-lg border border-line bg-surface px-3.5 py-3',
-    flagged && 'row-flag',
-  );
+  const shell = cn('glass rounded-lg px-3.5 py-3', flagged && 'row-flag');
 
   if (href) {
     return (
-      <a href={href} className={cn(shell, 'block transition-colors hover:border-ink hover:bg-surface-muted')}>
+      <a
+        href={href}
+        className={cn(
+          shell,
+          // A tile you can open lifts a little. On glass the movement reads as
+          // the pane coming forward, which is the whole point of the material.
+          'block transition-[transform,background-color,border-color] duration-200',
+          'hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface-muted',
+        )}
+      >
         {inner}
       </a>
     );

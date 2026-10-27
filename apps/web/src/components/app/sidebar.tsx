@@ -85,13 +85,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 
   return (
-    <nav className="flex h-full w-60 shrink-0 flex-col bg-rail text-rail-ink">
+    <nav className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-rail/80 text-rail-ink backdrop-blur-2xl">
       <div className="flex items-center gap-2.5 px-4 py-3.5">
-        <div className="flex size-7 items-center justify-center rounded bg-white/95 text-[11px] font-bold tracking-tighter text-rail">
+        <div className="flex size-7 items-center justify-center rounded-md bg-ink text-[11px] font-bold tracking-tighter text-canvas">
           D·D
         </div>
         <div className="min-w-0">
-          <p className="truncate text-[12.5px] font-semibold leading-tight text-white">DASH AND DOT</p>
+          <p className="truncate text-[12.5px] font-semibold leading-tight text-ink">DASH AND DOT</p>
           <p className="truncate text-[10.5px] leading-tight text-rail-ink-muted">Manufacturing ERP</p>
         </div>
       </div>
@@ -123,8 +123,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {user ? (
-        <div className="border-t border-white/10 px-3 py-2.5">
-          <p className="truncate text-[12px] font-medium text-white">{user.fullName}</p>
+        <div className="border-t border-line px-3 py-2.5">
+          <p className="truncate text-[12px] font-medium text-ink">{user.fullName}</p>
           <p className="truncate text-[10.5px] text-rail-ink-muted">
             {user.roles.map((r) => r.replace(/_/g, ' ').toLowerCase()).join(', ')}
           </p>
@@ -152,7 +152,7 @@ function NavLink({
       <span className="flex-1 truncate">{item.label}</span>
       {planned ? (
         <span
-          className="shrink-0 rounded-sm bg-white/8 px-1 py-px text-[9.5px] font-medium tabular-nums text-rail-ink-muted"
+          className="shrink-0 rounded-sm bg-surface-muted px-1 py-px text-[9.5px] font-medium tabular-nums text-rail-ink-muted"
           title={`Planned for phase ${item.phase}`}
         >
           P{item.phase}
@@ -164,7 +164,7 @@ function NavLink({
           // vanish, and on the white slab a white one would.
           className={cn(
             'size-1.5 shrink-0 rounded-full border',
-            active ? 'border-rail' : 'border-rail-ink-muted',
+            active ? 'border-canvas' : 'border-rail-ink-muted',
           )}
           title={item.description ?? 'Partially implemented'}
         />
@@ -196,8 +196,8 @@ function NavLink({
         'relative flex items-center gap-2 rounded px-2 py-1.5 text-[12.5px] transition-colors duration-150',
         active
           // Ink on the white slab. The slab itself supplies the background.
-          ? 'font-semibold text-rail'
-          : 'text-rail-ink hover:bg-rail-hover hover:text-white',
+          ? 'font-semibold text-canvas'
+          : 'text-rail-ink hover:bg-rail-hover hover:text-ink',
       )}
     >
       {content}

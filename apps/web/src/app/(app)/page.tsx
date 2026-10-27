@@ -12,6 +12,7 @@ import {
   Badge, Card, CardBody, CardHeader, ErrorPanel, LoadingBlock, Stat, StatusBadge,
 } from '@/components/ui/primitives';
 import { ProductionLine, type LineStage } from '@/components/app/production-line';
+import { BarSeries, ShareBar } from '@/components/ui/charts';
 
 type UnbuiltSection = { available: false; phase: number; note: string };
 
@@ -184,6 +185,59 @@ export default function DashboardPage() {
           />
         </div>
       </section>
+
+      {/* --- charts, from figures already on this page ----------------------- */}
+      {data.production.available && data.production.line.some((s) => Number(s.receivedQty) > 0) ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <Card>
+            <CardHeader
+              title="Work taken in, by stage"
+              description="The tallest bar is where most work has passed through. Bars are per stage and never summed."
+            />
+            <CardBody>
+              <BarSeries
+                unit="garments"
+                data={data.production.line
+                  .filter((s) => Number(s.receivedQty) > 0)
+                  .map((s) => ({ label: s.name.split(' ')[0] ?? s.name, value: Number(s.receivedQty) }))}
+              />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Where the line stands"
+              description="On the floor, finished and handed on, or lost to rejection and rework."
+            />
+            <CardBody>
+              <ShareBar
+                segments={[
+                  {
+                    label: 'On the floor',
+                    value: Math.round(data.production.line.reduce((n, s) => n + Number(s.wipQty), 0)),
+                  },
+                  {
+                    label: 'Handed on',
+                    value: Math.round(data.production.line.reduce((n, s) => n + Number(s.forwardedQty), 0)),
+                  },
+                  {
+                    label: 'Rejected',
+                    value: Math.round(data.production.line.reduce((n, s) => n + Number(s.rejectedQty), 0)),
+                  },
+                  {
+                    label: 'Out for rework',
+                    value: Math.round(data.production.line.reduce((n, s) => n + Number(s.reworkOpenQty), 0)),
+                  },
+                ]}
+              />
+              <p className="mt-3 text-[11.5px] text-ink-subtle">
+                These four are disjoint, so this one totals honestly — unlike the per-stage figures
+                above, which describe the same garment at different points.
+              </p>
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
 
       {/* --- purchasing ----------------------------------------------------- */}
       <section>

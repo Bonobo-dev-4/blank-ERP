@@ -36,7 +36,7 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
   };
 
   return (
-    <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line bg-surface px-3">
+    <header className="glass sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 rounded-none border-x-0 border-t-0 px-3">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenNav} aria-label="Open navigation">
         <Menu />
       </Button>
