@@ -53,7 +53,7 @@ export default function BulkPoPage() {
           <p className="text-ink-muted">
             In the meantime, marketplace orders from Nykaa and Myntra do arrive through the sale-order
             feed and are visible under{' '}
-            <Link href="/orders" className="inline-flex items-center gap-0.5 font-medium text-brand hover:underline">
+            <Link href="/orders" className="inline-flex items-center gap-0.5 font-medium text-brand-strong hover:underline">
               all orders <ArrowUpRight className="size-3" />
             </Link>
             .

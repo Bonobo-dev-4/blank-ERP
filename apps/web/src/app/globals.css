@@ -35,22 +35,24 @@
   /* A 3:1 control boundary over the darkest pane. */
   --color-line-strong: rgb(255 255 255 / 0.4);
 
+  /* With the restrained aurora, the spec's muted #A4B1C3 clears 5:1 on the
+     composited pane, so it is used exactly. */
   --color-ink: #F5F7FB;
   --color-ink-muted: #C4CDDB;
-  /* A shade above the spec's #A4B1C3: measured on the composited pane under
-     the blue aurora, that value dips below 4.5:1. */
-  --color-ink-subtle: #ADB9CA;
+  --color-ink-subtle: #A4B1C3;
 
+  /* Navigation text. */
   --color-rail: rgb(255 255 255 / 0.06);
   --color-rail-hover: rgb(255 255 255 / 0.06);
   --color-rail-active: rgb(120 160 255 / 0.14);
-  --color-rail-ink: #DCE3EE;
-  --color-rail-ink-muted: #ADB9CA;
+  --color-rail-ink: #C4CDDB;
+  --color-rail-ink-muted: #A4B1C3;
 
-  /* The one interface accent: refined steel blue. As text it clears 6:1 on
-     night glass; as a fill it carries `text-canvas`. */
-  --color-brand: #8EAEFF;
-  --color-brand-strong: #ABC3FF;
+  /* The accent. `brand` is the exact accent for fills, indicators, focus and
+     icons; `brand-strong` is the shade used for TEXT links, chosen per theme
+     to clear 4.5:1. */
+  --color-brand: #78A0FF;
+  --color-brand-strong: #A3BEFF;
   --color-brand-soft: rgb(120 160 255 / 0.16);
 
   --color-ok: #43D6A0;
@@ -59,7 +61,7 @@
   --color-warn-soft: rgb(240 190 98 / 0.14);
   --color-danger: #FF718A;
   --color-danger-soft: rgb(255 113 138 / 0.14);
-  --color-info: #8EAEFF;
+  --color-info: #78A0FF;
   --color-info-soft: rgb(120 160 255 / 0.14);
   --color-hold: #FFA96E;
   --color-hold-soft: rgb(255 169 110 / 0.14);
@@ -73,7 +75,7 @@
   --color-vat-line: rgb(255 255 255 / 0.18);
   --color-chalk: #F5F7FB;
   --color-chalk-muted: #C4CDDB;
-  --color-zari: #8EAEFF;
+  --color-zari: #78A0FF;
   --color-madder: #FF718A;
 
   /*
@@ -98,13 +100,15 @@
   /* The four materials, by elevation. */
   --glass-subtle: rgb(255 255 255 / 0.055);
   --glass-surface: rgb(255 255 255 / 0.075);
-  --glass-surface-elevated: rgb(255 255 255 / 0.09);
+  --glass-surface-elevated: rgb(255 255 255 / 0.13);
   --glass-floating: rgb(30 41 60 / 0.82);
   --glass-surface-hover: rgb(255 255 255 / 0.11);
   --glass-surface-dense: rgb(255 255 255 / 0.065);
   --glass-border: rgb(255 255 255 / 0.15);
   --glass-highlight: rgb(255 255 255 / 0.32);
   --glass-shadow: rgb(0 0 0 / 0.28);
+  /* A hairline that separates pane from ground; night's border already does. */
+  --glass-edge: transparent;
   --glass-reflection: rgb(255 255 255 / 0.13);
   --glass-solid: #18212F;
   --glass-inset: rgb(255 255 255 / 0.045);
@@ -135,7 +139,7 @@
   --chart-hold: #E5BE66;
   --chart-neutral: #8C99AE;
   --chart-grid: rgb(255 255 255 / 0.08);
-  --chart-axis: #ADB9CA;
+  --chart-axis: #A4B1C3;
   --chart-cursor: rgb(255 255 255 / 0.05);
 }
 
@@ -143,27 +147,28 @@
 :root[data-theme='day'] {
   color-scheme: light;
 
-  --color-canvas: #F4F3F1;
+  --color-canvas: #F3F0EA;
   --color-surface: rgb(255 255 255 / 0.36);
   --color-surface-muted: rgb(39 54 72 / 0.045);
-  --color-line: rgb(39 54 72 / 0.14);
-  --color-line-strong: rgb(39 54 72 / 0.48);
+  --color-line: rgb(39 54 72 / 0.13);
+  /* 3:1 control boundary on the composited pane. */
+  --color-line-strong: rgb(39 54 72 / 0.52);
 
   --color-ink: #182231;
   --color-ink-muted: #435166;
-  /* A shade under the spec's #58677A so it clears 4.5:1 on the composited
-     pane over the darker titanium region. */
-  --color-ink-subtle: #536175;
+  --color-ink-subtle: #596477;
 
   --color-rail: rgb(255 255 255 / 0.3);
   --color-rail-hover: rgb(39 54 72 / 0.05);
   --color-rail-active: rgb(255 255 255 / 0.72);
-  --color-rail-ink: #2E3B4E;
-  --color-rail-ink-muted: #536175;
+  --color-rail-ink: #283344;
+  --color-rail-ink-muted: #556174;
 
-  --color-brand: #3D69CC;
-  --color-brand-strong: #2F58B3;
-  --color-brand-soft: rgb(71 118 220 / 0.12);
+  /* #5576C0 is the accent (fills, indicators, focus, icons). As small text
+     on day glass it measures ~4.0:1, so text links use the deeper shade. */
+  --color-brand: #5576C0;
+  --color-brand-strong: #3B5CA6;
+  --color-brand-soft: rgb(85 118 192 / 0.12);
 
   /* Day text variants run DARKER than the chart hues so labels stay ≥ 4.5:1. */
   --color-ok: #12704F;
@@ -185,26 +190,29 @@
   --color-vat-line: rgb(39 54 72 / 0.18);
   --color-chalk: #182231;
   --color-chalk-muted: #435166;
-  --color-zari: #3D69CC;
+  --color-zari: #5576C0;
   --color-madder: #B0304A;
 
   --glass-subtle: rgb(255 255 255 / 0.3);
   --glass-surface: rgb(255 255 255 / 0.36);
-  --glass-surface-elevated: rgb(255 255 255 / 0.42);
-  --glass-floating: rgb(250 251 252 / 0.86);
+  --glass-surface-elevated: rgb(255 255 255 / 0.52);
+  --glass-floating: rgb(248 247 244 / 0.88);
   --glass-surface-hover: rgb(255 255 255 / 0.46);
   --glass-surface-dense: rgb(255 255 255 / 0.5);
   --glass-border: rgb(255 255 255 / 0.78);
   --glass-highlight: rgb(255 255 255 / 0.96);
-  --glass-shadow: rgb(43 57 76 / 0.11);
+  --glass-shadow: rgb(43 49 61 / 0.1);
+  /* On a light ground a white rim cannot separate pane from page; this
+     hairline (the divider ink at low alpha) does. */
+  --glass-edge: rgb(39 54 72 / 0.07);
   --glass-reflection: rgb(255 255 255 / 0.6);
-  --glass-solid: #F3F4F6;
+  --glass-solid: #F8F7F4;
   --glass-inset: rgb(255 255 255 / 0.34);
   --glass-inset-border: rgb(255 255 255 / 0.68);
-  --glass-modal: rgb(248 249 251 / 0.84);
+  --glass-modal: rgb(248 247 244 / 0.86);
   --glass-scrim: rgb(24 34 49 / 0.2);
 
-  --table-header: rgb(246 247 249 / 0.94);
+  --table-header: rgb(248 247 244 / 0.95);
 
   --nav-active: rgb(255 255 255 / 0.72);
   --nav-active-border: rgb(255 255 255 / 0.95);
@@ -224,7 +232,7 @@
   --chart-hold: #B27E25;
   --chart-neutral: #7A8698;
   --chart-grid: rgb(39 54 72 / 0.09);
-  --chart-axis: #536175;
+  --chart-axis: #596477;
   --chart-cursor: rgb(39 54 72 / 0.045);
 }
 
@@ -248,10 +256,13 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* Headings take the display face; everything you operate takes Geist. */
-h1, h2, h3 {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
+/* Headings take the display face; everything you operate takes Geist.
+   In the base layer, so the type tokens (.t-*) and utilities override it. */
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
 }
 
 /*
@@ -264,32 +275,34 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  /*
+   * Graphite Aurora, from the spec: #101621 → #172233 → #0C111B, a restrained
+   * blue aurora (#344D75) high left, violet (#343457) high right, and a faint
+   * #233149 illumination behind the main panels so the ground is never one
+   * flat tone.
+   */
   background:
-    /* blue aurora, upper right */
-    radial-gradient(1000px 720px at 92% -10%, rgb(52 77 117 / 0.85), transparent 62%),
-    /* steel-grey illumination behind the main panels */
-    radial-gradient(1200px 820px at 46% 34%, rgb(35 49 73 / 0.7), transparent 66%),
-    /* faint violet reflection near the lower panels */
-    radial-gradient(1000px 640px at 70% 112%, rgb(52 52 87 / 0.75), transparent 62%),
-    /* depth, low left */
-    radial-gradient(900px 700px at -4% 104%, rgb(12 17 27 / 0.9), transparent 60%),
-    linear-gradient(162deg, #101621 0%, #172233 46%, #141C2B 74%, #0C111B 100%);
+    radial-gradient(circle at 18% 16%, rgb(52 77 117 / 0.3), transparent 32%),
+    radial-gradient(circle at 82% 18%, rgb(52 52 87 / 0.22), transparent 28%),
+    radial-gradient(ellipse 70% 55% at 55% 58%, rgb(35 49 73 / 0.32), transparent 70%),
+    linear-gradient(180deg, #101621 0%, #172233 46%, #0C111B 100%);
 }
 
 :root[data-theme='day'] body::before {
   /*
-   * Champagne Titanium: pearl light high left, a subtle titanium-blue
-   * reflection high right, platinum through the middle, a restrained
-   * champagne-neutral warmth low left, and a cool silver shadow low right.
-   * The panes are lighter than this ground, which is what separates them.
+   * Champagne Titanium — warm-neutral first, never icy. The spec's own
+   * gradient (champagne #E6E0D6 high left, titanium #C9CDD3 high right,
+   * #F4F0E9 low centre over #F3F0EA), plus platinum #DDE0E4 low right, pearl
+   * #F8F7F4 light across the upper middle, and the base settling into
+   * #EAE6DF. Titanium is kept to one corner so the page reads champagne.
    */
   background:
-    radial-gradient(900px 640px at 4% -10%, rgb(255 255 255 / 0.95), transparent 58%),
-    radial-gradient(1100px 760px at 98% -8%, rgb(186 200 219 / 0.85), transparent 60%),
-    radial-gradient(1100px 760px at 50% 40%, rgb(221 228 236 / 0.75), transparent 66%),
-    radial-gradient(900px 700px at 0% 104%, rgb(235 230 224 / 0.95), transparent 60%),
-    radial-gradient(1000px 760px at 96% 106%, rgb(176 189 206 / 0.7), transparent 62%),
-    linear-gradient(158deg, #F4F3F1 0%, #E8EAED 34%, #DCE1E7 66%, #E7E5E1 100%);
+    radial-gradient(ellipse at 10% 8%, rgb(230 224 214 / 0.8), transparent 44%),
+    radial-gradient(ellipse at 88% 18%, rgb(201 205 211 / 0.62), transparent 47%),
+    radial-gradient(ellipse at 48% 92%, rgb(244 240 233 / 0.82), transparent 54%),
+    radial-gradient(ellipse at 94% 82%, rgb(221 224 228 / 0.72), transparent 46%),
+    radial-gradient(ellipse at 42% 26%, rgb(248 247 244 / 0.7), transparent 40%),
+    linear-gradient(176deg, #F3F0EA 0%, #EAE6DF 100%);
 }
 
 /* A brief colour transition while the theme changes — and only then. */
@@ -306,22 +319,26 @@ html.theme-transition *::before {
  * ------------------------------------------------------------------------ */
 
 @layer components {
+  /* Balanced, not loud: 24 / 28 / 30 across phone, tablet, desktop. */
   .t-page-title {
     font-family: var(--font-display);
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 650;
-    line-height: 1.18;
-    letter-spacing: -0.035em;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+  }
+  @media (min-width: 768px) {
+    .t-page-title { font-size: 28px; }
   }
   @media (min-width: 1024px) {
-    .t-page-title { font-size: 36px; }
+    .t-page-title { font-size: 30px; }
   }
   .t-section-title {
     font-family: var(--font-display);
     font-size: 19px;
     font-weight: 600;
     line-height: 1.35;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
   }
   .t-card-title {
     font-family: var(--font-display);
@@ -334,14 +351,14 @@ html.theme-transition *::before {
     font-family: var(--font-numeric);
     font-size: 30px;
     font-weight: 650;
-    line-height: 1.15;
-    letter-spacing: -0.035em;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
   .t-micro {
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.045em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 }
@@ -372,6 +389,7 @@ html.theme-transition *::before {
   .glass {
     background: var(--glass-surface);
     box-shadow:
+      0 0 0 1px var(--glass-edge),
       0 1px 2px color-mix(in srgb, var(--glass-shadow) 60%, transparent),
       0 12px 32px -8px var(--glass-shadow),
       inset 0 1px 0 var(--glass-highlight),
@@ -384,6 +402,7 @@ html.theme-transition *::before {
     -webkit-backdrop-filter: blur(24px) saturate(140%);
     backdrop-filter: blur(24px) saturate(140%);
     box-shadow:
+      0 0 0 1px var(--glass-edge),
       0 12px 32px -12px var(--glass-shadow),
       inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent);
   }
@@ -394,6 +413,7 @@ html.theme-transition *::before {
     -webkit-backdrop-filter: blur(32px) saturate(155%);
     backdrop-filter: blur(32px) saturate(155%);
     box-shadow:
+      0 0 0 1px var(--glass-edge),
       0 1px 2px color-mix(in srgb, var(--glass-shadow) 60%, transparent),
       0 18px 44px -12px var(--glass-shadow),
       inset 0 1px 0 var(--glass-highlight),
@@ -405,6 +425,7 @@ html.theme-transition *::before {
   .glass-solid {
     background: var(--glass-surface-dense);
     box-shadow:
+      0 0 0 1px var(--glass-edge),
       0 12px 32px -10px var(--glass-shadow),
       inset 0 1px 0 var(--glass-highlight);
   }

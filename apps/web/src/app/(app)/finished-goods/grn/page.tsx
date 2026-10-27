@@ -33,7 +33,7 @@ export default function GrnPage() {
         title="GRN management"
         description="The register of finished goods receipts. Each posted receipt has a movement behind every line, which is what lets a quantity in stock be traced back to the order that produced it."
         actions={
-          <Link href="/finished-goods/inward" className="inline-flex items-center gap-1 text-[12px] font-medium text-brand hover:underline">
+          <Link href="/finished-goods/inward" className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-strong hover:underline">
             New receipt <ArrowUpRight className="size-3.5" />
           </Link>
         }

@@ -80,7 +80,7 @@ export default function ReceiptDetailPage() {
             {data.purchaseOrder ? (
               <>
                 <span className="text-ink-subtle">·</span>
-                <Link href={`/purchasing/orders/${data.purchaseOrder.id}`} className="font-mono text-[12px] text-brand hover:underline">
+                <Link href={`/purchasing/orders/${data.purchaseOrder.id}`} className="font-mono text-[12px] text-brand-strong hover:underline">
                   {data.purchaseOrder.poNo}
                 </Link>
               </>

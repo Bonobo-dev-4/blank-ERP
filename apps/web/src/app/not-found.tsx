@@ -9,7 +9,7 @@ export default function NotFound() {
       <p className="max-w-md text-[12.5px] text-ink-muted">
         This address does not match any screen in the ERP.
       </p>
-      <Link href="/" className="text-[12.5px] font-medium text-brand hover:underline">
+      <Link href="/" className="text-[12.5px] font-medium text-brand-strong hover:underline">
         Back to the dashboard
       </Link>
     </main>

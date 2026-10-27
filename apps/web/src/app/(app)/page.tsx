@@ -131,14 +131,18 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-[1680px] space-y-5">
       {/* --- heading ------------------------------------------------------ */}
-      <header className="flex flex-col gap-1 pt-1 md:flex-row md:items-end md:justify-between">
-        <div>
+      <header className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="t-page-title text-ink">Manufacturing Overview</h1>
-          <p className="mt-1 flex items-center gap-2 text-[13px] text-ink-subtle">
-            <span className="size-1.5 rounded-full bg-ok shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-ok)_22%,transparent)]" aria-hidden="true" />
-            Live as of {fmtDateTime(data.generatedAt)} · refreshes every minute
+          <p className="mt-1 text-[13.5px] text-ink-muted">
+            Production, inventory and purchasing — live from the floor and the ledger.
           </p>
         </div>
+        <p className="glass-subtle inline-flex h-8 shrink-0 items-center gap-2 self-start rounded-lg px-3 text-[12.5px] text-ink-muted sm:self-auto">
+          <span className="size-1.5 rounded-full bg-ok shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-ok)_22%,transparent)]" aria-hidden="true" />
+          <span className="font-medium text-ink">Live</span>
+          <span className="num">{fmtDateTime(data.generatedAt)}</span>
+        </p>
       </header>
 
       {/* --- KPI row ------------------------------------------------------ */}
@@ -318,7 +322,7 @@ function PanelLink({ href, children }: { href: string; children: React.ReactNode
   return (
     <Link
       href={href}
-      className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[13px] font-medium text-brand transition-colors hover:bg-brand-soft"
+      className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[13px] font-medium text-brand-strong transition-colors hover:bg-brand-soft"
     >
       {children} <ArrowRight className="size-3.5" />
     </Link>
@@ -1060,7 +1064,7 @@ function StockAlerts({ fallback, className }: { fallback: AlertRow[]; className?
                     <td className="px-3 py-2 text-right">
                       <Link
                         href={`/materials/${a.rawMaterialId}`}
-                        className="rounded-md px-2 py-1 text-[12.5px] font-medium text-brand hover:bg-brand-soft"
+                        className="rounded-md px-2 py-1 text-[12.5px] font-medium text-brand-strong hover:bg-brand-soft"
                         aria-label={`View ${a.materialCode}`}
                       >
                         View

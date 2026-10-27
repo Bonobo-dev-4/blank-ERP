@@ -231,7 +231,7 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
                     <span
                       className={cn(
                         't-micro flex-1 truncate transition-colors',
-                        g.label === activeGroup ? 'text-ink-muted' : 'text-ink-subtle group-hover:text-ink-muted',
+                        g.label === activeGroup ? 'text-rail-ink' : 'text-rail-ink-muted group-hover:text-rail-ink',
                       )}
                     >
                       {g.label}
@@ -269,14 +269,14 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
             <GlassTooltip content={user.fullName} side="right">
               <span
                 tabIndex={0}
-                className="grid size-8 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand"
+                className="grid size-8 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand-strong"
               >
                 {initials}
               </span>
             </GlassTooltip>
           ) : (
             <div className="flex items-center gap-2.5">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand-strong">
                 {initials}
               </span>
               <div className="min-w-0 flex-1 leading-tight">
@@ -328,7 +328,7 @@ function CollapsedGroup({
     'relative grid size-9 place-items-center rounded-lg transition-colors duration-150',
     active
       ? 'bg-[var(--nav-active)] text-ink ring-1 ring-inset ring-[var(--nav-active-border)]'
-      : 'text-ink-subtle hover:bg-surface-muted hover:text-ink',
+      : 'text-rail-ink-muted hover:bg-surface-muted hover:text-ink',
   );
   const indicator = active ? (
     <span aria-hidden="true" className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand" />
@@ -434,7 +434,7 @@ function NavLink({
       ) : null}
       <Icon
         name={item.icon}
-        className={cn('size-4 shrink-0 transition-colors', active ? 'text-brand' : 'text-ink-subtle group-hover:text-ink-muted')}
+        className={cn('size-4 shrink-0 transition-colors', active ? 'text-brand' : 'text-rail-ink-muted group-hover:text-rail-ink')}
       />
       <span className="flex-1 truncate">{item.label}</span>
       {planned ? (
@@ -474,7 +474,7 @@ function NavLink({
         shared,
         active
           ? 'bg-[var(--nav-active)] text-ink ring-1 ring-inset ring-[var(--nav-active-border)]'
-          : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
+          : 'text-rail-ink hover:bg-surface-muted hover:text-ink',
       )}
     >
       {body}

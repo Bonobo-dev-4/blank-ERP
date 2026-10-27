@@ -199,7 +199,7 @@ export function TrendChart({
 
   return (
     <div className={className}>
-      <ul className="mb-3 flex flex-wrap gap-2" aria-label="Series">
+      <ul className="mb-4 flex flex-wrap gap-1.5" aria-label="Series">
         {series.map((s) => {
           const off = hidden[s.key];
           return (

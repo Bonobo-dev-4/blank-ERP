@@ -113,7 +113,7 @@ export default function InwardPage() {
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-line bg-surface-muted px-3.5 py-2 text-[12.5px]">
                   <span><span className="text-ink-muted">Completed</span> <span className="num font-medium">{fmtQty(selected.completedQty, 0)}</span></span>
                   <span><span className="text-ink-muted">Already received</span> <span className="num">{fmtQty(selected.inwardedQty, 0)}</span></span>
-                  <span><span className="text-ink-muted">Can receive now</span> <span className="num font-semibold text-brand">{fmtQty(selected.pendingQty, 0)}</span></span>
+                  <span><span className="text-ink-muted">Can receive now</span> <span className="num font-semibold text-brand-strong">{fmtQty(selected.pendingQty, 0)}</span></span>
                   <StatusBadge status={selected.status} />
                 </div>
 
@@ -187,7 +187,7 @@ export default function InwardPage() {
                     </td>
                     <td className="num px-3 py-1.5 text-right">{fmtQty(p.completedQty, 0)}</td>
                     <td className="num px-3 py-1.5 text-right text-ink-muted">{fmtQty(p.inwardedQty, 0)}</td>
-                    <td className="num px-3 py-1.5 text-right font-medium text-brand">{fmtQty(p.pendingQty, 0)}</td>
+                    <td className="num px-3 py-1.5 text-right font-medium text-brand-strong">{fmtQty(p.pendingQty, 0)}</td>
                   </tr>
                 ))}
               </tbody>

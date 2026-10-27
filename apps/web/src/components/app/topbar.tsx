@@ -88,7 +88,7 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
                 aria-label={`Account: ${user.fullName}`}
                 className="ml-1 flex items-center gap-2 rounded-lg p-0.5 pr-0.5 transition-colors hover:bg-surface-muted md:pr-2"
               >
-                <span className="grid size-7 place-items-center rounded-full bg-brand-soft text-[12px] font-semibold text-brand">
+                <span className="grid size-7 place-items-center rounded-full bg-brand-soft text-[12px] font-semibold text-brand-strong">
                   {initials}
                 </span>
                 <span className="hidden max-w-[140px] truncate text-[13px] font-medium text-ink md:inline">

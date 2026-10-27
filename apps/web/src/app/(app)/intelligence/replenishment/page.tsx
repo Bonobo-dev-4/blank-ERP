@@ -127,7 +127,7 @@ export default function ReplenishmentPage() {
                         <td className="num px-3 py-1.5 text-right">{fmtQty(r.availableQty)} {uomShort(r.baseUom)}</td>
                         <td className="num px-3 py-1.5 text-right text-ink-muted">{fmtQty(r.incomingQty)}</td>
                         <td className="num px-3 py-1.5 text-right text-ink-muted">{fmtQty(r.targetStockQty)}</td>
-                        <td className={`num px-3 py-1.5 text-right font-semibold ${Number(r.suggestedQty) > 0 ? 'text-brand' : 'text-ink-subtle'}`}>
+                        <td className={`num px-3 py-1.5 text-right font-semibold ${Number(r.suggestedQty) > 0 ? 'text-brand-strong' : 'text-ink-subtle'}`}>
                           {fmtQty(r.suggestedQty)}
                         </td>
                         <td className="px-3 py-1.5">

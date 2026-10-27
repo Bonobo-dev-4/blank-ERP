@@ -40,7 +40,7 @@ export default function FinishedStockPage() {
         title="Finished stock"
         description="Garments received from production and available to sell. Stock appears here only when an inward is posted — a movement always explains the quantity."
         actions={
-          <Link href="/finished-goods/inward" className="inline-flex items-center gap-1 text-[12px] font-medium text-brand hover:underline">
+          <Link href="/finished-goods/inward" className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-strong hover:underline">
             Receive from production <ArrowUpRight className="size-3.5" />
           </Link>
         }

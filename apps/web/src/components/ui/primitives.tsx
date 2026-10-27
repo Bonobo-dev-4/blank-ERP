@@ -541,11 +541,13 @@ export function Stat({
         </div>
         {Icon ? (
           <span
-            className="grid size-8 shrink-0 place-items-center rounded-full border shadow-[inset_0_1px_0_var(--glass-highlight)]"
+            className="grid size-9 shrink-0 place-items-center rounded-full border shadow-[inset_0_1px_0_var(--glass-highlight),0_2px_8px_-2px_var(--glass-shadow)]"
             style={{
               color: chipColour,
-              background: `color-mix(in srgb, ${chipColour} 16%, transparent)`,
-              borderColor: `color-mix(in srgb, ${chipColour} 30%, transparent)`,
+              // A lit orb: brighter where the light falls, the accent deepening
+              // toward the rim — tinted glass, not a flat swatch.
+              background: `radial-gradient(circle at 32% 26%, color-mix(in srgb, ${chipColour} 26%, transparent), color-mix(in srgb, ${chipColour} 9%, transparent) 72%)`,
+              borderColor: `color-mix(in srgb, ${chipColour} 26%, transparent)`,
             }}
             aria-hidden="true"
           >

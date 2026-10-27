@@ -109,7 +109,7 @@ export default function MaterialDetailPage() {
             actions={
               <Link
                 href={`/inventory/movements?rawMaterialId=${data.id}`}
-                className="text-[12px] font-medium text-brand hover:underline"
+                className="text-[12px] font-medium text-brand-strong hover:underline"
               >
                 Movement history
               </Link>
@@ -216,7 +216,7 @@ export default function MaterialDetailPage() {
           title="Lots"
           description="One lot per delivery, carrying the shade and width that must not be mixed"
           actions={
-            <Link href={`/materials/lots?rawMaterialId=${data.id}`} className="text-[12px] font-medium text-brand hover:underline">
+            <Link href={`/materials/lots?rawMaterialId=${data.id}`} className="text-[12px] font-medium text-brand-strong hover:underline">
               All lots
             </Link>
           }
