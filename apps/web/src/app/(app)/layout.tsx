@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/app/sidebar';
 import { Topbar } from '@/components/app/topbar';
 import { Assistant } from '@/components/app/assistant';
@@ -11,11 +11,16 @@ import { LoadingBlock } from '@/components/ui/primitives';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [navOpen, setNavOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    // Carry where the person was going, so signing in returns them there.
+    // The login page validates it as an in-app path before using it.
+    if (!loading && !user) {
+      router.replace(pathname && pathname !== '/' ? `/login?next=${encodeURIComponent(pathname)}` : '/login');
+    }
+  }, [loading, user, router, pathname]);
 
   if (loading) {
     return (

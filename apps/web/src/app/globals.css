@@ -708,3 +708,258 @@ html.theme-transition *::before {
   .slab, .glass-interactive, .accordion, .press { transition: none !important; }
   .glass-interactive:hover, .press:active { transform: none; }
 }
+
+/* ===========================================================================
+ * Login — Glass Motion
+ *
+ * Scoped to `.login-root`, so the sign-in screen can carry its own exact
+ * material values without moving the app's. All motion is transform and
+ * opacity; nothing animates a filter or a backdrop.
+ * ======================================================================== */
+
+.login-root {
+  --glass-surface: rgb(255 255 255 / 0.075);
+  --glass-surface-elevated: rgb(255 255 255 / 0.13);
+  --glass-border: rgb(255 255 255 / 0.18);
+  --glass-highlight: rgb(255 255 255 / 0.3);
+  --glass-shadow: rgb(0 0 0 / 0.3);
+  --login-accent: #78A0FF;
+  --login-accent-2: #43D5C2;
+  --login-btn-bg: #F5F7FB;
+  --login-btn-fg: #182231;
+  --login-field: rgb(255 255 255 / 0.06);
+  --login-field-focus: rgb(255 255 255 / 0.09);
+  --login-tile: rgb(255 255 255 / 0.07);
+}
+:root[data-theme='day'] .login-root {
+  --glass-surface: rgb(255 255 255 / 0.38);
+  --glass-surface-elevated: rgb(255 255 255 / 0.54);
+  --glass-border: rgb(255 255 255 / 0.8);
+  --glass-highlight: rgb(255 255 255 / 0.94);
+  --glass-shadow: rgb(43 49 61 / 0.12);
+  --login-accent: #4776DC;
+  --login-accent-2: #14998D;
+  --login-btn-bg: #182231;
+  --login-btn-fg: #FFFFFF;
+  --login-field: rgb(255 255 255 / 0.62);
+  --login-field-focus: rgb(255 255 255 / 0.85);
+  --login-tile: rgb(255 255 255 / 0.5);
+}
+
+/* --- the motion canvas ground -------------------------------------------- */
+.login-canvas {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgb(52 77 117 / 0.55), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 90% 90%, rgb(52 52 87 / 0.5), transparent 62%),
+    linear-gradient(160deg, #172233 0%, #101621 52%, #0C111B 100%);
+}
+:root[data-theme='day'] .login-canvas {
+  background:
+    radial-gradient(ellipse 80% 60% at 16% 10%, rgb(248 247 244 / 0.95), transparent 58%),
+    radial-gradient(ellipse 70% 60% at 92% 20%, rgb(201 205 211 / 0.7), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 80% 96%, rgb(221 224 228 / 0.85), transparent 62%),
+    radial-gradient(ellipse 60% 50% at 8% 92%, rgb(230 224 214 / 0.95), transparent 60%),
+    linear-gradient(160deg, #EAE6DF 0%, #E6E0D6 48%, #DDE0E4 100%);
+}
+/* The slow aurora: an oversized light layer drifting a few percent. */
+.login-aurora {
+  position: absolute;
+  inset: -12%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 40% 34% at 30% 30%, rgb(120 160 255 / 0.16), transparent 70%),
+    radial-gradient(ellipse 36% 30% at 72% 64%, rgb(169 149 255 / 0.12), transparent 70%);
+  animation: login-aurora 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+:root[data-theme='day'] .login-aurora {
+  background:
+    radial-gradient(ellipse 40% 34% at 30% 30%, rgb(255 255 255 / 0.55), transparent 70%),
+    radial-gradient(ellipse 36% 30% at 72% 64%, rgb(201 205 211 / 0.45), transparent 70%);
+}
+@keyframes login-aurora {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to   { transform: translate3d(2.5%, 2%, 0) scale(1.04); }
+}
+
+/* --- entrance -------------------------------------------------------------- */
+@keyframes login-rise {
+  from { opacity: 0; transform: translate3d(0, var(--rise, 18px), 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes login-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+/* `both`, so each element holds its start frame through its delay and its
+   end frame afterwards — and the resting style is the visible one. */
+.login-enter { animation: login-rise 650ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.login-logo  { animation: login-pop 450ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both; }
+.login-stagger {
+  --rise: 10px;
+  animation: login-rise 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(160ms + var(--i, 0) * 70ms);
+}
+
+/* --- fields and the primary button ---------------------------------------- */
+.login-field {
+  height: 46px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--color-line-strong);
+  background: var(--login-field);
+  padding: 0 14px;
+  font-size: 14px;
+  color: var(--color-ink);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+.login-field::placeholder { color: var(--color-ink-subtle); }
+.login-field:hover { border-color: color-mix(in srgb, var(--color-ink) 45%, transparent); }
+.login-field:focus-visible {
+  outline: none;
+  border-color: var(--login-accent);
+  background: var(--login-field-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--login-accent) 20%, transparent);
+}
+.login-field[aria-invalid='true'] {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 14%, transparent);
+}
+
+.login-btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  height: 48px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--login-btn-bg);
+  color: var(--login-btn-fg);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px var(--glass-shadow),
+    0 8px 20px -8px var(--glass-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+/* A faint reflected highlight across the top half — glass on a solid. */
+.login-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.14), transparent 55%);
+  pointer-events: none;
+}
+.login-btn:hover:not(:disabled) {
+  transform: scale(1.015);
+  filter: brightness(1.06);
+  box-shadow:
+    0 2px 4px var(--glass-shadow),
+    0 14px 28px -10px var(--glass-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+.login-btn:active:not(:disabled) { transform: scale(0.985); transition-duration: 100ms; }
+.login-btn:disabled { cursor: progress; }
+.login-btn:focus-visible { outline: 2px solid var(--login-accent); outline-offset: 3px; }
+
+/* A single small horizontal nudge on the error line — never the form. */
+@keyframes login-nudge {
+  0%, 100% { transform: none; }
+  30% { transform: translateX(-4px); }
+  65% { transform: translateX(3px); }
+}
+.login-nudge { animation: login-nudge 200ms ease-out; }
+
+@keyframes login-fade-out {
+  to { opacity: 0.4; transform: scale(0.995); }
+}
+.login-leaving { animation: login-fade-out 300ms ease forwards; }
+
+/* --- the manufacturing network ------------------------------------------- */
+.login-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: login-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes login-draw { to { stroke-dashoffset: 0; } }
+
+.login-node { animation: login-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; --rise: 12px; }
+
+/* A node lights briefly as the travelling pulse reaches it, on the same
+   10-second cycle the pulses run on. */
+.login-node-glow {
+  opacity: 0;
+  animation: login-node-glow 10s ease-in-out infinite;
+}
+@keyframes login-node-glow {
+  0% { opacity: 0; }
+  3% { opacity: 1; }
+  11% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes login-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -6px, 0); }
+}
+.login-float { animation: login-float 8s ease-in-out infinite; will-change: transform; }
+
+/* A soft reflected-light sweep, on decorative panes only. */
+@keyframes login-sweep {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  55%, 100% { transform: translateX(220%) skewX(-18deg); }
+}
+.login-sweep {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.1), transparent);
+  animation: login-sweep 9s ease-in-out infinite;
+}
+
+@keyframes login-drift {
+  from { transform: translate3d(-1.5%, 0, 0); }
+  to   { transform: translate3d(1.5%, -1%, 0); }
+}
+.login-drift { animation: login-drift 18s ease-in-out infinite alternate; will-change: transform; }
+
+/* The phone's small stand-in: a pulse running along five stage dots. */
+@keyframes login-mini-pulse {
+  0% { left: 0%; opacity: 0; }
+  8% { opacity: 1; }
+  60% { left: 100%; opacity: 1; }
+  68%, 100% { left: 100%; opacity: 0; }
+}
+.login-mini-pulse { animation: login-mini-pulse 6s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+
+/* Theme control on a phone: full 44px touch targets. */
+@media (max-width: 767px) {
+  .login-theme [role='radiogroup'] { height: auto; }
+  .login-theme [role='radio'] { width: 44px; height: 44px; }
+}
+
+/* Paused while off-screen or in a background tab. */
+[data-paused='true'] *,
+[data-paused='true'] { animation-play-state: paused !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-enter, .login-logo, .login-stagger, .login-node, .login-nudge, .login-leaving {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .login-draw { animation: none !important; stroke-dashoffset: 0 !important; }
+  .login-aurora, .login-float, .login-sweep, .login-drift, .login-node-glow, .login-mini-pulse {
+    animation: none !important;
+  }
+  .login-sweep, .login-node-glow, .login-mini-pulse { display: none; }
+  .login-btn, .login-field { transition: none !important; }
+  .login-btn:hover:not(:disabled), .login-btn:active:not(:disabled) { transform: none; }
+}
