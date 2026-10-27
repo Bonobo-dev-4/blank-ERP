@@ -5,7 +5,8 @@ import {
   type ExternalOrderStatus as DbExternalOrderStatus,
 } from '@prisma/client';
 import {
-  Decimal, classifyShopifyOrder, dec, isStaleOrderVersion, shopifyLineQuantities, qty,
+  Decimal, classifyShopifyOrder, dec, isStaleOrderVersion, shopifyLineDetails,
+  shopifyLineQuantities, shopifyOrderDetails, qty,
 } from '@dnd/domain';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/services/audit.service';
@@ -44,45 +45,128 @@ const ORDER_PROBE_QUERY = `
   }
 `;
 
-const ORDERS_QUERY = `
-  query ImportOrders($first: Int!, $after: String, $query: String) {
-    orders(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
-      pageInfo { hasNextPage endCursor }
+const MONEY = 'shopMoney { amount }';
+
+/** Orders per `nodes` call; ~13 query points each against a 1,000 ceiling. */
+const REFRESH_BATCH = 50;
+
+/**
+ * Everything an operator might ask about an order, in one round trip: who
+ * bought it and where it ships, what they paid and how, and for each line the
+ * Shopify product and variant it came from. Customer and address fields need
+ * the protected-customer-data scope; the token has it.
+ */
+const ORDER_FIELDS = `
+  fragment OrderFields on Order {
+    id
+    legacyResourceId
+    name
+    createdAt
+    updatedAt
+    cancelledAt
+    cancelReason
+    closedAt
+    processedAt
+    sourceName
+    note
+    tags
+    email
+    phone
+    confirmationNumber
+    statusPageUrl
+    displayFinancialStatus
+    displayFulfillmentStatus
+    currencyCode
+    paymentGatewayNames
+    discountCodes
+    retailLocation { id name }
+    customer { id legacyResourceId displayName firstName lastName email phone numberOfOrders }
+    shippingAddress { ...Address }
+    billingAddress { ...Address }
+    currentTotalPriceSet { ${MONEY} }
+    subtotalPriceSet { ${MONEY} }
+    totalDiscountsSet { ${MONEY} }
+    totalTaxSet { ${MONEY} }
+    totalShippingPriceSet { ${MONEY} }
+    totalRefundedSet { ${MONEY} }
+    customAttributes { key value }
+    taxLines { title rate priceSet { ${MONEY} } }
+    shippingLines(first: 5) {
+      edges { node { title code carrierIdentifier originalPriceSet { ${MONEY} } } }
+    }
+    fulfillments(first: 10) {
+      status
+      createdAt
+      trackingInfo(first: 5) { company number url }
+    }
+    lineItems(first: 100) {
       edges {
         node {
           id
+          title
           name
-          createdAt
-          updatedAt
-          cancelledAt
-          processedAt
-          sourceName
-          note
-          tags
-          displayFinancialStatus
-          displayFulfillmentStatus
-          currencyCode
-          retailLocation { id name }
-          customer { id displayName }
-          currentTotalPriceSet { shopMoney { amount } }
-          lineItems(first: 100) {
-            edges {
-              node {
-                id
-                title
-                sku
-                quantity
-                currentQuantity
-                unfulfilledQuantity
-                variant { id sku title }
-              }
-            }
+          sku
+          quantity
+          currentQuantity
+          unfulfilledQuantity
+          variantTitle
+          vendor
+          requiresShipping
+          taxable
+          originalUnitPriceSet { ${MONEY} }
+          discountedUnitPriceSet { ${MONEY} }
+          totalDiscountSet { ${MONEY} }
+          customAttributes { key value }
+          image { url }
+          product { id legacyResourceId title handle productType vendor }
+          variant {
+            id legacyResourceId sku barcode title
+            selectedOptions { name value }
+            image { url }
+            inventoryItem { id }
           }
         }
       }
     }
   }
+
+  fragment Address on MailingAddress {
+    name firstName lastName company address1 address2 city province provinceCode
+    zip country countryCodeV2 phone
+  }
 `;
+
+const ORDERS_QUERY = `
+  query ImportOrders($first: Int!, $after: String, $query: String) {
+    orders(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { ...OrderFields } }
+    }
+  }
+  ${ORDER_FIELDS}
+`;
+
+/** The same detail for orders already known by id — a refresh, not a sweep. */
+const ORDERS_BY_ID_QUERY = `
+  query RefreshOrders($ids: [ID!]!) {
+    nodes(ids: $ids) { ... on Order { ...OrderFields } }
+  }
+  ${ORDER_FIELDS}
+`;
+
+/** What the caller may see of the person behind an order. */
+export interface OrderViewer {
+  readonly canSeeCustomer: boolean;
+}
+
+const decimalOrNull = (v: string | null): Prisma.Decimal | null => {
+  if (v === null) return null;
+  try {
+    return new Prisma.Decimal(v);
+  } catch {
+    return null;
+  }
+};
 
 interface ShopNode {
   name: string; myshopifyDomain: string;
@@ -351,7 +435,7 @@ export class ShopifyService {
     actorUserId: string,
     options: { since?: string | null; maxPages?: number; pageSize?: number } = {},
   ) {
-    const pageSize = Math.min(options.pageSize ?? 50, 250);
+    const pageSize = Math.min(options.pageSize ?? 50, 100);
     const maxPages = Math.min(options.maxPages ?? 10, 100);
     const since = options.since
       ? new Date(options.since)
@@ -372,8 +456,9 @@ export class ShopifyService {
         await this.client.query(
           ORDERS_QUERY,
           { first: pageSize, after: cursor, query: filter },
-          // Connection cost is sized by `first`, and each order pulls 100 lines.
-          { estimatedCost: pageSize * 2 },
+          // Measured: 50 orders with their lines, addresses and prices ask
+          // for ~620 points against a 1,000-point ceiling per query.
+          { estimatedCost: pageSize * 13 },
         );
 
       for (const edge of data.orders.edges) {
@@ -415,6 +500,64 @@ export class ShopifyService {
     };
   }
 
+  /**
+   * Re-read particular orders from Shopify by id and store what comes back.
+   *
+   * The import walks a window of `updatedAt`, which pulls in every order in
+   * that window; a refresh touches exactly the orders named and nothing else.
+   * An order deleted in Shopify comes back null and is counted, not removed.
+   */
+  async refreshOrders(organizationId: string, actorUserId: string, externalIds: readonly string[]) {
+    const ids = [...new Set(externalIds)].filter((id) => /^gid:\/\/shopify\/Order\/\d+$/.test(id));
+    const unmappedSkus = new Set<string>();
+    let refreshed = 0;
+    let skippedStale = 0;
+    let missing = 0;
+
+    for (let i = 0; i < ids.length; i += REFRESH_BATCH) {
+      const batch = ids.slice(i, i + REFRESH_BATCH);
+      const data: { nodes: (OrderNode | null)[] } = await this.client.query(
+        ORDERS_BY_ID_QUERY,
+        { ids: batch },
+        { estimatedCost: batch.length * 13 },
+      );
+      for (const node of data.nodes) {
+        if (!node?.id) {
+          missing += 1;
+          continue;
+        }
+        const outcome = await this.upsertOrder(organizationId, node, unmappedSkus);
+        if (outcome === 'STALE') skippedStale += 1;
+        else refreshed += 1;
+      }
+    }
+
+    await this.audit.record({
+      organizationId, actorUserId, action: 'RUN',
+      entityType: 'ShopifyOrder', entityId: organizationId,
+      context: { mode: 'REFRESH', requested: ids.length, refreshed, skippedStale, missing },
+    });
+    return { requested: ids.length, refreshed, skippedStale, missing };
+  }
+
+  /**
+   * Fill in detail for orders imported before it was collected — newest
+   * first, `limit` at a time, so a long backlog never becomes one long call.
+   */
+  async refreshOrderDetails(organizationId: string, actorUserId: string, limit = 250) {
+    const stale = await this.prisma.shopifyOrder.findMany({
+      where: { organizationId, subtotalAmount: null },
+      orderBy: { orderedAt: 'desc' },
+      take: Math.min(Math.max(1, limit), 1000),
+      select: { externalId: true },
+    });
+    const result = await this.refreshOrders(organizationId, actorUserId, stale.map((o) => o.externalId));
+    const remaining = await this.prisma.shopifyOrder.count({
+      where: { organizationId, subtotalAmount: null },
+    });
+    return { ...result, remaining };
+  }
+
   private async upsertOrder(
     organizationId: string,
     node: OrderNode,
@@ -447,6 +590,9 @@ export class ShopifyService {
           ? 'PARTIALLY_FULFILLED'
           : 'OPEN';
 
+    const details = shopifyOrderDetails(node);
+    const ship = details.shippingAddress;
+
     return this.prisma.inTransaction<'IMPORTED' | 'STALE'>(async (tx) => {
       const header = {
         organizationId,
@@ -467,6 +613,22 @@ export class ShopifyService {
           ? new Prisma.Decimal(node.currentTotalPriceSet.shopMoney.amount)
           : null,
         customerRef: node.customer?.displayName ?? null,
+        email: details.email ?? details.customer?.email ?? null,
+        phone: details.phone ?? ship?.phone ?? details.customer?.phone ?? null,
+        customerExternalId: details.customer?.id ?? null,
+        shippingCity: ship?.city ?? null,
+        shippingProvince: ship?.province ?? null,
+        shippingZip: ship?.zip ?? null,
+        shippingCountry: ship?.countryCode ?? ship?.country ?? null,
+        subtotalAmount: decimalOrNull(details.money.subtotal),
+        discountAmount: decimalOrNull(details.money.discounts),
+        shippingAmount: decimalOrNull(details.money.shipping),
+        taxAmount: decimalOrNull(details.money.tax),
+        refundedAmount: decimalOrNull(details.money.refunded),
+        paymentGateways: [...details.paymentGateways],
+        discountCodes: [...details.discountCodes],
+        cancelReason: details.cancelReason,
+        closedAt: details.closedAt ? new Date(details.closedAt) : null,
         note: node.note,
         tags: node.tags,
         cancelledAt: node.cancelledAt ? new Date(node.cancelledAt) : null,
@@ -520,6 +682,7 @@ export class ShopifyService {
         }
         if (sku && !mapping) unmappedSkus.add(sku);
 
+        const shopifyLine = shopifyLineDetails(line);
         const lineData = {
           organizationId,
           shopifyOrderId: order.id,
@@ -527,7 +690,15 @@ export class ShopifyService {
           productVariantId: mapping?.id ?? null,
           externalSku: sku,
           externalVariantId: line.variant?.id ?? null,
+          externalProductId: shopifyLine.productId,
           title: line.title,
+          variantTitle: shopifyLine.variantTitle,
+          vendor: shopifyLine.vendor,
+          barcode: shopifyLine.barcode,
+          imageUrl: shopifyLine.imageUrl,
+          unitPrice: decimalOrNull(shopifyLine.unitPrice),
+          discountedUnitPrice: decimalOrNull(shopifyLine.discountedUnitPrice),
+          totalDiscount: decimalOrNull(shopifyLine.totalDiscount),
           size: mapping?.size ?? null,
           color: mapping?.color ?? null,
           orderedQty: new Prisma.Decimal(quantities.orderedQty.toFixed(4)),
@@ -567,6 +738,7 @@ export class ShopifyService {
       channel?: string; status?: string; shipmentStatus?: string; location?: string;
       from?: string; to?: string; customised?: boolean; unmapped?: boolean;
     },
+    viewer: OrderViewer = { canSeeCustomer: false },
   ) {
     // Calendar dates are read in the organisation's day (IST), inclusive.
     const dayStart = (d: string) => new Date(`${d}T00:00:00+05:30`);
@@ -595,7 +767,15 @@ export class ShopifyService {
       ...(query.search
         ? { OR: [{ orderName: { contains: query.search, mode: 'insensitive' } },
                  { orderNumber: { contains: query.search, mode: 'insensitive' } },
-                 { customerRef: { contains: query.search, mode: 'insensitive' } }] }
+                 { customerRef: { contains: query.search, mode: 'insensitive' } },
+                 // Contact fields only for a reader allowed to see them, or a
+                 // search would confirm a phone number it never displays.
+                 ...(viewer.canSeeCustomer
+                   ? [{ email: { contains: query.search, mode: 'insensitive' as const } },
+                      { phone: { contains: query.search } },
+                      { shippingZip: { startsWith: query.search } },
+                      { shippingCity: { contains: query.search, mode: 'insensitive' as const } }]
+                   : [])] }
         : {}),
     };
 
@@ -616,6 +796,9 @@ export class ShopifyService {
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
         orderBy,
+        // The verbatim payload is large and carries personal data; the list
+        // never needs it.
+        omit: { rawPayload: true },
         include: {
           lines: {
             select: {
@@ -630,8 +813,11 @@ export class ShopifyService {
     ]);
 
     return paginated(
-      rows.map((o) => ({
+      rows.map(({ email, phone, customerExternalId, shippingCity, shippingProvince, shippingZip, shippingCountry, ...o }) => ({
         ...o,
+        ...(viewer.canSeeCustomer
+          ? { email, phone, shippingCity, shippingProvince, shippingZip, shippingCountry }
+          : {}),
         demandQty: o.lines
           .reduce((a, l) => a.plus(qty(l.manufacturingQty.toFixed())), qty('0'))
           .toFixed(4),
@@ -679,7 +865,7 @@ export class ShopifyService {
    * one screen rather than three. The production figures come from the stage
    * tasks of whatever manufacturing order covers the line's demand.
    */
-  async getOrder(organizationId: string, id: string) {
+  async getOrder(organizationId: string, id: string, viewer: OrderViewer = { canSeeCustomer: false }) {
     const order = await this.prisma.shopifyOrder.findFirst({
       where: { organizationId, OR: [{ id }, { externalId: id }, { orderNumber: id }] },
       include: { lines: true },
@@ -741,6 +927,15 @@ export class ShopifyService {
     });
     const demandByLine = new Map(demands.map((d) => [d.sourceLineId, d.manufacturingDemand]));
 
+    const details = shopifyOrderDetails(order.rawPayload);
+    const admin = this.adminUrl();
+    const customer = viewer.canSeeCustomer && details.customer
+      ? {
+          ...details.customer,
+          adminUrl: admin && details.customer.legacyId ? `${admin}/customers/${details.customer.legacyId}` : null,
+        }
+      : null;
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
@@ -762,6 +957,30 @@ export class ShopifyService {
       importedAt: order.importedAt.toISOString(),
       externalShipmentStatus: order.externalShipmentStatus,
       externalStatusSyncedAt: order.externalStatusSyncedAt?.toISOString() ?? null,
+      shopify: {
+        orderId: details.orderId ?? order.externalId,
+        legacyId: details.legacyId,
+        adminUrl: admin && details.legacyId ? `${admin}/orders/${details.legacyId}` : null,
+        confirmationNumber: details.confirmationNumber,
+        sourceName: details.sourceName,
+      },
+      // Personal data. Withheld rather than masked, and `customerHidden` says
+      // so, which keeps "not permitted" distinct from "Shopify had none".
+      customerHidden: !viewer.canSeeCustomer,
+      customer,
+      contact: viewer.canSeeCustomer ? { email: details.email, phone: details.phone } : null,
+      shippingAddress: viewer.canSeeCustomer ? details.shippingAddress : null,
+      billingAddress: viewer.canSeeCustomer ? details.billingAddress : null,
+      statusPageUrl: viewer.canSeeCustomer ? details.statusPageUrl : null,
+      money: details.money,
+      paymentGateways: details.paymentGateways,
+      discountCodes: details.discountCodes,
+      taxLines: details.taxLines,
+      shippingLines: details.shippingLines,
+      fulfillments: details.fulfillments,
+      attributes: details.attributes,
+      cancelReason: details.cancelReason,
+      closedAt: details.closedAt,
       lines: order.lines.map((l) => {
         const demand = demandByLine.get(l.id) ?? null;
         const variant = l.productVariantId ? variantById.get(l.productVariantId) ?? null : null;
@@ -792,6 +1011,7 @@ export class ShopifyService {
           );
 
         const mo = demand?.allocations?.[0]?.manufacturingOrder ?? null;
+        const shop = shopifyLineDetails(l.rawPayload);
 
         return {
           id: l.id,
@@ -804,8 +1024,33 @@ export class ShopifyService {
           productId: variant?.product?.id ?? null,
           productName: variant?.product?.name ?? null,
           styleCode: variant?.product?.styleCode ?? null,
-          imageUrl: variant?.imageUrl ?? null,
+          imageUrl: variant?.imageUrl ?? shop.imageUrl,
           isMapped: l.productVariantId !== null,
+          shopify: {
+            lineId: shop.lineId ?? l.externalLineId,
+            name: shop.name,
+            productId: shop.productId,
+            productLegacyId: shop.productLegacyId,
+            productTitle: shop.productTitle,
+            productHandle: shop.productHandle,
+            productType: shop.productType,
+            vendor: shop.vendor,
+            variantId: shop.variantId ?? l.externalVariantId,
+            variantLegacyId: shop.variantLegacyId,
+            variantTitle: shop.variantTitle,
+            barcode: shop.barcode,
+            inventoryItemId: shop.inventoryItemId,
+            options: shop.options,
+            unitPrice: shop.unitPrice,
+            discountedUnitPrice: shop.discountedUnitPrice,
+            totalDiscount: shop.totalDiscount,
+            requiresShipping: shop.requiresShipping,
+            taxable: shop.taxable,
+            attributes: shop.attributes,
+            adminUrl: admin && shop.productLegacyId
+              ? `${admin}/products/${shop.productLegacyId}${shop.variantLegacyId ? `/variants/${shop.variantLegacyId}` : ''}`
+              : null,
+          },
           orderedQty: l.orderedQty.toFixed(),
           cancelledQty: l.cancelledQty.toFixed(),
           fulfilledQty: l.fulfilledQty.toFixed(),
@@ -834,6 +1079,17 @@ export class ShopifyService {
         };
       }),
     };
+  }
+
+  /**
+   * The Shopify admin, for "open in Shopify" links. Built from the configured
+   * shop domain only; null when there is no domain to build it from.
+   */
+  private adminUrl(): string | null {
+    const domain = this.client.describe().shopDomain.toLowerCase();
+    const store = /^([a-z0-9][a-z0-9-]*)\.myshopify\.com$/.exec(domain)?.[1];
+    if (store) return `https://admin.shopify.com/store/${store}`;
+    return /^[a-z0-9.-]+$/.test(domain) && domain.includes('.') ? `https://${domain}/admin` : null;
   }
 }
 

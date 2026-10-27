@@ -2974,6 +2974,25 @@ model ShopifyOrder {
   totalAmount            Decimal?            @db.Decimal(18, 2)
   requiredByDate         DateTime?
   customerRef            String?
+  /// Customer contact and ship-to, lifted out of `rawPayload` so they can be
+  /// searched. Personal data: only readers with demand.view_customer see them.
+  email                  String?
+  phone                  String?
+  customerExternalId     String?
+  shippingCity           String?
+  shippingProvince       String?
+  shippingZip            String?
+  shippingCountry        String?
+  /// The price breakdown behind `totalAmount`, in the order's currency.
+  subtotalAmount         Decimal?            @db.Decimal(18, 2)
+  discountAmount         Decimal?            @db.Decimal(18, 2)
+  shippingAmount         Decimal?            @db.Decimal(18, 2)
+  taxAmount              Decimal?            @db.Decimal(18, 2)
+  refundedAmount         Decimal?            @db.Decimal(18, 2)
+  paymentGateways        String[]            @default([])
+  discountCodes          String[]            @default([])
+  cancelReason           String?
+  closedAt               DateTime?
   note                   String?
   tags                   String[]            @default([])
   cancelledAt            DateTime?
@@ -2995,6 +3014,7 @@ model ShopifyOrder {
   @@index([organizationId, channel, orderedAt])
   @@index([organizationId, status])
   @@index([organizationId, isCustomised, orderedAt])
+  @@index([organizationId, shippingZip])
   @@map("shopify_orders")
 }
 
@@ -3007,7 +3027,17 @@ model ShopifyOrderLine {
   productVariantId      String?                     @db.Uuid
   externalSku           String?
   externalVariantId     String?
+  /// Shopify product GID; the variant is `externalVariantId`.
+  externalProductId     String?
   title                 String?
+  variantTitle          String?
+  vendor                String?
+  barcode               String?
+  /// Shopify's image for the line, used when the catalogue has none.
+  imageUrl              String?
+  unitPrice             Decimal?                    @db.Decimal(18, 2)
+  discountedUnitPrice   Decimal?                    @db.Decimal(18, 2)
+  totalDiscount         Decimal?                    @db.Decimal(18, 2)
   size                  String?
   color                 String?
   orderedQty            Decimal                     @db.Decimal(18, 4)
@@ -3036,6 +3066,7 @@ model ShopifyOrderLine {
   @@index([shopifyOrderId])
   @@index([organizationId, availabilityStatus])
   @@index([productVariantId])
+  @@index([organizationId, externalProductId])
   @@map("shopify_order_lines")
 }
 

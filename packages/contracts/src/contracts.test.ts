@@ -123,7 +123,8 @@ describe('role matrix', () => {
   it('gives read-only roles no write permissions', () => {
     for (const role of ['FINANCE_VIEWER', 'MANAGEMENT_VIEWER'] as const) {
       const writes = ROLE_PERMISSIONS[role].filter(
-        (c) => !c.endsWith('.read') && !c.endsWith('.export') && !c.endsWith('.view_costing'),
+        // `.view_*` grants are reads of a sensitive slice (costing, customers).
+        (c) => !/\.(read|export|view_[a-z_]+)$/.test(c),
       );
       expect(writes, `${role} should be read-only`).toEqual([]);
     }

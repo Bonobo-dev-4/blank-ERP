@@ -1,11 +1,14 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { demandChannel, importShopifyOrdersRequest, shopifyOrderListQuery, type AuthenticatedUser } from '@dnd/contracts';
+import {
+  demandChannel, importShopifyOrdersRequest, refreshShopifyOrderDetailsRequest, shopifyOrderListQuery,
+  type AuthenticatedUser,
+} from '@dnd/contracts';
 import { z } from 'zod';
 import { RequirePermissions } from '../../common/auth/guards';
 import { CurrentUser, OrgId } from '../../common/decorators/current-user.decorator';
 import { ApiZodBody, ApiZodQuery, ZodBody, ZodQuery } from '../../common/zod/zod.decorators';
-import { ShopifyService } from './shopify.service';
+import { ShopifyService, type OrderViewer } from './shopify.service';
 import { ShopifyProductService } from './shopify-product.service';
 
 @ApiTags('Integrations')
@@ -59,9 +62,42 @@ export class IntegrationsController {
   @ApiZodQuery(shopifyOrderListQuery)
   listOrders(
     @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @ZodQuery(shopifyOrderListQuery) query: z.infer<typeof shopifyOrderListQuery>,
   ) {
-    return this.shopify.listOrders(orgId, query);
+    return this.shopify.listOrders(orgId, query, orderViewer(user));
+  }
+
+  @Post('orders/refresh-details')
+  @RequirePermissions('demand.import')
+  @ApiOperation({
+    summary: 'Fill in detail for orders imported before it was collected',
+    description:
+      'Re-reads, by id, orders that have no price breakdown yet — newest first, `limit` per call — and reports how many remain. Touches only orders already in the ERP. Read-only against Shopify.',
+  })
+  @ApiZodBody(refreshShopifyOrderDetailsRequest)
+  refreshOrderDetails(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ZodBody(refreshShopifyOrderDetailsRequest) body: z.infer<typeof refreshShopifyOrderDetailsRequest>,
+  ) {
+    return this.shopify.refreshOrderDetails(orgId, user.id, body.limit);
+  }
+
+  @Post('orders/:id/refresh')
+  @RequirePermissions('demand.import')
+  @ApiOperation({
+    summary: 'Re-read one order from Shopify',
+    description: 'Fetches the current version of this order by id and stores it. Read-only against Shopify.',
+  })
+  async refreshOrder(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const order = await this.shopify.getOrder(orgId, id);
+    const result = await this.shopify.refreshOrders(orgId, user.id, [order.shopify.orderId]);
+    return { ...result, order: await this.shopify.getOrder(orgId, order.id, orderViewer(user)) };
   }
 
   // Declared before `orders/:id`, so "facets" is never read as an order id.
@@ -103,9 +139,18 @@ export class IntegrationsController {
   @ApiOperation({
     summary: 'One order, with every line and where it has got to',
     description:
-      'What was bought, what is still owed, and how far production has taken it — the three questions an operator asks in sequence, on one screen. Stage figures are per stage and never summed.',
+      'What was bought, what is still owed, and how far production has taken it — the three questions an operator asks in sequence, on one screen. Stage figures are per stage and never summed. Includes the Shopify product and variant ids per line, the price breakdown and tracking; the customer, contact and addresses only with demand.view_customer.',
   })
-  getOrder(@OrgId() orgId: string, @Param('id') id: string) {
-    return this.shopify.getOrder(orgId, id);
+  getOrder(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.shopify.getOrder(orgId, id, orderViewer(user));
   }
+}
+
+/** Contact details and addresses are personal data, behind their own grant. */
+function orderViewer(user: AuthenticatedUser): OrderViewer {
+  return { canSeeCustomer: user.permissions.includes('demand.view_customer') };
 }

@@ -76,6 +76,7 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   // --- demand --------------------------------------------------------------
   p('demand.read', 'View imported orders and manufacturing demand'),
   p('demand.import', 'Trigger an order import'),
+  p('demand.view_customer', "See a customer's contact details and addresses on orders"),
   p('demand.approve', 'Approve demand for manufacturing', true),
 
   // --- manufacturing -------------------------------------------------------
@@ -167,7 +168,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleCode, readonly string[]>> = {
   SUPER_ADMIN: PERMISSION_CODES,
 
   PRODUCTION_HEAD: [
-    ...READ_ONLY_CORE, 'demand.read', 'demand.approve', 'manufacturing.write',
+    ...READ_ONLY_CORE, 'demand.read', 'demand.view_customer', 'demand.approve', 'manufacturing.write',
     'manufacturing.release', 'manufacturing.release_with_shortage', 'manufacturing.cancel',
     'manufacturing.split', 'mrp.run', 'mrp.reserve', 'production.assign',
     'production.override_stage', 'production.print_labels', 'quality.approve_final',
@@ -228,7 +229,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleCode, readonly string[]>> = {
 
   FINANCE_VIEWER: [...READ_ONLY_CORE, 'purchasing.read', 'reports.view_costing', 'reports.export', 'sync.read'],
 
-  MANAGEMENT_VIEWER: [...READ_ONLY_CORE, 'purchasing.read', 'demand.read', 'sync.read', 'job_workers.read', 'reports.view_costing', 'reports.export'],
+  MANAGEMENT_VIEWER: [...READ_ONLY_CORE, 'purchasing.read', 'demand.read', 'demand.view_customer', 'sync.read', 'job_workers.read', 'reports.view_costing', 'reports.export'],
 };
 
 export const ROLE_LABELS: Readonly<Record<RoleCode, string>> = {

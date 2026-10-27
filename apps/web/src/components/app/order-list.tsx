@@ -6,6 +6,7 @@ import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useAuth } from '@/components/app/auth-context';
 import { fmtDateTime, fmtMoneyCompact, fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Button, Card, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
@@ -24,6 +25,8 @@ interface Order {
   posLocationName: string | null; orderedAt: string; status: string;
   financialStatus: string | null; fulfillmentStatus: string | null;
   currency: string | null; totalAmount: string | null; customerRef: string | null;
+  /** Present only for a reader allowed to see customer details. */
+  shippingCity?: string | null; shippingZip?: string | null;
   tags: string[]; cancelledAt: string | null;
   lines: Line[]; demandQty: string; unmappedLineCount: number;
 }
@@ -103,6 +106,7 @@ export function OrderList({
 }) {
   const router = useRouter();
   const qc = useQueryClient();
+  const canSeeCustomer = useAuth().can('demand.view_customer');
   const [p, setP] = React.useState<ListParams>(readUrl);
   const [searchDraft, setSearchDraft] = React.useState(p.q);
 
@@ -251,7 +255,7 @@ export function OrderList({
       <Card material="dense" className="overflow-hidden">
         <div className="border-b border-line px-4 py-3.5">
           <FilterBar
-            search={{ value: searchDraft, onChange: setSearchDraft, placeholder: 'Order number or customer' }}
+            search={{ value: searchDraft, onChange: setSearchDraft, placeholder: canSeeCustomer ? 'Order no., customer, phone, email or pincode' : 'Order number or customer' }}
             selects={selects}
             toggles={[
               { key: 'bespoke', label: 'Bespoke only', checked: p.bespoke, onChange: (v) => update({ bespoke: v }) },
@@ -320,7 +324,14 @@ export function OrderList({
                         <Badge tone="outline">{humanise(o.channel)}</Badge>
                         {o.posLocationName ? <span className="ml-1.5 text-[12px] text-ink-muted">{o.posLocationName}</span> : null}
                       </td>
-                      <td className="px-3 py-2 text-ink-muted">{o.customerRef ?? '—'}</td>
+                      <td className="px-3 py-2 text-ink-muted">
+                        {o.customerRef ?? '—'}
+                        {o.shippingCity || o.shippingZip ? (
+                          <span className="block text-[12px] text-ink-subtle">
+                            {[o.shippingCity, o.shippingZip].filter(Boolean).join(' · ')}
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="num px-3 py-2 text-right">
                         {o.lines.length}
                         {o.unmappedLineCount > 0 ? (

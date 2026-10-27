@@ -20,10 +20,15 @@ export const externalOrderStatus = z.enum(EXTERNAL_ORDER_STATUSES);
  */
 export const importShopifyOrdersRequest = z.object({
   since: z.string().datetime({ offset: true }).nullish(),
-  pageSize: z.coerce.number().int().min(1).max(250).default(50),
+  // 100 orders with full detail stays under Shopify's 1,000-point query ceiling.
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
   maxPages: z.coerce.number().int().min(1).max(100).default(10),
 });
 export type ImportShopifyOrdersRequest = z.infer<typeof importShopifyOrdersRequest>;
+
+export const refreshShopifyOrderDetailsRequest = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).default(250),
+});
 
 /** Columns the order list can be sorted by — a whitelist, never a raw field. */
 export const ORDER_SORT_KEYS = ['orderedAt', 'orderName', 'customerRef', 'totalAmount', 'status'] as const;
