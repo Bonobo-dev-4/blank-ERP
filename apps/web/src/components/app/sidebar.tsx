@@ -14,30 +14,50 @@ function Icon({ name, className }: { name: string; className?: string }) {
   return <C className={className} />;
 }
 
+/**
+ * One icon per GROUP, not per screen.
+ *
+ * Nine icons a person can learn; sixty-three they cannot. The rail names
+ * areas of the business, and the panel names the screens inside one.
+ */
+const GROUP_ICON: Record<string, string> = {
+  '': 'LayoutDashboard',
+  'Orders & Demand': 'ShoppingCart',
+  'Raw Materials': 'Boxes',
+  Purchasing: 'ClipboardList',
+  'BOM & MRP': 'Network',
+  Production: 'Factory',
+  'Barcode Operations': 'ScanLine',
+  'Finished Goods': 'PackageCheck',
+  Intelligence: 'LineChart',
+  Administration: 'Settings',
+};
+
 const PIN_KEY = 'dnd.railPinned';
 
 /**
- * The icon rail.
+ * The navigation rail.
  *
- * Collapsed to icons by default, expanding on hover and pinnable open.
+ * A narrow strip of group icons, and a panel that opens beside it with a
+ * search box and collapsible sections.
  *
- * An icon-only rail is the look that was asked for, and on its own it would
- * not survive this app: there are 63 destinations, and nobody finds "Material
- * Consumption" by pictogram. Hover-to-expand keeps the narrow resting state
- * while leaving every label one gesture away, and the pin is there for anyone
- * who would rather not play that game all day.
+ * Sixty-three destinations is too many for a flat list and far too many for
+ * icons alone — nobody finds "Material Consumption" by pictogram. So the rail
+ * carries the nine areas of the business, the panel carries the screens inside
+ * one, and search cuts straight through both when you already know the name.
  *
- * A jade slab marks where you are and SLIDES to what you pick — the same slab
- * that underlines the tab strips, so the menu and the tabs read as one
- * mechanism.
+ * Opening the panel does not navigate. Picking an area to look through is a
+ * different act from going somewhere, and collapsing the two would make every
+ * browse a page load.
  */
 export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; forceOpen?: boolean }) {
   const pathname = usePathname();
   const { user, can } = useAuth();
-  const listRef = React.useRef<HTMLDivElement>(null);
-  const [slab, setSlab] = React.useState<{ top: number; height: number } | null>(null);
-  const [hovered, setHovered] = React.useState(false);
   const [pinned, setPinned] = React.useState(false);
+  const [hovered, setHovered] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
+  const searchRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     try { setPinned(localStorage.getItem(PIN_KEY) === '1'); } catch { /* private mode */ }
@@ -45,48 +65,46 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
 
   const open = forceOpen || pinned || hovered;
 
-  /**
-   * The ONE active item: the longest href the path matches.
-   *
-   * A plain `startsWith` makes both /orders and /orders/fulfilment active at
-   * once. With a highlight on each that merely looked untidy; with a single
-   * slab it is wrong, because the slab can only be in one place.
-   */
-  const activeHref = React.useMemo(() => {
-    const matches = NAVIGATION.flatMap((g) => g.items)
-      .filter((i) => i.status !== 'PLANNED')
-      .map((i) => i.href)
-      .filter((href) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)));
-    return matches.sort((a, b) => b.length - a.length)[0] ?? null;
-  }, [pathname]);
-
   const groups = React.useMemo(
     () =>
-      NAVIGATION.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => !item.permission || can(item.permission)),
-      })).filter((group) => group.items.length > 0),
+      NAVIGATION.map((g) => ({
+        ...g,
+        items: g.items.filter((i) => !i.permission || can(i.permission)),
+      })).filter((g) => g.items.length > 0),
     [can],
   );
 
-  React.useLayoutEffect(() => {
-    const root = listRef.current;
-    if (!root) return;
-    const measure = () => {
-      const el = root.querySelector<HTMLElement>('[data-active="true"]');
-      if (!el) { setSlab(null); return; }
-      // Measured from rects: the rows sit inside nested lists, so offsetTop
-      // would be relative to those rather than to the track.
-      const a = el.getBoundingClientRect();
-      const b = root.getBoundingClientRect();
-      setSlab({ top: a.top - b.top + root.scrollTop, height: a.height });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(root);
-    root.addEventListener('scroll', measure, { passive: true });
-    return () => { ro.disconnect(); root.removeEventListener('scroll', measure); };
-  }, [pathname, can, open]);
+  /** The ONE active item: the longest href the path matches. */
+  const activeHref = React.useMemo(() => {
+    const matches = groups
+      .flatMap((g) => g.items)
+      .filter((i) => i.status !== 'PLANNED')
+      .map((i) => i.href)
+      .filter((h) => (h === '/' ? pathname === '/' : pathname === h || pathname.startsWith(`${h}/`)));
+    return matches.sort((a, b) => b.length - a.length)[0] ?? null;
+  }, [pathname, groups]);
+
+  const activeGroup = React.useMemo(
+    () => groups.find((g) => g.items.some((i) => i.href === activeHref))?.label ?? null,
+    [groups, activeHref],
+  );
+
+  // The section you are in opens itself. Arriving at a screen and finding its
+  // own section collapsed makes the panel feel like it has lost you.
+  React.useEffect(() => {
+    if (activeGroup !== null) setOpenGroups((s) => ({ ...s, [activeGroup]: true }));
+  }, [activeGroup]);
+
+  const q = query.trim().toLowerCase();
+  const results = React.useMemo(() => {
+    if (!q) return null;
+    return groups
+      .map((g) => ({ ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(q)) }))
+      .filter((g) => g.items.length > 0);
+  }, [groups, q]);
+
+  const shown = results ?? groups;
+  const matchCount = results?.reduce((n, g) => n + g.items.length, 0) ?? 0;
 
   const togglePin = () => {
     setPinned((p) => {
@@ -97,97 +115,151 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
   };
 
   return (
-    <nav
-      aria-label="Main"
+    <div
+      className="flex h-full shrink-0"
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className={cn(
-        'flex h-full shrink-0 flex-col rounded-r-2xl bg-rail text-rail-ink',
-        'transition-[width] duration-200 ease-out',
-        open ? 'w-60' : 'w-[62px]',
-      )}
+      onMouseLeave={() => { setHovered(false); setQuery(''); }}
     >
-      <div className="flex h-12 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-[11px] font-bold tracking-tighter text-white">
+      {/* The rail: nine areas of the business. */}
+      <nav
+        aria-label="Sections"
+        className="flex w-[58px] shrink-0 flex-col items-center gap-1 bg-rail py-2.5"
+      >
+        <div className="mb-1.5 grid size-9 place-items-center rounded-xl bg-brand text-[11px] font-bold tracking-tighter text-white">
           D·D
         </div>
-        {open ? (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[12.5px] font-semibold leading-tight text-white">DASH AND DOT</p>
-            <p className="truncate text-[10.5px] leading-tight text-rail-ink-muted">Manufacturing ERP</p>
-          </div>
-        ) : null}
-        {open && !forceOpen ? (
-          <button
-            onClick={togglePin}
-            aria-pressed={pinned}
-            title={pinned ? 'Unpin the menu' : 'Keep the menu open'}
-            className="shrink-0 rounded-md p-1 text-rail-ink-muted transition-colors hover:bg-rail-hover hover:text-white"
-          >
-            {pinned ? <Icons.PinOff className="size-3.5" /> : <Icons.Pin className="size-3.5" />}
-          </button>
-        ) : null}
-      </div>
 
-      <div ref={listRef} className="slab-track flex-1 overflow-y-auto overflow-x-hidden px-2 pb-4">
-        {slab ? (
-          <span
-            aria-hidden="true"
-            className="slab left-2 right-2 rounded-lg"
-            style={{ transform: `translateY(${slab.top}px)`, height: slab.height }}
-          />
-        ) : null}
+        {groups.map((g) => {
+          const isActive = g.label === activeGroup;
+          return (
+            <button
+              key={g.label || 'home'}
+              onClick={() => {
+                if (!open) { setHovered(true); return; }
+                setOpenGroups((s) => ({ ...s, [g.label]: !s[g.label] }));
+              }}
+              title={g.label || 'Dashboard'}
+              aria-label={g.label || 'Dashboard'}
+              className={cn(
+                'grid size-9 place-items-center rounded-xl transition-colors',
+                isActive
+                  ? 'bg-white/14 text-white'
+                  : 'text-rail-ink-muted hover:bg-white/8 hover:text-white',
+              )}
+            >
+              <Icon name={GROUP_ICON[g.label] ?? 'Circle'} className="size-[17px]" />
+            </button>
+          );
+        })}
 
-        {groups.map((group, gi) => (
-          <div key={group.label || `g${gi}`} className="mb-1">
-            {group.label ? (
-              open ? (
-                <p className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-rail-ink-muted">
-                  {group.label}
-                </p>
-              ) : (
-                // Collapsed, the group name cannot fit, so the grouping is
-                // kept as a rule. Losing it entirely would turn 63 icons into
-                // one undifferentiated column.
-                <div className="mx-2 my-2.5 h-px bg-white/10" aria-hidden="true" />
-              )
-            ) : null}
-            <ul className="space-y-0.5">
-              {group.items.map((item) => (
-                <li key={item.href}>
-                  <NavLink item={item} activeHref={activeHref} open={open} onNavigate={onNavigate} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {user ? (
-        <div className="flex items-center gap-2.5 border-t border-white/10 px-3 py-2.5">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-white">
-            {user.fullName.slice(0, 1).toUpperCase()}
-          </div>
-          {open ? (
-            <div className="min-w-0">
-              <p className="truncate text-[12px] font-medium text-white">{user.fullName}</p>
-              <p className="truncate text-[10.5px] text-rail-ink-muted">
-                {user.roles.map((r) => r.replace(/_/g, ' ').toLowerCase()).join(', ')}
-              </p>
+        <div className="mt-auto">
+          {user ? (
+            <div
+              className="grid size-8 place-items-center rounded-full bg-white/12 text-[11px] font-semibold text-white"
+              title={user.fullName}
+            >
+              {user.fullName.slice(0, 1).toUpperCase()}
             </div>
           ) : null}
         </div>
-      ) : null}
-    </nav>
+      </nav>
+
+      {/* The panel: search, then the screens inside each area. */}
+      <div
+        className={cn(
+          'flex flex-col overflow-hidden bg-rail text-rail-ink',
+          'transition-[width,opacity] duration-200 ease-out',
+          open ? 'w-[228px] opacity-100' : 'w-0 opacity-0',
+        )}
+      >
+        <div className="flex items-center gap-1.5 px-3 pb-2 pt-3">
+          <div className="relative flex-1">
+            <Icons.Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-rail-ink-muted" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }}
+              placeholder="Search screens"
+              aria-label="Search screens"
+              className={cn(
+                'h-8 w-full rounded-lg border border-white/12 bg-white/8 pl-8 pr-2',
+                'text-[12.5px] text-white placeholder:text-rail-ink-muted',
+                'outline-none focus-visible:border-white/35',
+              )}
+            />
+          </div>
+          {!forceOpen ? (
+            <button
+              onClick={togglePin}
+              aria-pressed={pinned}
+              title={pinned ? 'Unpin the menu' : 'Keep the menu open'}
+              className="shrink-0 rounded-md p-1.5 text-rail-ink-muted transition-colors hover:bg-white/8 hover:text-white"
+            >
+              {pinned ? <Icons.PinOff className="size-3.5" /> : <Icons.Pin className="size-3.5" />}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-2 pb-3">
+          {results && matchCount === 0 ? (
+            <p className="px-2 py-6 text-center text-[12px] text-rail-ink-muted">
+              No screen matches &ldquo;{query}&rdquo;.
+            </p>
+          ) : null}
+
+          {shown.map((g) => {
+            const label = g.label || 'Dashboard';
+            // While searching every section is open: hiding a match behind a
+            // collapsed heading would make the search look broken.
+            const isOpen = results ? true : (openGroups[g.label] ?? g.label === activeGroup);
+            return (
+              <section key={g.label || 'home'} className="mb-0.5">
+                {g.label ? (
+                  <button
+                    onClick={() => setOpenGroups((s) => ({ ...s, [g.label]: !isOpen }))}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-rail-ink-muted transition-colors hover:text-white"
+                  >
+                    {label}
+                    <Icons.ChevronDown
+                      className={cn('size-3 transition-transform duration-200', !isOpen && '-rotate-90')}
+                    />
+                  </button>
+                ) : null}
+
+                {isOpen ? (
+                  <ul className="space-y-px pb-1">
+                    {g.items.map((item) => (
+                      <li key={item.href}>
+                        <NavLink item={item} activeHref={activeHref} onNavigate={onNavigate} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+
+        {user ? (
+          <div className="border-t border-white/10 px-3 py-2.5">
+            <p className="truncate text-[12px] font-medium text-white">{user.fullName}</p>
+            <p className="truncate text-[10.5px] text-rail-ink-muted">
+              {user.roles.map((r) => r.replace(/_/g, ' ').toLowerCase()).join(', ')}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
 function NavLink({
-  item, activeHref, open, onNavigate,
+  item, activeHref, onNavigate,
 }: {
   item: NavItem;
   activeHref: string | null;
-  open: boolean;
   onNavigate?: () => void;
 }) {
   const active = item.href === activeHref;
@@ -195,32 +267,23 @@ function NavLink({
 
   const body = (
     <>
-      <span className="grid size-[22px] shrink-0 place-items-center">
-        <Icon name={item.icon} className="size-[16px]" />
-      </span>
-      {open ? (
-        <>
-          <span className="flex-1 truncate">{item.label}</span>
-          {planned ? (
-            <span className="shrink-0 rounded bg-white/10 px-1 py-px text-[9.5px] font-medium tabular-nums">
-              P{item.phase}
-            </span>
-          ) : null}
-          {item.status === 'PARTIAL' ? (
-            <span
-              className={cn('size-1.5 shrink-0 rounded-full border', active ? 'border-white' : 'border-rail-ink-muted')}
-              title={item.description ?? 'Partially implemented'}
-            />
-          ) : null}
-        </>
+      <Icon name={item.icon} className="size-[15px] shrink-0" />
+      <span className="flex-1 truncate">{item.label}</span>
+      {planned ? (
+        <span className="shrink-0 rounded bg-white/10 px-1 py-px text-[9.5px] font-medium tabular-nums">
+          P{item.phase}
+        </span>
+      ) : null}
+      {item.status === 'PARTIAL' ? (
+        <span
+          className={cn('size-1.5 shrink-0 rounded-full border', active ? 'border-white' : 'border-rail-ink-muted')}
+          title={item.description ?? 'Partially implemented'}
+        />
       ) : null}
     </>
   );
 
-  const shared = cn(
-    'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] transition-colors duration-150',
-    !open && 'justify-center px-0',
-  );
+  const shared = 'flex items-center gap-2 rounded-lg py-1.5 pl-3 pr-2 text-[12.5px] transition-colors duration-150';
 
   if (planned) {
     return (
@@ -238,15 +301,11 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      data-active={active || undefined}
       aria-current={active ? 'page' : undefined}
-      // The label is the accessible name when collapsed, and the hover
-      // tooltip for a mouse. Icons alone name nothing.
-      title={open ? item.description : item.label}
-      aria-label={item.label}
+      title={item.description}
       className={cn(
         shared,
-        active ? 'font-semibold text-white' : 'text-rail-ink hover:bg-rail-hover hover:text-white',
+        active ? 'bg-brand font-medium text-white' : 'text-rail-ink hover:bg-white/8 hover:text-white',
       )}
     >
       {body}
