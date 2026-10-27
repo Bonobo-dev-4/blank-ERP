@@ -158,7 +158,7 @@ export function ShareBar({
   }
   return (
     <div className={className}>
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
+      <div className="flex h-2.5 w-full overflow-hidden bg-surface-muted">
         {segments.map((s, i) => (
           s.value > 0 ? (
             <div

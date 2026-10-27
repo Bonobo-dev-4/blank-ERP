@@ -89,7 +89,7 @@ export function Assistant() {
           onClick={() => setOpen(true)}
           aria-label="Ask the assistant"
           className={cn(
-            'glass fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full py-2.5 pl-3.5 pr-4',
+            'glass fixed bottom-5 right-5 z-40 flex items-center gap-2 py-2.5 pl-3.5 pr-4',
             'text-[12.5px] font-medium text-ink shadow-lg transition-transform duration-200',
             'hover:-translate-y-0.5 active:translate-y-0',
           )}

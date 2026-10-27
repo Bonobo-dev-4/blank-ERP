@@ -59,7 +59,7 @@ export function NotificationBell() {
         {total > 0 ? (
           <span
             className={cn(
-              'num absolute -right-0.5 -top-0.5 grid min-w-[16px] place-items-center rounded-full px-1 text-[9.5px] font-semibold leading-[16px]',
+              'num absolute -right-0.5 -top-0.5 grid min-w-[16px] place-items-center px-1 text-[9.5px] font-semibold leading-[16px]',
               critical ? 'bg-ink text-canvas' : 'border border-ink bg-surface text-ink',
             )}
           >

@@ -155,7 +155,7 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
         <div className="mt-auto">
           {user ? (
             <div
-              className="grid size-8 place-items-center rounded-full bg-white/12 text-[11px] font-semibold text-white"
+              className="grid size-8 place-items-center bg-white/12 text-[11px] font-semibold text-white"
               title={user.fullName}
             >
               {user.fullName.slice(0, 1).toUpperCase()}
@@ -276,7 +276,7 @@ function NavLink({
       ) : null}
       {item.status === 'PARTIAL' ? (
         <span
-          className={cn('size-1.5 shrink-0 rounded-full border', active ? 'border-white' : 'border-rail-ink-muted')}
+          className={cn('size-1.5 shrink-0 border', active ? 'border-white' : 'border-rail-ink-muted')}
           title={item.description ?? 'Partially implemented'}
         />
       ) : null}

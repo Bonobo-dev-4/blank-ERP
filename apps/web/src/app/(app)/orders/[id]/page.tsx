@@ -232,9 +232,9 @@ function StageTrack({ stages }: { stages: Stage[] }) {
                 <div className="num font-display mt-0.5 text-[15px] font-semibold leading-none text-ink">
                   {fmtQty(String(wip), 0)}
                 </div>
-                <div className="mt-1.5 h-[3px] w-full rounded-full bg-line">
+                <div className="mt-1.5 h-[3px] w-full bg-line">
                   <div
-                    className={`h-full rounded-full transition-[width] duration-700 ${wip > 0 ? 'bg-ink' : 'bg-line-strong'}`}
+                    className={`h-full transition-[width] duration-700 ${wip > 0 ? 'bg-ink' : 'bg-line-strong'}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>

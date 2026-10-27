@@ -74,7 +74,7 @@ export function Tabs<T extends string>({
         <span
           aria-hidden="true"
           // Sits on the baseline rule, the way a cursor sits on a ruler.
-          className="slab bottom-0 h-[2px] rounded-full"
+          className="slab bottom-0 h-[2px]"
           style={{ transform: `translateX(${slab.left}px)`, width: slab.width }}
         />
       ) : null}

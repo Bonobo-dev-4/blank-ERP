@@ -183,7 +183,7 @@ function StitchTrack({ stages, peak }: { stages: LineStage[]; peak: number }) {
             ) : null}
 
             <span
-              className="line-node absolute left-0 top-[5px] block size-3.5 rounded-full border-2"
+              className="line-node absolute left-0 top-[5px] block size-3.5 border-2"
               style={{
                 animationDelay: `${260 + i * 110}ms`,
                 borderColor: num(s.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat-line)',
@@ -242,7 +242,7 @@ function StitchTrack({ stages, peak }: { stages: LineStage[]; peak: number }) {
             {stages.map((s, i) => (
               <div key={s.stageId} className="relative -mt-[13px]">
                 <span
-                  className="line-node mb-3 block size-3 rounded-full border-2"
+                  className="line-node mb-3 block size-3 border-2"
                   style={{
                     animationDelay: `${300 + i * 110}ms`,
                     borderColor: num(s.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat-line)',
@@ -277,12 +277,12 @@ function Meter({ stage, peak }: { stage: LineStage; peak: number }) {
   const pct = Math.min(100, Math.round((num(stage.receivedQty) / peak) * 100));
   return (
     <div
-      className="mt-2 h-[3px] w-full rounded-full bg-vat-deep"
+      className="mt-2 h-[3px] w-full bg-vat-deep"
       role="img"
       aria-label={`${pieces(stage.receivedQty)} taken into ${stage.name}`}
     >
       <div
-        className="h-full rounded-full transition-[width] duration-700 ease-out"
+        className="h-full transition-[width] duration-700 ease-out"
         style={{
           width: `${pct}%`,
           background: num(stage.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat-line)',

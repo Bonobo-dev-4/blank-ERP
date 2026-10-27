@@ -34,11 +34,16 @@
    * depth AND contrast at the same time, which is what the brief asks for in
    * the same breath.
    */
-  --color-canvas: oklch(0.775 0 0);
+  --color-canvas: oklch(0.72 0 0);
 
-  /* Frosted panes. Bright, so type on them is near-black on near-white. */
-  --color-surface: oklch(1 0 0 / 0.8);
-  --color-surface-muted: oklch(1 0 0 / 0.5);
+  /*
+   * Frosted panes. 0.52 alpha, not the 0.8 an earlier pass used — at 0.8 a
+   * pane is effectively solid and the blur underneath is invisible work.
+   * Translucency is the entire point of the material; legibility comes from
+   * the ink being near-black and the ground never carrying text of its own.
+   */
+  --color-surface: oklch(1 0 0 / 0.52);
+  --color-surface-muted: oklch(1 0 0 / 0.3);
 
   --color-line: oklch(0.32 0 0 / 0.1);
   --color-line-strong: oklch(0.32 0 0 / 0.28);
@@ -89,10 +94,20 @@
   --color-zari: oklch(1 0 0);
   --color-madder: oklch(0.78 0 0);
 
-  /* Soft edges, per the brief. Nothing in this interface is sharp. */
-  --radius-sm: 0.625rem;
-  --radius: 1rem;
-  --radius-lg: 1.375rem;
+  /*
+   * No rounding, anywhere. Square-edged glass reads as architectural panes
+   * rather than app bubbles, and it is what was asked for. Every token is
+   * pinned to zero so no utility can smuggle a Tailwind default back in.
+   */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 }
 
 * { border-color: var(--color-line); }
@@ -122,11 +137,11 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(1200px 820px at 10% -12%, oklch(1 0 0 / 0.62), transparent 58%),
-    radial-gradient(1000px 760px at 94% -6%, oklch(1 0 0 / 0.42), transparent 56%),
-    radial-gradient(900px 900px at 80% 106%, oklch(0.38 0 0 / 0.2), transparent 58%),
-    radial-gradient(760px 620px at 14% 104%, oklch(1 0 0 / 0.3), transparent 56%),
-    linear-gradient(165deg, oklch(0.83 0 0) 0%, oklch(0.73 0 0) 100%);
+    radial-gradient(1200px 820px at 10% -12%, oklch(1 0 0 / 0.75), transparent 56%),
+    radial-gradient(1000px 760px at 94% -6%, oklch(0.95 0 0 / 0.5), transparent 54%),
+    radial-gradient(900px 900px at 80% 108%, oklch(0.3 0 0 / 0.38), transparent 58%),
+    radial-gradient(760px 620px at 14% 104%, oklch(1 0 0 / 0.4), transparent 54%),
+    linear-gradient(160deg, oklch(0.8 0 0) 0%, oklch(0.62 0 0) 100%);
 }
 
 /* ---------------------------------------------------------------------------
@@ -134,21 +149,28 @@ body::before {
  * ------------------------------------------------------------------------ */
 
 .glass {
-  background: var(--color-surface);
-  backdrop-filter: blur(28px) saturate(135%);
-  -webkit-backdrop-filter: blur(28px) saturate(135%);
-  /* A bright rim, brightest along the top edge where the light falls. */
-  border: 1px solid oklch(1 0 0 / 0.7);
+  /*
+   * The diagonal sheen is layered INTO the background, not added as an
+   * overlay element: a wash of light falling across the pane from the top
+   * left is the cue that says glass, and without it a translucent rectangle
+   * is just a translucent rectangle.
+   */
+  background:
+    linear-gradient(130deg, oklch(1 0 0 / 0.42) 0%, oklch(1 0 0 / 0.06) 38%, oklch(1 0 0 / 0) 60%),
+    var(--color-surface);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid oklch(1 0 0 / 0.72);
   box-shadow:
     inset 0 1px 0 0 oklch(1 0 0 / 0.95),
-    inset 0 -1px 0 0 oklch(1 0 0 / 0.3),
-    0 1px 2px oklch(0.2 0 0 / 0.1),
-    0 20px 44px -18px oklch(0.2 0 0 / 0.34);
+    inset 1px 0 0 0 oklch(1 0 0 / 0.45),
+    0 1px 2px oklch(0.2 0 0 / 0.12),
+    0 24px 48px -20px oklch(0.15 0 0 / 0.45);
 }
 
 /* Controls that sit ON glass and must not dissolve into it. */
 .glass-raised {
-  background: oklch(1 0 0 / 0.86);
+  background: oklch(1 0 0 / 0.72);
   backdrop-filter: blur(30px) saturate(135%);
   -webkit-backdrop-filter: blur(30px) saturate(135%);
   border: 1px solid oklch(1 0 0 / 0.92);
@@ -231,7 +253,7 @@ body::before {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
   background: oklch(0.32 0 0 / 0.3);
-  border-radius: 999px;
+  border-radius: 0;
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -241,7 +263,7 @@ body::before {
 :focus-visible {
   outline: 2px solid var(--color-ink);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 /* Barcode scan focus mode: the shop floor screen goes full-bleed and large. */
