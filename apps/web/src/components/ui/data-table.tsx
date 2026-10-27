@@ -62,9 +62,31 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
+  // Quantities arrive as decimal STRINGS, which would sort as text ("9" after
+  // "10"). Columns marked numeric compare as numbers, blanks last.
+  const sortableColumns = React.useMemo(
+    () =>
+      columns.map((c) =>
+        (c.meta as { numeric?: boolean } | undefined)?.numeric && !c.sortingFn
+          ? {
+              ...c,
+              sortingFn: (a: { getValue: (id: string) => unknown }, b: { getValue: (id: string) => unknown }, id: string) => {
+                const x = Number(a.getValue(id));
+                const y = Number(b.getValue(id));
+                if (!Number.isFinite(x) && !Number.isFinite(y)) return 0;
+                if (!Number.isFinite(x)) return 1;
+                if (!Number.isFinite(y)) return -1;
+                return x - y;
+              },
+            }
+          : c,
+      ) as ColumnDef<T, unknown>[],
+    [columns],
+  );
+
   const table = useReactTable({
     data: data as T[],
-    columns,
+    columns: sortableColumns,
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),

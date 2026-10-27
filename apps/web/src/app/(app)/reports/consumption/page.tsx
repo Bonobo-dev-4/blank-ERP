@@ -3,10 +3,11 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { fmtMoneyCompact, fmtQty, uomShort } from '@/lib/utils';
+import { fmtMoneyCompact, fmtQty, uomShort, humanise } from '@/lib/utils';
 import {
   Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
@@ -30,6 +31,18 @@ export default function ConsumptionReportPage() {
     queryFn: () => api.get<Report>(`/reports/consumption?from=${w.from}&to=${w.to}`),
   });
 
+
+  const ctl = useTableControls(data?.lines, {
+    search: (l) => `${l.materialCode} ${l.name}`,
+    filters: [{ key: 'category', label: 'Category', get: (l) => l.category, format: humanise }],
+    toggles: [{ key: 'over', label: 'Over BOM standard', test: (l) => l.isOverConsumption }],
+    sorts: {
+      material: (l) => l.materialCode, consumed: (l) => Number(l.consumedQty), wastage: (l) => Number(l.wastageQty),
+      wastagePct: (l) => (l.wastagePct == null ? null : Number(l.wastagePct)), standard: (l) => Number(l.standardQty),
+      variance: (l) => Number(l.varianceQty), value: (l) => Number(l.totalCost),
+    },
+  });
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -41,7 +54,7 @@ export default function ConsumptionReportPage() {
           filename="material-consumption"
           disabled={!data || data.lines.length === 0}
           headers={['Material code', 'Material', 'Consumed', 'Wastage', 'Wastage %', 'BOM standard', 'Variance', 'Variance %', 'Value']}
-          rows={() => (data?.lines ?? []).map((l) => [
+          rows={() => ctl.rows.map((l) => [
             l.materialCode, l.name, l.consumedQty, l.wastageQty, l.wastagePct,
             l.standardQty, l.varianceQty, l.variancePct, l.totalCost,
           ])}
@@ -75,21 +88,25 @@ export default function ConsumptionReportPage() {
                 description="Material consumption is posted when production records an outcome. Widen the date range, or check that orders have been released."
               />
             ) : (
-              <div className="scroll-x">
+              <>
+<div className="border-b border-line px-5 py-3">
+  <FilterBar {...ctl.barProps} search={ctl.barProps.search && { ...ctl.barProps.search, placeholder: 'Material code or name' }} />
+</div>
+<div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Material</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Consumed</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Wastage</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Wastage %</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">BOM standard</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Variance</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Value</th>
+                      <SortTh label="Material" sortKey="material" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Consumed" sortKey="consumed" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Wastage" sortKey="wastage" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Wastage %" sortKey="wastagePct" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="BOM standard" sortKey="standard" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Variance" sortKey="variance" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Value" sortKey="value" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
                     </tr>
                   </thead>
                   <tbody>
-                    {data.lines.map((l) => (
+                    {ctl.rows.map((l) => (
                       <tr key={l.rawMaterialId} className="border-b border-line last:border-0">
                         <td className="px-3 py-1.5">
                           <span className="font-mono text-[12px]">{l.materialCode}</span>
@@ -113,6 +130,7 @@ export default function ConsumptionReportPage() {
                   </tbody>
                 </table>
               </div>
+</>
             )}
           </Card>
         </>

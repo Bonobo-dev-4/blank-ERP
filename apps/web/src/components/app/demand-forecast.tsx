@@ -3,11 +3,12 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { fmtQty } from '@/lib/utils';
+import { fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Card, CardHeader, EmptyState, ErrorPanel, Label, LoadingBlock, NativeSelect,
   PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 
 interface Row {
   productVariantId: string; sku: string | null; productName: string | null; styleCode: string | null;
@@ -38,6 +39,22 @@ export function DemandForecast({ title, description }: { title: string; descript
     queryKey: ['intelligence', 'forecast', lookback, horizon, method],
     queryFn: () =>
       api.get<Report>(`/intelligence/forecast?lookbackDays=${lookback}&horizonDays=${horizon}&method=${method}`),
+  });
+
+
+  const ctl = useTableControls(data?.rows, {
+    search: (r) => `${r.sku ?? ''} ${r.productName ?? ''} ${r.styleCode ?? ''}`,
+    filters: [
+      { key: 'size', label: 'Size', get: (r) => r.size },
+      { key: 'confidence', label: 'Confidence', get: (r) => r.confidence, format: humanise },
+    ],
+    toggles: [{ key: 'short', label: 'Below forecast', test: (r) => Number(r.onHandQty) < Number(r.forecastQty) }],
+    sorts: {
+      sku: (r) => r.sku, product: (r) => r.productName, sold: (r) => Number(r.unitsSold),
+      week: (r) => Number(r.salesVelocity), forecast: (r) => Number(r.forecastQty),
+      onhand: (r) => Number(r.onHandQty), confidence: (r) => r.confidence,
+    },
+    defaultSort: { key: 'forecast', dir: 'desc' },
   });
 
   return (
@@ -101,21 +118,25 @@ export function DemandForecast({ title, description }: { title: string; descript
             {data.rows.length === 0 ? (
               <EmptyState title="Nothing sold in this window" description="Widen the lookback, or import more order history." />
             ) : (
-              <div className="scroll-x">
+              <>
+<div className="border-b border-line px-5 py-3">
+  <FilterBar {...ctl.barProps} search={ctl.barProps.search && { ...ctl.barProps.search, placeholder: 'SKU, product or style' }} />
+</div>
+<div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Product</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Sold</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Per week</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Forecast</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">On hand</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Confidence</th>
+                      <SortTh label="SKU" sortKey="sku" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Product" sortKey="product" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Sold" sortKey="sold" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Per week" sortKey="week" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Forecast" sortKey="forecast" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="On hand" sortKey="onhand" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Confidence" sortKey="confidence" sort={ctl.sort} onSort={ctl.onSort} />
                     </tr>
                   </thead>
                   <tbody>
-                    {data.rows.map((r) => {
+                    {ctl.rows.map((r) => {
                       const short = Number(r.forecastQty) > Number(r.onHandQty);
                       return (
                         <tr key={r.productVariantId} className="border-b border-line last:border-0">
@@ -145,6 +166,7 @@ export function DemandForecast({ title, description }: { title: string; descript
                   </tbody>
                 </table>
               </div>
+</>
             )}
           </Card>
 

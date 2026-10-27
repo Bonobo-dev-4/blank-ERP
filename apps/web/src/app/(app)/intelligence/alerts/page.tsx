@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { fmtDateTime, fmtQty, humanise, uomShort } from '@/lib/utils';
 import { ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge } from '@/components/ui/primitives';
 import { DataTable, StackedCell } from '@/components/ui/data-table';
+import { FilterBar, useTableControls } from '@/components/ui/table-controls';
 
 interface Alert {
   rawMaterialId: string; materialCode: string; materialName: string; category: string; baseUom: string;
@@ -82,6 +83,17 @@ export default function AlertsPage() {
     [],
   );
 
+  // Filtering happens here; the table's own headers handle sorting.
+  const controls = useTableControls(data?.alerts, {
+    search: (a) => `${a.materialCode} ${a.materialName} ${a.defaultSupplier?.name ?? ''}`,
+    filters: [
+      { key: 'level', label: 'Level', get: (a) => a.alertLevel, format: humanise },
+      { key: 'category', label: 'Category', get: (a) => a.category, format: humanise },
+      { key: 'supplier', label: 'Supplier', get: (a) => a.defaultSupplier?.name ?? null },
+    ],
+    toggles: [{ key: 'hold', label: 'Stock in QC hold', test: (a) => Number(a.qualityHoldQty) > 0 }],
+  });
+
   if (isLoading) return <LoadingBlock />;
   if (error) return <ErrorPanel error={error} onRetry={() => void refetch()} />;
   if (!data) return null;
@@ -105,12 +117,18 @@ export default function AlertsPage() {
         <Stat label="At reorder level" value={data.counts.atReorderLevel} tone={data.counts.atReorderLevel > 0 ? 'info' : 'ok'} hint="time to raise a requisition" />
       </div>
 
+      {data.alerts.length > 0 ? (
+        <div className="glass-subtle mb-3 rounded-2xl px-4 py-3">
+          <FilterBar {...controls.barProps} search={controls.barProps.search && { ...controls.barProps.search, placeholder: 'Material code, name or supplier' }} />
+        </div>
+      ) : null}
+
       <DataTable
         columns={columns}
-        data={data.alerts}
+        data={controls.rows}
         exportFileName="inventory-alerts"
-        emptyTitle="No alerts"
-        emptyDescription="Every active material is above its reorder level."
+        emptyTitle={data.alerts.length ? 'No alerts match' : 'No alerts'}
+        emptyDescription={data.alerts.length ? 'Clear a filter or change the search.' : 'Every active material is above its reorder level.'}
       />
     </div>
   );

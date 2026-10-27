@@ -96,8 +96,10 @@ export function ProductionLine({
   activeStages: number;
 }) {
   const { can } = useAuth();
+  const [showIdle, setShowIdle] = React.useState(false);
   const working = stages.filter((s) => s.hasActivity);
-  const shown = working.length > 0 ? working : stages;
+  const idleCount = stages.length - working.length;
+  const shown = showIdle || working.length === 0 ? stages : working;
 
   const rejected = shown.reduce((n, s) => n + num(s.rejectedQty), 0);
   const rework = shown.reduce((n, s) => n + num(s.reworkOpenQty), 0);
@@ -128,11 +130,27 @@ export function ProductionLine({
           </p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+        {working.length > 0 && idleCount > 0 ? (
+          <button
+            type="button"
+            aria-pressed={showIdle}
+            onClick={() => setShowIdle((v) => !v)}
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12.5px] font-medium transition-colors',
+              showIdle ? 'border-brand/60 bg-brand-soft text-ink' : 'border-line text-ink-muted hover:bg-surface-muted hover:text-ink',
+            )}
+          >
+            <span aria-hidden="true" className={cn('size-3 rounded-[3px] border', showIdle ? 'border-brand bg-brand' : 'border-line-strong')} />
+            Show {idleCount} idle {idleCount === 1 ? 'stage' : 'stages'}
+          </button>
+        ) : null}
         <dl className="flex flex-wrap items-stretch gap-2">
           <Summary label="On the floor" value={pieces(wipTotal)} accent="stitching" note={`at ${activeStages} stages`} />
           <Summary label="Rejected" value={pieces(rejected)} accent="rejected" alert={rejected > 0} />
           <Summary label="Out for rework" value={pieces(rework)} accent="rework" alert={rework > 0} />
         </dl>
+        </div>
       </header>
 
       {shown.length === 0 ? (

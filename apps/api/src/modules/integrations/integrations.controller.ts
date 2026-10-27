@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { importShopifyOrdersRequest, shopifyOrderListQuery, type AuthenticatedUser } from '@dnd/contracts';
+import { demandChannel, importShopifyOrdersRequest, shopifyOrderListQuery, type AuthenticatedUser } from '@dnd/contracts';
 import { z } from 'zod';
 import { RequirePermissions } from '../../common/auth/guards';
 import { CurrentUser, OrgId } from '../../common/decorators/current-user.decorator';
@@ -62,6 +62,15 @@ export class IntegrationsController {
     @ZodQuery(shopifyOrderListQuery) query: z.infer<typeof shopifyOrderListQuery>,
   ) {
     return this.shopify.listOrders(orgId, query);
+  }
+
+  // Declared before `orders/:id`, so "facets" is never read as an order id.
+  @Get('orders/facets')
+  @RequirePermissions('demand.read')
+  @ApiOperation({ summary: 'Filter values for the order list, with counts' })
+  orderFacets(@OrgId() orgId: string, @Query('channel') channel?: string) {
+    const parsed = channel ? demandChannel.safeParse(channel) : null;
+    return this.shopify.orderFacets(orgId, parsed?.success ? parsed.data : undefined);
   }
 
   @Post('products/import')

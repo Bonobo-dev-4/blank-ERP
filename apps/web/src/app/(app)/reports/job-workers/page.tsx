@@ -7,6 +7,7 @@ import { fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
@@ -33,6 +34,17 @@ export default function JobWorkerReportPage() {
   const rows = (data?.workers ?? []).filter((x) => showIdle || x.hasActivity);
   const idle = (data?.workers.length ?? 0) - (data?.totals.activeCount ?? 0);
 
+
+  const ctl = useTableControls(rows, {
+    search: (x) => `${x.code} ${x.name}`,
+    filters: [{ key: 'kind', label: 'Kind', get: (x) => x.workerType, format: humanise }],
+    sorts: {
+      worker: (x) => x.name, kind: (x) => x.workerType, tasks: (x) => x.taskCount,
+      taken: (x) => Number(x.receivedQty), completed: (x) => Number(x.completedQty), rejected: (x) => Number(x.rejectedQty),
+      rework: (x) => Number(x.reworkOpenQty), quality: (x) => (x.qualityPct == null ? null : Number(x.qualityPct)),
+    },
+  });
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -44,7 +56,7 @@ export default function JobWorkerReportPage() {
           filename="job-worker-performance"
           disabled={rows.length === 0}
           headers={['Code', 'Worker', 'Kind', 'Tasks', 'Taken in', 'Completed', 'Rejected', 'Rework open', 'Quality %']}
-          rows={() => rows.map((x) => [
+          rows={() => ctl.rows.map((x) => [
             x.code, x.name, x.workerType, x.taskCount, x.receivedQty,
             x.completedQty, x.rejectedQty, x.reworkOpenQty, x.qualityPct,
           ])}
@@ -90,22 +102,26 @@ export default function JobWorkerReportPage() {
                 description="Assign a stage task to a job worker, or widen the date range."
               />
             ) : (
-              <div className="scroll-x">
+              <>
+<div className="border-b border-line px-5 py-3">
+  <FilterBar {...ctl.barProps} search={ctl.barProps.search && { ...ctl.barProps.search, placeholder: 'Worker code or name' }} />
+</div>
+<div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Worker</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Kind</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Tasks</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Taken in</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Completed</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Rejected</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Rework open</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Quality</th>
+                      <SortTh label="Worker" sortKey="worker" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Kind" sortKey="kind" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Tasks" sortKey="tasks" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Taken in" sortKey="taken" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Completed" sortKey="completed" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Rejected" sortKey="rejected" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Rework open" sortKey="rework" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Quality" sortKey="quality" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((x) => (
+                    {ctl.rows.map((x) => (
                       <tr key={x.id} className={`border-b border-line last:border-0 ${x.hasActivity ? '' : 'opacity-55'}`}>
                         <td className="px-3 py-1.5">
                           <span className="font-mono text-[12px]">{x.code}</span>
@@ -131,6 +147,7 @@ export default function JobWorkerReportPage() {
                   </tbody>
                 </table>
               </div>
+</>
             )}
           </Card>
         </>

@@ -3,10 +3,11 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { fmtQty } from '@/lib/utils';
+import { fmtQty, humanise } from '@/lib/utils';
 import {
   Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
@@ -38,6 +39,25 @@ export default function ProductionReportPage() {
 
   const active = data?.byStage.filter((s) => Number(s.receivedQty) > 0) ?? [];
 
+
+  const num = (v: string | null) => (v == null ? null : Number(v));
+  const ctlStage = useTableControls(active, {
+    sorts: {
+      stage: (s) => s.sequence, taken: (s) => Number(s.receivedQty), completed: (s) => Number(s.completedQty),
+      floor: (s) => Number(s.wipQty), rejected: (s) => Number(s.rejectedQty), rework: (s) => Number(s.reworkOpenQty),
+      rejectPct: (s) => num(s.rejectionPct), fpy: (s) => num(s.firstPassYieldPct),
+    },
+    defaultSort: { key: 'stage', dir: 'asc' },
+  });
+  const ctlOrders = useTableControls(data?.orders, {
+    search: (o) => `${o.orderNo} ${o.sku ?? ''} ${o.productName ?? ''}`,
+    filters: [{ key: 'status', label: 'Status', get: (o) => o.status, format: humanise }],
+    sorts: {
+      order: (o) => o.orderNo, product: (o) => o.productName, status: (o) => o.status,
+      ordered: (o) => Number(o.orderedQty), completed: (o) => Number(o.completedQty), rejected: (o) => Number(o.rejectedQty),
+    },
+  });
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -49,7 +69,7 @@ export default function ProductionReportPage() {
           filename="production-report"
           disabled={!data || active.length === 0}
           headers={['Stage', 'Taken in', 'Completed', 'On the floor', 'Rejected', 'Rework open', 'Reject %', 'First-pass yield %']}
-          rows={() => active.map((s) => [
+          rows={() => ctlStage.rows.map((s) => [
             s.name, s.receivedQty, s.completedQty, s.wipQty, s.rejectedQty,
             s.reworkOpenQty, s.rejectionPct, s.firstPassYieldPct,
           ])}
@@ -93,18 +113,18 @@ export default function ProductionReportPage() {
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Stage</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Taken in</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Completed</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">On the floor</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Rejected</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Rework open</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Reject %</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">First-pass yield</th>
+                      <SortTh label="Stage" sortKey="stage" sort={ctlStage.sort} onSort={ctlStage.onSort} />
+                      <SortTh label="Taken in" sortKey="taken" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
+                      <SortTh label="Completed" sortKey="completed" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
+                      <SortTh label="On the floor" sortKey="floor" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
+                      <SortTh label="Rejected" sortKey="rejected" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
+                      <SortTh label="Rework open" sortKey="rework" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
+                      <SortTh label="Reject %" sortKey="rejectPct" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
+                      <SortTh label="First-pass yield" sortKey="fpy" sort={ctlStage.sort} onSort={ctlStage.onSort} align="right" numeric />
                     </tr>
                   </thead>
                   <tbody>
-                    {active.map((s) => (
+                    {ctlStage.rows.map((s) => (
                       <tr key={s.stageId} className="border-b border-line last:border-0">
                         <td className="px-3 py-1.5 font-medium">{s.name}</td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(s.receivedQty, 0)}</td>
@@ -131,20 +151,24 @@ export default function ProductionReportPage() {
             {data.orders.length === 0 ? (
               <EmptyState title="No orders created in this window" description="Widen the date range to see earlier orders." />
             ) : (
-              <div className="scroll-x">
+              <>
+<div className="border-b border-line px-5 py-3">
+  <FilterBar {...ctlOrders.barProps} search={ctlOrders.barProps.search && { ...ctlOrders.barProps.search, placeholder: 'Order, SKU or product' }} />
+</div>
+<div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Order</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Product</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Status</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Ordered</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Completed</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Rejected</th>
+                      <SortTh label="Order" sortKey="order" sort={ctlOrders.sort} onSort={ctlOrders.onSort} />
+                      <SortTh label="Product" sortKey="product" sort={ctlOrders.sort} onSort={ctlOrders.onSort} />
+                      <SortTh label="Status" sortKey="status" sort={ctlOrders.sort} onSort={ctlOrders.onSort} />
+                      <SortTh label="Ordered" sortKey="ordered" sort={ctlOrders.sort} onSort={ctlOrders.onSort} align="right" numeric />
+                      <SortTh label="Completed" sortKey="completed" sort={ctlOrders.sort} onSort={ctlOrders.onSort} align="right" numeric />
+                      <SortTh label="Rejected" sortKey="rejected" sort={ctlOrders.sort} onSort={ctlOrders.onSort} align="right" numeric />
                     </tr>
                   </thead>
                   <tbody>
-                    {data.orders.map((o) => (
+                    {ctlOrders.rows.map((o) => (
                       <tr key={o.id} className="border-b border-line last:border-0">
                         <td className="px-3 py-1.5 font-mono text-[12px]">{o.orderNo}</td>
                         <td className="px-3 py-1.5">
@@ -162,6 +186,7 @@ export default function ProductionReportPage() {
                   </tbody>
                 </table>
               </div>
+</>
             )}
           </Card>
         </>

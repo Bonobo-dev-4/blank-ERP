@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import {
   ArrowDownToLine, ArrowLeftRight, ArrowRight, ArrowRightFromLine, ArrowUpDown, BadgeCheck,
@@ -97,6 +97,25 @@ function useTrends(range: TrendRange) {
   });
 }
 
+/** How a period reads in captions. */
+function periodLabel(r: TrendRange): string {
+  if ('days' in r) return `last ${r.days} days`;
+  try { return `${format(parseISO(r.from), 'd MMM')} – ${format(parseISO(r.to), 'd MMM')}`; } catch { return 'custom range'; }
+}
+
+/** The same window as ISO instants, for endpoints that take timestamps. */
+function periodInstants(r: TrendRange): { from: string; to: string } {
+  if ('days' in r) {
+    const from = new Date(Date.now() - (r.days - 1) * 86_400_000);
+    from.setHours(0, 0, 0, 0);
+    return { from: from.toISOString(), to: new Date().toISOString() };
+  }
+  return {
+    from: new Date(`${r.from}T00:00:00`).toISOString(),
+    to: new Date(`${r.to}T23:59:59.999`).toISOString(),
+  };
+}
+
 const dayLabel = (d: string) => {
   try { return format(parseISO(d), 'd MMM'); } catch { return d; }
 };
@@ -112,8 +131,9 @@ export default function DashboardPage() {
     queryFn: () => api.get<DashboardSummary>('/dashboard/summary'),
     refetchInterval: 60_000,
   });
-  // 30 days feeds the KPI sparklines and the stock-movement trend.
-  const month = useTrends({ days: 30 });
+  // One period for the whole page: trends, sparklines, stock movements and QC.
+  const [period, setPeriod] = React.useState<TrendRange>({ days: 30 });
+  const month = useTrends(period);
 
   if (isLoading) return <LoadingBlock label="Loading the manufacturing overview" />;
   if (error) return <ErrorPanel error={error} onRetry={() => void refetch()} />;
@@ -138,11 +158,14 @@ export default function DashboardPage() {
             Production, inventory and purchasing — live from the floor and the ledger.
           </p>
         </div>
-        <p className="glass-subtle inline-flex h-8 shrink-0 items-center gap-2 self-start rounded-lg px-3 text-[12.5px] text-ink-muted sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        <PeriodControl value={period} onChange={setPeriod} />
+        <p className="glass-subtle inline-flex h-8 shrink-0 items-center gap-2 rounded-lg px-3 text-[12.5px] text-ink-muted">
           <span className="size-1.5 rounded-full bg-ok shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-ok)_22%,transparent)]" aria-hidden="true" />
           <span className="font-medium text-ink">Live</span>
           <span className="num">{fmtDateTime(data.generatedAt)}</span>
         </p>
+        </div>
       </header>
 
       {/* --- KPI row ------------------------------------------------------ */}
@@ -162,7 +185,7 @@ export default function DashboardPage() {
           hint={`garments of ${garments(Number(prod?.orders.orderedQty ?? 0))} ordered`}
           icon={PlayCircle}
           accent="release"
-          info="Garments released to the first production stage, across active manufacturing orders. The line shows daily releases over 30 days."
+          info="Garments released to the first production stage, across active manufacturing orders. The line shows daily releases over the selected period."
           sparkline={series('released')}
           href="/manufacturing"
         />
@@ -181,7 +204,7 @@ export default function DashboardPage() {
           icon={TriangleAlert}
           accent="rejected"
           tone={rejectedTotal > 0 ? 'danger' : undefined}
-          info="Garments rejected at any stage. A rejected garment leaves the line, so rejections do add up across stages. The line shows daily rejections."
+          info="Garments rejected at any stage. A rejected garment leaves the line, so rejections do add up across stages. The line shows daily rejections over the selected period."
           sparkline={series('rejected')}
           href="/quality"
         />
@@ -213,7 +236,7 @@ export default function DashboardPage() {
 
       {/* --- trends + order distribution ---------------------------------- */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <ProductionTrends className="xl:col-span-8" />
+        <ProductionTrends className="xl:col-span-8" range={period} />
         {prod ? (
           <OrderDistribution className="xl:col-span-4" byStatus={prod.orders.byStatus} total={prod.orders.total} />
         ) : null}
@@ -225,6 +248,7 @@ export default function DashboardPage() {
           <ProductionBottlenecks className="xl:col-span-4" stages={working} wipTotal={Number(prod.wipTotal)} />
         ) : null}
         <QualityPanel
+          range={period}
           className="xl:col-span-4"
           quality={data.quality}
           pendingInspection={data.purchasing.receiptsPendingInspection}
@@ -235,6 +259,7 @@ export default function DashboardPage() {
       {/* --- inventory + exceptions ---------------------------------------- */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <InventoryHealth
+          range={period}
           className="xl:col-span-7"
           inventory={data.inventory}
           activeMaterials={data.masterData.activeRawMaterials}
@@ -247,7 +272,7 @@ export default function DashboardPage() {
       {/* --- alerts + movements -------------------------------------------- */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <StockAlerts className="xl:col-span-7" fallback={data.topAlerts} />
-        <MovementTimeline className="xl:col-span-5" movements={data.recentMovements} />
+        <MovementTimeline className="xl:col-span-5" movements={data.recentMovements} range={period} />
       </div>
 
       {/* --- master data, compact ------------------------------------------ */}
@@ -375,16 +400,73 @@ function Segmented<T extends string | number>({
   );
 }
 
-/* ------------------------------------------------------ production trends */
+/* ------------------------------------------------------------ period control */
 
-function ProductionTrends({ className }: { className?: string }) {
-  const [range, setRange] = React.useState<TrendRange>({ days: 30 });
+/**
+ * The dashboard's one period: 7, 30 or 90 days, or a custom range of up to 90.
+ * Everything time-based on the page follows it.
+ */
+function PeriodControl({ value, onChange }: { value: TrendRange; onChange: (r: TrendRange) => void }) {
+  const [open, setOpen] = React.useState(false);
   const [custom, setCustom] = React.useState<{ from: string; to: string }>(() => {
     const to = new Date();
-    const from = new Date(to.getTime() - 13 * 86_400_000);
-    return { from: format(from, 'yyyy-MM-dd'), to: format(to, 'yyyy-MM-dd') };
+    return { from: format(new Date(to.getTime() - 13 * 86_400_000), 'yyyy-MM-dd'), to: format(to, 'yyyy-MM-dd') };
   });
-  const [showCustom, setShowCustom] = React.useState(false);
+  const active: 7 | 30 | 90 | 'custom' = 'days' in value ? value.days : 'custom';
+  const tooLong = (new Date(custom.to).getTime() - new Date(custom.from).getTime()) / 86_400_000 > 89;
+
+  return (
+    <div className="relative">
+      <Segmented<7 | 30 | 90 | 'custom'>
+        label="Dashboard period"
+        value={active}
+        onChange={(v) => {
+          if (v === 'custom') { setOpen((o) => !o); return; }
+          onChange({ days: v }); setOpen(false);
+        }}
+        options={[
+          { value: 7, label: '7D' },
+          { value: 30, label: '30D' },
+          { value: 90, label: '90D' },
+          { value: 'custom', label: active === 'custom' ? periodLabel(value) : 'Custom' },
+        ]}
+      />
+      {open ? (
+        <form
+          className="glass-floating absolute right-0 top-10 z-30 flex w-[300px] flex-col gap-2.5 rounded-xl p-3.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (tooLong || custom.from > custom.to) return;
+            onChange({ from: custom.from, to: custom.to });
+            setOpen(false);
+          }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
+        >
+          <p className="text-[13px] font-medium text-ink">Custom period</p>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[12.5px] text-ink-muted">
+              From
+              <Input type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} className="mt-1" />
+            </label>
+            <label className="text-[12.5px] text-ink-muted">
+              To
+              <Input type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} className="mt-1" />
+            </label>
+          </div>
+          {tooLong ? <p className="text-[12px] font-medium text-danger">Choose 90 days or fewer.</p> : null}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm" disabled={tooLong || custom.from > custom.to}>Apply</Button>
+          </div>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------ production trends */
+
+function ProductionTrends({ className, range }: { className?: string; range: TrendRange }) {
   const { data, isLoading, error, refetch } = useTrends(range);
 
   const rows = React.useMemo(
@@ -399,51 +481,15 @@ function ProductionTrends({ className }: { className?: string }) {
     { released: 0, completed: 0, rejected: 0 },
   );
 
-  const active: 7 | 30 | 90 | 'custom' = 'days' in range ? range.days : 'custom';
-
   return (
     <Card material="elevated" className={className}>
       <PanelHeader
         title="Production trends"
-        description="Daily, in garments, from the stage ledger"
+        description={`Daily, in garments · ${periodLabel(range)}`}
         icon={CalendarRange}
         accent="release"
-        info="“Stage work completed” counts completions at EVERY stage — it measures throughput, not finished garments. Released and rejected count each garment once."
-        actions={
-          <Segmented<7 | 30 | 90 | 'custom'>
-            label="Date range"
-            value={active}
-            onChange={(v) => {
-              if (v === 'custom') { setShowCustom((s) => !s); return; }
-              setRange({ days: v }); setShowCustom(false);
-            }}
-            options={[
-              { value: 7, label: '7D' },
-              { value: 30, label: '30D' },
-              { value: 90, label: '90D' },
-              { value: 'custom', label: 'Custom' },
-            ]}
-          />
-        }
+        info="“Stage work completed” counts completions at EVERY stage — it measures throughput, not finished garments. Released and rejected count each garment once. The period is set at the top of the page."
       />
-
-      {showCustom ? (
-        <form
-          className="mx-5 mb-3 flex flex-wrap items-end gap-2"
-          onSubmit={(e) => { e.preventDefault(); setRange({ from: custom.from, to: custom.to }); }}
-        >
-          <label className="text-[12.5px] text-ink-muted">
-            From
-            <Input type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} className="mt-1 w-[160px]" />
-          </label>
-          <label className="text-[12.5px] text-ink-muted">
-            To
-            <Input type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} className="mt-1 w-[160px]" />
-          </label>
-          <Button type="submit" variant="primary">Apply</Button>
-          <span className="pb-2 text-[12px] text-ink-subtle">Up to 90 days.</span>
-        </form>
-      ) : null}
 
       <div className="px-3 pb-5 sm:px-5">
         {isLoading ? (
@@ -549,11 +595,13 @@ function ProductionBottlenecks({
   wipTotal: number;
   className?: string;
 }) {
-  const ranked = stages
-    .map((s, i) => ({ ...s, wip: Number(s.wipQty), accent: stageAccent(s.name, s.code, stages.indexOf(s) >= 0 ? stages.indexOf(s) : i) }))
-    .filter((s) => s.wip > 0)
-    .sort((a, b) => b.wip - a.wip);
-  const top = ranked[0];
+  const [orderBy, setOrderBy] = React.useState<'waiting' | 'route'>('waiting');
+  const holding = stages
+    .map((s, i) => ({ ...s, wip: Number(s.wipQty), accent: stageAccent(s.name, s.code, i) }))
+    .filter((s) => s.wip > 0);
+  // The callout always names the longest queue, whatever the list order.
+  const top = [...holding].sort((a, b) => b.wip - a.wip)[0];
+  const ranked = orderBy === 'waiting' ? [...holding].sort((a, b) => b.wip - a.wip) : holding;
   const max = top?.wip ?? 1;
 
   return (
@@ -563,6 +611,16 @@ function ProductionBottlenecks({
         description="Where garments are waiting now"
         icon={Gauge}
         accent="qc"
+        actions={
+          holding.length > 1 ? (
+            <Segmented<'waiting' | 'route'>
+              label="Sort stages"
+              value={orderBy}
+              onChange={setOrderBy}
+              options={[{ value: 'waiting', label: 'Most waiting' }, { value: 'route', label: 'Route order' }]}
+            />
+          ) : undefined
+        }
         info="Garments sitting at each stage now — taken in, not yet handed on, rejected or out for rework. Each garment is at exactly one stage, so these shares add up to the floor total. The longest queue is usually the constraint."
       />
       <div className="px-5 pb-5">
@@ -616,12 +674,20 @@ function ProductionBottlenecks({
 /* --------------------------------------------------------- QC and inspection */
 
 function QualityPanel({
-  quality, pendingInspection, className,
+  quality: summaryQuality, pendingInspection, range, className,
 }: {
   quality?: DashboardSummary['quality'];
   pendingInspection: number;
+  range: TrendRange;
   className?: string;
 }) {
+  const windowed = useQuery({
+    queryKey: ['dashboard-quality', trendKey(range)],
+    queryFn: () => api.get<NonNullable<DashboardSummary['quality']>>(`/dashboard/quality?${trendKey(range)}`),
+    staleTime: 60_000,
+  });
+  // The summary's 30-day figure stands in only while the 30-day window loads.
+  const quality = windowed.data ?? ('days' in range && range.days === 30 ? summaryQuality : undefined);
   const inspected = Number(quality?.inspectedQty ?? 0);
   const passed = Number(quality?.passedQty ?? 0);
   const yieldPct = inspected > 0 ? (passed / inspected) * 100 : 0;
@@ -630,14 +696,14 @@ function QualityPanel({
     <Card className={className}>
       <PanelHeader
         title="QC & inspection"
-        description={`Production inspections · last ${quality?.windowDays ?? 30} days`}
+        description={`Production inspections · ${periodLabel(range)}`}
         icon={ShieldCheck}
         accent="qc"
         actions={<PanelLink href="/quality">QC</PanelLink>}
       />
       <div className="space-y-4 px-5 pb-5">
         {!quality || quality.inspections === 0 ? (
-          <CompactEmpty icon={ShieldCheck} title="No production inspections in 30 days">
+          <CompactEmpty icon={ShieldCheck} title={windowed.isLoading && !quality ? 'Loading inspections…' : `No production inspections in the ${periodLabel(range)}`}>
             Pass, rework and reject results appear here as inspections are recorded.
           </CompactEmpty>
         ) : (
@@ -690,8 +756,9 @@ function QualityPanel({
 /* -------------------------------------------------------- inventory health */
 
 function InventoryHealth({
-  inventory, activeMaterials, trends, trendsLoading, className,
+  inventory, activeMaterials, trends, trendsLoading, range, className,
 }: {
+  range: TrendRange;
   inventory: DashboardSummary['inventory'];
   activeMaterials: number;
   trends?: TrendsResponse;
@@ -753,12 +820,12 @@ function InventoryHealth({
 
         <div>
           <p className="mb-1 text-[13px] font-medium text-ink">
-            Stock movements <span className="font-normal text-ink-subtle">· ledger entries per day, last 30 days</span>
+            Stock movements <span className="font-normal text-ink-subtle">· ledger entries per day, {periodLabel(range)}</span>
           </p>
           {trendsLoading ? (
             <div className="h-[150px] animate-pulse rounded-xl bg-surface-muted" />
           ) : !trends?.hasMovementHistory ? (
-            <CompactEmpty icon={ArrowLeftRight} title="No stock movements in the last 30 days">
+            <CompactEmpty icon={ArrowLeftRight} title={`No stock movements in the ${periodLabel(range)}`}>
               Receipts, issues and consumption appear here as they post to the ledger.
             </CompactEmpty>
           ) : (
@@ -873,22 +940,48 @@ function OperationalExceptions({
     { key: 'inspection', n: data.purchasing.receiptsPendingInspection, unit: 'deliveries', label: 'awaiting inspection', href: '/purchasing/receipts?status=PENDING_INSPECTION', severity: 'attention', icon: PackageCheck, accent: 'qc' },
   ];
 
-  const open = items.filter((i) => i.n > 0).sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'critical' ? -1 : 1));
+  const [scope, setScope] = React.useState<'all' | 'critical'>('all');
+  const [orderBy, setOrderBy] = React.useState<'severity' | 'count'>('severity');
+  const rank = (i: (typeof items)[number]) => (i.severity === 'critical' ? 0 : 1);
+  const open = items
+    .filter((i) => i.n > 0 && (scope === 'all' || i.severity === 'critical'))
+    .sort((a, b) => (orderBy === 'count' ? b.n - a.n : rank(a) - rank(b) || b.n - a.n));
   const clear = items.filter((i) => i.n === 0);
+  const totalOpen = items.filter((i) => i.n > 0).length;
 
   return (
     <Card className={className}>
       <PanelHeader
         title="Operational exceptions"
-        description={open.length ? `${open.length} need someone's attention` : 'Nothing is waiting on anyone'}
+        description={totalOpen ? `${totalOpen} need someone's attention` : 'Nothing is waiting on anyone'}
         icon={TriangleAlert}
-        accent={open.some((i) => i.severity === 'critical') ? 'rejected' : 'qc'}
+        accent={items.some((i) => i.n > 0 && i.severity === 'critical') ? 'rejected' : 'qc'}
+        actions={
+          totalOpen ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Segmented<'all' | 'critical'>
+                label="Show"
+                value={scope}
+                onChange={setScope}
+                options={[{ value: 'all', label: 'All' }, { value: 'critical', label: 'Critical' }]}
+              />
+              <Segmented<'severity' | 'count'>
+                label="Sort by"
+                value={orderBy}
+                onChange={setOrderBy}
+                options={[{ value: 'severity', label: 'Severity' }, { value: 'count', label: 'Count' }]}
+              />
+            </div>
+          ) : undefined
+        }
       />
       <div className="px-3 pb-4">
         {open.length === 0 ? (
           <div className="px-2">
-            <CompactEmpty icon={CircleCheck} title="All clear">
-              No shortages, overdue orders, rejections or pending inspections.
+            <CompactEmpty icon={CircleCheck} title={totalOpen ? 'Nothing critical' : 'All clear'}>
+              {totalOpen
+                ? 'Nothing needs action now. Switch to All to see what is waiting.'
+                : 'No shortages, overdue orders, rejections or pending inspections.'}
             </CompactEmpty>
           </div>
         ) : (
@@ -921,7 +1014,7 @@ function OperationalExceptions({
             })}
           </ul>
         )}
-        {clear.length > 0 && open.length > 0 ? (
+        {clear.length > 0 && open.length > 0 && scope === 'all' ? (
           <p className="mx-2 mt-2 flex flex-wrap items-center gap-x-1.5 border-t border-line pt-3 text-[12.5px] text-ink-subtle">
             <CircleCheck className="size-3.5" style={{ color: accentVar('completed') }} />
             Clear: {clear.map((c) => `${c.unit} ${c.label}`).join(' · ')}
@@ -1111,29 +1204,66 @@ const MOVEMENT_STYLE: Record<string, { icon: React.ComponentType<{ className?: s
   STOCK_COUNT_LOSS: { icon: SlidersHorizontal, accent: 'rework' },
 };
 
+type MovementRow = DashboardSummary['recentMovements'][number];
+
+const MOVE_SORTS: { value: string; label: string; sortBy: string; sortDir: 'asc' | 'desc' }[] = [
+  { value: 'newest', label: 'Newest first', sortBy: 'occurredAt', sortDir: 'desc' },
+  { value: 'oldest', label: 'Oldest first', sortBy: 'occurredAt', sortDir: 'asc' },
+  { value: 'largest', label: 'Largest quantity', sortBy: 'baseQty', sortDir: 'desc' },
+];
+
 function MovementTimeline({
-  movements, className,
+  movements: summaryMovements, range, className,
 }: {
   movements: DashboardSummary['recentMovements'];
+  range: TrendRange;
   className?: string;
 }) {
+  const [type, setType] = React.useState('');
+  const [order, setOrder] = React.useState('newest');
+  const sortDef = MOVE_SORTS.find((x) => x.value === order)!;
+  const { from, to } = periodInstants(range);
+
+  // Read from the ledger itself, filtered and sorted on the server within the
+  // dashboard period — not a re-shuffle of the last dozen rows.
+  const ledger = useQuery({
+    queryKey: ['dashboard-movements', trendKey(range), type, order],
+    queryFn: () => api.get<{ data: MovementRow[]; total: number }>('/inventory/movements', {
+      page: 1, pageSize: 8, from, to,
+      movementType: type || undefined, sortBy: sortDef.sortBy, sortDir: sortDef.sortDir,
+    }),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const movements = ledger.data?.data ?? (!type && order === 'newest' ? summaryMovements : []);
+  const filtered = Boolean(type) || order !== 'newest';
+
   return (
     <Card className={className}>
       <PanelHeader
-        title="Recent stock movements"
-        description="The immutable ledger, newest first"
+        title="Stock movements"
+        description={`The immutable ledger · ${periodLabel(range)}${ledger.data ? ` · ${ledger.data.total.toLocaleString('en-IN')} entries` : ''}`}
         icon={ArrowLeftRight}
         accent="inventory"
         actions={<PanelLink href="/inventory/movements">Ledger</PanelLink>}
       />
-      <div className="px-5 pb-5">
+      <div className="flex flex-wrap gap-2 px-5 pb-3">
+        <NativeSelect value={type} onChange={(e) => setType(e.target.value)} aria-label="Movement type" className="h-8 w-auto min-w-[160px] text-[13px]">
+          <option value="">All movement types</option>
+          {Object.keys(MOVEMENT_STYLE).map((t) => <option key={t} value={t}>{humanise(t)}</option>)}
+        </NativeSelect>
+        <NativeSelect value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort movements" className="h-8 w-auto min-w-[150px] text-[13px]">
+          {MOVE_SORTS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+        </NativeSelect>
+      </div>
+      <div className={cn('px-5 pb-5 transition-opacity', ledger.isFetching && 'opacity-70')}>
         {movements.length === 0 ? (
-          <CompactEmpty icon={ArrowLeftRight} title="No stock has moved yet">
-            Receive a purchase order to create the first ledger entries.
+          <CompactEmpty icon={ArrowLeftRight} title={filtered ? 'No movements match' : `No stock movements in the ${periodLabel(range)}`}>
+            {filtered ? 'Choose another movement type or a wider period.' : 'Receive a purchase order to create the first ledger entries.'}
           </CompactEmpty>
         ) : (
           <ol>
-            {movements.slice(0, 7).map((m, i, arr) => {
+            {movements.slice(0, 8).map((m, i, arr) => {
               const style = MOVEMENT_STYLE[m.movementType] ?? { icon: ArrowLeftRight, accent: 'neutral' as Accent };
               const Icon = style.icon;
               return (

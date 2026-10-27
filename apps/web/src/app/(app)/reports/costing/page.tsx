@@ -3,10 +3,11 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { fmtMoney, fmtMoneyCompact, fmtQty } from '@/lib/utils';
+import { fmtMoney, fmtMoneyCompact, fmtQty, humanise } from '@/lib/utils';
 import {
   Card, CardHeader, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 import { ExportCsvButton } from '@/components/ui/export-csv';
 import { Figure, ReportWindow, lastDays, type Window } from '@/components/app/report-window';
 
@@ -32,6 +33,18 @@ export default function CostingReportPage() {
     queryFn: () => api.get<Report>(`/reports/costing?from=${w.from}&to=${w.to}`),
   });
 
+
+  const ctl = useTableControls(data?.orders, {
+    search: (o) => `${o.orderNo} ${o.sku ?? ''} ${o.productName ?? ''}`,
+    filters: [{ key: 'status', label: 'Status', get: (o) => o.status, format: humanise }],
+    toggles: [{ key: 'over', label: 'Over plan', test: (o) => Number(o.varianceAmount) > 0 }],
+    sorts: {
+      order: (o) => o.orderNo, product: (o) => o.productName, status: (o) => o.status,
+      accepted: (o) => Number(o.acceptedQty), planned: (o) => Number(o.plannedTotal), actual: (o) => Number(o.actualTotal),
+      variance: (o) => Number(o.varianceAmount), perUnit: (o) => (o.costPerAcceptedUnit == null ? null : Number(o.costPerAcceptedUnit)),
+    },
+  });
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -43,7 +56,7 @@ export default function CostingReportPage() {
           filename="production-costing"
           disabled={!data || data.orders.length === 0}
           headers={['Order', 'Product', 'Status', 'Accepted', 'Planned', 'Actual', 'Variance', 'Variance %', 'Cost per accepted unit']}
-          rows={() => (data?.orders ?? []).map((o) => [
+          rows={() => ctl.rows.map((o) => [
             o.orderNo, o.productName, o.status, o.acceptedQty, o.plannedTotal,
             o.actualTotal, o.varianceAmount, o.variancePct, o.costPerAcceptedUnit,
           ])}
@@ -86,22 +99,26 @@ export default function CostingReportPage() {
                 description="Costing needs a released order with a frozen BOM. Widen the date range, or release an order."
               />
             ) : (
-              <div className="scroll-x">
+              <>
+<div className="border-b border-line px-5 py-3">
+  <FilterBar {...ctl.barProps} search={ctl.barProps.search && { ...ctl.barProps.search, placeholder: 'Order, SKU or product' }} />
+</div>
+<div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Order</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Product</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Status</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Accepted</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Planned</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Actual</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Variance</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Per unit</th>
+                      <SortTh label="Order" sortKey="order" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Product" sortKey="product" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Status" sortKey="status" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Accepted" sortKey="accepted" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Planned" sortKey="planned" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Actual" sortKey="actual" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Variance" sortKey="variance" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Per unit" sortKey="perUnit" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
                     </tr>
                   </thead>
                   <tbody>
-                    {data.orders.map((o) => (
+                    {ctl.rows.map((o) => (
                       <tr key={o.id} className="border-b border-line last:border-0">
                         <td className="px-3 py-1.5 font-mono text-[12px]">{o.orderNo}</td>
                         <td className="px-3 py-1.5">{o.productName ?? '—'}</td>
@@ -121,6 +138,7 @@ export default function CostingReportPage() {
                   </tbody>
                 </table>
               </div>
+</>
             )}
           </Card>
         </>

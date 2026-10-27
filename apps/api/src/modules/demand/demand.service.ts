@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   Decimal, dec, demandFingerprint, reconcileIncomingDemand,
@@ -18,6 +19,10 @@ import { IdempotencyService } from '../../common/services/idempotency.service';
  * twice, once from Shopify directly and once mirrored through Unicommerce, and
  * keying on the document would manufacture it twice.
  */
+/** Columns the demand list may be sorted by — a whitelist, never a raw field. */
+export const DEMAND_SORT_KEYS = ['requiredByDate', 'createdAt', 'demandNo', 'requestedQty', 'manufacturingQty', 'priority', 'status'] as const;
+export type DemandSortKey = (typeof DEMAND_SORT_KEYS)[number];
+
 @Injectable()
 export class DemandService {
   private readonly logger = new Logger(DemandService.name);
@@ -29,22 +34,50 @@ export class DemandService {
 
   async list(
     organizationId: string,
-    query: { status?: string; channel?: string; page?: number; pageSize?: number },
+    query: {
+      status?: string; channel?: string; priority?: string; search?: string; mapped?: boolean;
+      sortBy?: DemandSortKey; sortDir?: 'asc' | 'desc'; page?: number; pageSize?: number;
+    },
   ) {
     const page = Math.max(1, query.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 25));
-    const where = {
+    const q = query.search?.trim();
+    const where: Prisma.ManufacturingDemandWhereInput = {
       organizationId,
       ...(query.status ? { status: query.status as never } : {}),
       ...(query.channel ? { channel: query.channel as never } : {}),
+      ...(query.priority ? { priority: query.priority as never } : {}),
+      ...(query.mapped === true ? { productVariantId: { not: null } } : {}),
+      ...(query.mapped === false ? { productVariantId: null } : {}),
+      ...(q
+        ? {
+            OR: [
+              { demandNo: { contains: q, mode: 'insensitive' } },
+              { externalSku: { contains: q, mode: 'insensitive' } },
+              { productVariant: { sku: { contains: q, mode: 'insensitive' } } },
+              { productVariant: { product: { name: { contains: q, mode: 'insensitive' } } } },
+            ],
+          }
+        : {}),
     };
 
-    const [rows, total, counts] = await Promise.all([
+    // Default: most urgent first — what is due soonest, then newest.
+    const dir = query.sortDir ?? 'asc';
+    const orderBy: Prisma.ManufacturingDemandOrderByWithRelationInput[] = query.sortBy
+      ? [
+          query.sortBy === 'requiredByDate'
+            ? { requiredByDate: { sort: dir, nulls: 'last' } }
+            : { [query.sortBy]: dir },
+          { id: dir },
+        ]
+      : [{ requiredByDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }];
+
+    const [rows, total, counts, byChannel, byPriority] = await Promise.all([
       this.prisma.manufacturingDemand.findMany({
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: [{ requiredByDate: 'asc' }, { createdAt: 'desc' }],
+        orderBy,
         select: {
           id: true, demandNo: true, channel: true, externalSku: true, requestedQty: true,
           manufacturingQty: true, allocatedQty: true, cancelledQty: true, status: true,
@@ -63,6 +96,8 @@ export class DemandService {
         where: { organizationId },
         _count: { _all: true },
       }),
+      this.prisma.manufacturingDemand.groupBy({ by: ['channel'], where: { organizationId }, _count: { _all: true } }),
+      this.prisma.manufacturingDemand.groupBy({ by: ['priority'], where: { organizationId }, _count: { _all: true } }),
     ]);
 
     return {
@@ -100,6 +135,8 @@ export class DemandService {
       total,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       byStatus: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
+      byChannel: Object.fromEntries(byChannel.map((c) => [c.channel, c._count._all])),
+      byPriority: Object.fromEntries(byPriority.map((c) => [c.priority, c._count._all])),
     };
   }
 

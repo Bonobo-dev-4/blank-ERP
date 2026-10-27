@@ -10,6 +10,7 @@ import {
   LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
 import { Tabs } from '@/components/ui/tabs';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 
 type Route = 'DISPATCH' | 'SWITCH_FACILITY' | 'MANUFACTURE' | 'NEEDS_CHECK';
 
@@ -74,7 +75,28 @@ export default function FulfilmentBoardPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['fulfilment-board'] }),
   });
 
-  const lines = (data?.lines ?? []).filter((l) => l.route === tab);
+  const tabLines = React.useMemo(() => (data?.lines ?? []).filter((l) => l.route === tab), [data, tab]);
+  const controls = useTableControls(tabLines, {
+    search: (l) => [l.orderRef, l.demandNo, l.sku, l.productName].filter(Boolean).join(' '),
+    filters: [
+      { key: 'channel', label: 'Channel', get: (l) => l.channel, format: humanise },
+      { key: 'size', label: 'Size', get: (l) => l.size },
+      ...(tab === 'SWITCH_FACILITY' ? [{ key: 'from', label: 'From facility', get: (l: Line) => l.switchFromFacility }] : []),
+    ],
+    toggles: [
+      { key: 'unmapped', label: 'Unmapped only', test: (l) => !l.isMapped },
+      { key: 'here', label: 'Stock here', test: (l) => Number(l.homeAvailableQty) > 0 },
+    ],
+    sorts: {
+      order: (l) => l.orderRef ?? l.demandNo,
+      sku: (l) => l.sku,
+      open: (l) => Number(l.openQty),
+      here: (l) => Number(l.homeAvailableQty),
+      from: (l) => l.switchFromFacility,
+      needed: (l) => (l.requiredByDate ? new Date(l.requiredByDate).getTime() : null),
+    },
+  });
+  const lines = controls.rows;
   const count = (r: Route) => ({
     DISPATCH: data?.tally.dispatch, SWITCH_FACILITY: data?.tally.switchFacility,
     MANUFACTURE: data?.tally.manufacture, NEEDS_CHECK: data?.tally.needsCheck,
@@ -146,7 +168,15 @@ export default function FulfilmentBoardPage() {
               }
             />
 
-            {lines.length === 0 ? (
+            {tabLines.length > 0 ? (
+              <div className="border-b border-line px-5 py-3">
+                <FilterBar {...controls.barProps} search={controls.barProps.search && { ...controls.barProps.search, placeholder: 'Order, SKU or product' }} />
+              </div>
+            ) : null}
+
+            {tabLines.length > 0 && lines.length === 0 ? (
+              <EmptyState title="No lines match" description="Clear a filter or change the search." />
+            ) : lines.length === 0 ? (
               <EmptyState
                 title={`Nothing in ${active.label.toLowerCase()}`}
                 description={
@@ -164,13 +194,13 @@ export default function FulfilmentBoardPage() {
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Order</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Open</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Here</th>
-                      {tab === 'SWITCH_FACILITY' ? <th className="px-3 py-1.5 text-left font-semibold">From</th> : null}
+                      <SortTh label="Order" sortKey="order" sort={controls.sort} onSort={controls.onSort} />
+                      <SortTh label="SKU" sortKey="sku" sort={controls.sort} onSort={controls.onSort} />
+                      <SortTh label="Open" sortKey="open" sort={controls.sort} onSort={controls.onSort} align="right" numeric />
+                      <SortTh label="Here" sortKey="here" sort={controls.sort} onSort={controls.onSort} align="right" numeric />
+                      {tab === 'SWITCH_FACILITY' ? <SortTh label="From" sortKey="from" sort={controls.sort} onSort={controls.onSort} /> : null}
                       <th className="px-3 py-1.5 text-left font-semibold">Why</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Needed</th>
+                      <SortTh label="Needed" sortKey="needed" sort={controls.sort} onSort={controls.onSort} />
                       <th className="px-3 py-1.5 text-right font-semibold" />
                     </tr>
                   </thead>

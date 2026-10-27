@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, Wand2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fmtDate, fmtQty, humanise } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorPanel, Field, Input,
   LoadingBlock, PageHeader, Stat, StatusBadge,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, nextSort, type SortState } from '@/components/ui/table-controls';
 
 interface Demand {
   id: string; demandNo: string; channel: string; sku: string | null; productName: string | null;
@@ -22,21 +23,55 @@ interface Demand {
 interface Page {
   data: Demand[]; page: number; pageSize: number; total: number; totalPages: number;
   byStatus: Record<string, number>;
+  byChannel?: Record<string, number>;
+  byPriority?: Record<string, number>;
 }
+
+/** Filters from the address bar, so links like /demand?status=NEEDS_MAPPING land filtered. */
+const fromUrl = (k: string) => (typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get(k) ?? '');
 
 const key = () => crypto.randomUUID();
 
 export default function DemandPage() {
   const qc = useQueryClient();
-  const [status, setStatus] = React.useState('');
+  const [status, setStatusRaw] = React.useState(() => fromUrl('status'));
+  const [channel, setChannelRaw] = React.useState(() => fromUrl('channel'));
+  const [priority, setPriorityRaw] = React.useState(() => fromUrl('priority'));
+  const [unmappedOnly, setUnmappedRaw] = React.useState(false);
+  const [searchDraft, setSearchDraft] = React.useState(() => fromUrl('q'));
+  const [search, setSearch] = React.useState(searchDraft);
+  const [sort, setSort] = React.useState<SortState | null>(null);
   const [page, setPage] = React.useState(1);
   const [since, setSince] = React.useState('');
 
-  const qs = new URLSearchParams({ page: String(page), pageSize: '25', ...(status ? { status } : {}) });
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['demand', status, page],
-    queryFn: () => api.get<Page>(`/demand?${qs}`),
+  // Every filter change returns to page one.
+  const setStatus = (v: string) => { setStatusRaw(v); setPage(1); };
+  const setChannel = (v: string) => { setChannelRaw(v); setPage(1); };
+  const setPriority = (v: string) => { setPriorityRaw(v); setPage(1); };
+  const setUnmapped = (v: boolean) => { setUnmappedRaw(v); setPage(1); };
+  React.useEffect(() => {
+    const t = window.setTimeout(() => { setSearch(searchDraft.trim()); setPage(1); }, 300);
+    return () => window.clearTimeout(t);
+  }, [searchDraft]);
+
+  const params = {
+    page, pageSize: 25,
+    status: status || undefined, channel: channel || undefined, priority: priority || undefined,
+    search: search || undefined, mapped: unmappedOnly ? 'false' : undefined,
+    sortBy: sort?.key, sortDir: sort?.dir,
+  };
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['demand', params],
+    queryFn: () => api.get<Page>('/demand', params),
+    placeholderData: keepPreviousData,
   });
+  const onSort = (key: string, firstDir: 'asc' | 'desc') => { setSort((cur) => nextSort(cur, key, firstDir)); setPage(1); };
+  const filtersActive = Boolean(status || channel || priority || search || unmappedOnly);
+  const clearAll = () => {
+    setStatusRaw(''); setChannelRaw(''); setPriorityRaw(''); setUnmappedRaw(false); setSearchDraft(''); setSearch(''); setPage(1);
+  };
+  const opts = (counts?: Record<string, number>) =>
+    Object.entries(counts ?? {}).sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, label: humanise(value), count }));
 
   const promote = useMutation({
     mutationFn: () =>
@@ -110,25 +145,26 @@ export default function DemandPage() {
           <Card>
             <CardHeader
               title="Demand"
-              description="Soonest required first."
-              actions={
-                <select
-                  value={status}
-                  onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-                  className="h-7 rounded border border-line bg-surface px-2 text-[12px]"
-                >
-                  <option value="">All statuses</option>
-                  {['NEW', 'NEEDS_MAPPING', 'PENDING_REVIEW', 'APPROVED_FOR_PRODUCTION', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED', 'CANCELLED'].map((s) => (
-                    <option key={s} value={s}>{humanise(s)}</option>
-                  ))}
-                </select>
-              }
+              description={sort ? 'Sorted by the column you chose.' : 'Soonest required first.'}
             />
+            <div className="border-b border-line px-5 py-3">
+              <FilterBar
+                search={{ value: searchDraft, onChange: setSearchDraft, placeholder: 'Demand no., SKU or product' }}
+                selects={[
+                  { key: 'status', label: 'Status', value: status, options: opts(data.byStatus), onChange: setStatus },
+                  { key: 'channel', label: 'Channel', value: channel, options: opts(data.byChannel), onChange: setChannel },
+                  { key: 'priority', label: 'Priority', value: priority, options: opts(data.byPriority), onChange: setPriority },
+                ]}
+                toggles={[{ key: 'unmapped', label: 'Unmapped only', checked: unmappedOnly, onChange: setUnmapped }]}
+                resultLabel={`${fmtQty(String(data.total), 0)} rows${isFetching ? ' · updating…' : ''}`}
+                onClear={clearAll}
+              />
+            </div>
             {data.data.length === 0 ? (
               <EmptyState
-                title={status ? 'No demand with that status' : 'No demand yet'}
-                description={status
-                  ? 'Clear the filter to see everything.'
+                title={filtersActive ? 'No demand matches these filters' : 'No demand yet'}
+                description={filtersActive
+                  ? 'Clear a filter or change the search.'
                   : 'Import Shopify orders, then promote them above. Demand does not appear on its own — it is a decision, not a copy of an order.'}
                 action={
                   <Link href="/admin/integrations" className="inline-flex items-center gap-1 rounded border border-line px-2.5 py-1 text-[12px] font-medium hover:bg-surface-muted">
@@ -142,15 +178,15 @@ export default function DemandPage() {
                   <table className="w-full text-[12.5px]">
                     <thead>
                       <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                        <th className="px-3 py-1.5 text-left font-semibold">Demand</th>
+                        <SortTh label="Demand" sortKey="demandNo" sort={sort} onSort={onSort} />
                         <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                         <th className="px-3 py-1.5 text-left font-semibold">Channel</th>
-                        <th className="px-3 py-1.5 text-right font-semibold">To make</th>
+                        <SortTh label="To make" sortKey="manufacturingQty" sort={sort} onSort={onSort} align="right" numeric />
                         <th className="px-3 py-1.5 text-right font-semibold">Allocated</th>
                         <th className="px-3 py-1.5 text-right font-semibold">Open</th>
-                        <th className="px-3 py-1.5 text-left font-semibold">Status</th>
+                        <SortTh label="Status" sortKey="status" sort={sort} onSort={onSort} />
                         <th className="px-3 py-1.5 text-left font-semibold">Sources</th>
-                        <th className="px-3 py-1.5 text-left font-semibold">Needed</th>
+                        <SortTh label="Needed" sortKey="requiredByDate" sort={sort} onSort={onSort} />
                       </tr>
                     </thead>
                     <tbody>

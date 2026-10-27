@@ -9,6 +9,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorPanel, Field, Input,
   LoadingBlock, PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 
 interface Reading {
   sku: string; facilityCode: string;
@@ -50,6 +51,21 @@ export default function AvailabilityPage() {
 
   const ready = status.data?.isConfigured && status.data?.enabled;
 
+
+  // Facility rows for the searched SKU: find a facility, keep only stocked
+  // ones, and order by what is free to ship.
+  const controls = useTableControls(search.data?.readings, {
+    search: (r) => r.facilityCode,
+    toggles: [{ key: 'stocked', label: 'Available only', test: (r) => Number(r.availableQty) > 0 }],
+    sorts: {
+      facility: (r) => r.facilityCode,
+      sellable: (r) => Number(r.sellableQty),
+      committed: (r) => Number(r.committedQty),
+      held: (r) => Number(r.heldQty),
+      available: (r) => Number(r.availableQty),
+    },
+    defaultSort: { key: 'available', dir: 'desc' },
+  });
   return (
     <div className="space-y-4">
       <PageHeader
@@ -135,19 +151,23 @@ export default function AvailabilityPage() {
             {search.data.readings.length === 0 ? (
               <EmptyState title="No facility answered for this SKU" description="Check the SKU spelling, or whether it exists in Unicommerce." />
             ) : (
+              <>
+              <div className="border-b border-line px-5 py-3">
+                <FilterBar {...controls.barProps} search={controls.barProps.search && { ...controls.barProps.search, placeholder: 'Facility code' }} />
+              </div>
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Facility</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Sellable</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Committed</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Held</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Available</th>
+                      <SortTh label="Facility" sortKey="facility" sort={controls.sort} onSort={controls.onSort} />
+                      <SortTh label="Sellable" sortKey="sellable" sort={controls.sort} onSort={controls.onSort} align="right" numeric />
+                      <SortTh label="Committed" sortKey="committed" sort={controls.sort} onSort={controls.onSort} align="right" numeric />
+                      <SortTh label="Held" sortKey="held" sort={controls.sort} onSort={controls.onSort} align="right" numeric />
+                      <SortTh label="Available" sortKey="available" sort={controls.sort} onSort={controls.onSort} align="right" numeric />
                     </tr>
                   </thead>
                   <tbody>
-                    {search.data.readings.map((r) => (
+                    {controls.rows.map((r) => (
                       <tr key={r.facilityCode} className="border-b border-line last:border-0">
                         <td className="px-3 py-1.5 font-mono text-[12px]">{r.facilityCode}</td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(r.sellableQty, 0)}</td>
@@ -171,6 +191,7 @@ export default function AvailabilityPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
         </>

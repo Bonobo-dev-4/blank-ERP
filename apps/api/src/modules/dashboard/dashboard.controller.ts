@@ -7,6 +7,36 @@ import { DashboardService } from './dashboard.service';
 /** Ninety days is the longest window the trend charts offer. */
 const MAX_TREND_DAYS = 92;
 
+/**
+ * The reporting window shared by the dashboard's time-based endpoints:
+ * `days` (7, 30 or 90) or an explicit inclusive `from`/`to`, at most
+ * MAX_TREND_DAYS long.
+ */
+function window(days?: string, fromRaw?: string, toRaw?: string): { from: Date; to: Date } {
+  let from: Date;
+  let to: Date;
+  if (fromRaw || toRaw) {
+    from = new Date(fromRaw ?? '');
+    to = new Date(toRaw ?? '');
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      throw new BadRequestException('from and to must both be valid dates');
+    }
+    // An inclusive "to" date means the whole of that day.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(toRaw ?? '')) to = new Date(to.getTime() + 86_399_999);
+  } else {
+    const n = Number(days ?? 30);
+    if (![7, 30, 90].includes(n)) throw new BadRequestException('days must be 7, 30 or 90');
+    to = new Date();
+    from = new Date(to.getTime() - (n - 1) * 86_400_000);
+    from.setHours(0, 0, 0, 0);
+  }
+  if (from > to) throw new BadRequestException('from must be before to');
+  if ((to.getTime() - from.getTime()) / 86_400_000 > MAX_TREND_DAYS) {
+    throw new BadRequestException(`The window can be at most ${MAX_TREND_DAYS} days`);
+  }
+  return { from, to };
+}
+
 @ApiTags('Dashboard')
 @Controller('dashboard')
 export class DashboardController {
@@ -38,28 +68,27 @@ export class DashboardController {
     @Query('from') fromRaw?: string,
     @Query('to') toRaw?: string,
   ) {
-    let from: Date;
-    let to: Date;
-    if (fromRaw || toRaw) {
-      from = new Date(fromRaw ?? '');
-      to = new Date(toRaw ?? '');
-      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-        throw new BadRequestException('from and to must both be valid dates');
-      }
-      // An inclusive "to" date means the whole of that day.
-      if (/^\d{4}-\d{2}-\d{2}$/.test(toRaw ?? '')) to = new Date(to.getTime() + 86_399_999);
-    } else {
-      const n = Number(days ?? 30);
-      if (![7, 30, 90].includes(n)) throw new BadRequestException('days must be 7, 30 or 90');
-      to = new Date();
-      from = new Date(to.getTime() - (n - 1) * 86_400_000);
-      from.setHours(0, 0, 0, 0);
-    }
-    if (from > to) throw new BadRequestException('from must be before to');
-    if ((to.getTime() - from.getTime()) / 86_400_000 > MAX_TREND_DAYS) {
-      throw new BadRequestException(`The window can be at most ${MAX_TREND_DAYS} days`);
-    }
+    const { from, to } = window(days, fromRaw, toRaw);
     return this.dashboard.trends(orgId, from, to);
+  }
+
+  @Get('quality')
+  @RequirePermissions('inventory.read')
+  @ApiQuery({ name: 'days', required: false, description: '7, 30 or 90; ignored when from/to are given' })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiOperation({
+    summary: 'Production inspection results over a window',
+    description: 'Same window rules as /dashboard/trends. Read from the inspection records.',
+  })
+  quality(
+    @OrgId() orgId: string,
+    @Query('days') days?: string,
+    @Query('from') fromRaw?: string,
+    @Query('to') toRaw?: string,
+  ) {
+    const { from, to } = window(days, fromRaw, toRaw);
+    return this.dashboard.qualitySummary(orgId, from, to);
   }
 
   @Get('sync-pulse')

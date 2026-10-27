@@ -546,25 +546,58 @@ export class ShopifyService {
     organizationId: string,
     query: {
       page: number; pageSize: number; sortDir: 'asc' | 'desc'; sortBy?: string; search?: string;
-      channel?: string; status?: string;
+      channel?: string; status?: string; shipmentStatus?: string; location?: string;
+      from?: string; to?: string; customised?: boolean; unmapped?: boolean;
     },
   ) {
+    // Calendar dates are read in the organisation's day (IST), inclusive.
+    const dayStart = (d: string) => new Date(`${d}T00:00:00+05:30`);
+    const dayEnd = (d: string) => new Date(`${d}T23:59:59.999+05:30`);
+
     const where: Prisma.ShopifyOrderWhereInput = {
       organizationId,
       ...(query.channel ? { channel: query.channel as never } : {}),
       ...(query.status ? { status: query.status as never } : {}),
+      ...(query.shipmentStatus
+        ? query.shipmentStatus === 'NONE'
+          ? { externalShipmentStatus: null }
+          : { externalShipmentStatus: query.shipmentStatus }
+        : {}),
+      ...(query.location ? { posLocationName: query.location } : {}),
+      ...(query.customised !== undefined ? { isCustomised: query.customised } : {}),
+      ...(query.unmapped ? { lines: { some: { productVariantId: null } } } : {}),
+      ...(query.from || query.to
+        ? {
+            orderedAt: {
+              ...(query.from ? { gte: dayStart(query.from) } : {}),
+              ...(query.to ? { lte: dayEnd(query.to) } : {}),
+            },
+          }
+        : {}),
       ...(query.search
         ? { OR: [{ orderName: { contains: query.search, mode: 'insensitive' } },
+                 { orderNumber: { contains: query.search, mode: 'insensitive' } },
                  { customerRef: { contains: query.search, mode: 'insensitive' } }] }
         : {}),
     };
+
+    // Whitelisted by the contract; a stable tie-break keeps paging consistent
+    // when many orders share a value.
+    const sortBy = (query.sortBy ?? 'orderedAt') as 'orderedAt' | 'orderName' | 'customerRef' | 'totalAmount' | 'status';
+    const dir = query.sortDir ?? 'desc';
+    const orderBy: Prisma.ShopifyOrderOrderByWithRelationInput[] = [
+      sortBy === 'totalAmount' || sortBy === 'customerRef' || sortBy === 'orderName'
+        ? { [sortBy]: { sort: dir, nulls: 'last' } }
+        : { [sortBy]: dir },
+      { id: dir },
+    ];
 
     const [rows, total] = await Promise.all([
       this.prisma.shopifyOrder.findMany({
         where,
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
-        orderBy: { orderedAt: 'desc' },
+        orderBy,
         include: {
           lines: {
             select: {
@@ -589,6 +622,35 @@ export class ShopifyService {
       total,
       query,
     );
+  }
+
+  /**
+   * The values the order filters can take, with how many orders carry each —
+   * so a dropdown only ever offers a choice that returns something.
+   */
+  async orderFacets(organizationId: string, channel?: string) {
+    const where: Prisma.ShopifyOrderWhereInput = {
+      organizationId,
+      ...(channel ? { channel: channel as never } : {}),
+    };
+    const [statuses, shipments, locations, channels] = await Promise.all([
+      this.prisma.shopifyOrder.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      this.prisma.shopifyOrder.groupBy({ by: ['externalShipmentStatus'], where, _count: { _all: true } }),
+      this.prisma.shopifyOrder.groupBy({
+        by: ['posLocationName'],
+        where: { ...where, posLocationName: { not: null } },
+        _count: { _all: true },
+      }),
+      this.prisma.shopifyOrder.groupBy({ by: ['channel'], where: { organizationId }, _count: { _all: true } }),
+    ]);
+    const sorted = <T extends { count: number }>(xs: T[]) => xs.sort((a, b) => b.count - a.count);
+    return {
+      statuses: sorted(statuses.map((r) => ({ value: r.status as string, count: r._count._all }))),
+      // Orders Unicommerce has not reported on yet are a real, filterable state.
+      shipmentStatuses: sorted(shipments.map((r) => ({ value: r.externalShipmentStatus ?? 'NONE', count: r._count._all }))),
+      locations: sorted(locations.map((r) => ({ value: r.posLocationName as string, count: r._count._all }))),
+      channels: sorted(channels.map((r) => ({ value: r.channel as string, count: r._count._all }))),
+    };
   }
 
   /**

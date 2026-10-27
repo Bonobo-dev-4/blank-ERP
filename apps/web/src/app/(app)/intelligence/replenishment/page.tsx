@@ -4,11 +4,12 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TriangleAlert } from 'lucide-react';
 import { api } from '@/lib/api';
-import { fmtQty, uomShort } from '@/lib/utils';
+import { fmtQty, uomShort, humanise } from '@/lib/utils';
 import {
   Badge, Card, CardHeader, EmptyState, ErrorPanel, Label, LoadingBlock, NativeSelect,
   PageHeader, Stat,
 } from '@/components/ui/primitives';
+import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 
 interface Row {
   rawMaterialId: string; materialCode: string; name: string; category: string | null;
@@ -32,6 +33,27 @@ export default function ReplenishmentPage() {
     queryKey: ['intelligence', 'replenishment', lookback, safety],
     queryFn: () =>
       api.get<Report>(`/intelligence/replenishment?lookbackDays=${lookback}&safetyStockDays=${safety}`),
+  });
+
+
+  const ctl = useTableControls(data?.rows, {
+    search: (r) => `${r.materialCode} ${r.name} ${r.supplier ?? ''}`,
+    filters: [
+      { key: 'supplier', label: 'Supplier', get: (r) => r.supplier },
+      { key: 'category', label: 'Category', get: (r) => r.category, format: humanise },
+      { key: 'confidence', label: 'Confidence', get: (r) => r.confidence, format: humanise },
+    ],
+    toggles: [
+      { key: 'order', label: 'Needs ordering', test: (r) => Number(r.suggestedQty) > 0 },
+      { key: 'nolead', label: 'Missing lead time', test: (r) => !r.hasLeadTime },
+    ],
+    sorts: {
+      material: (r) => r.materialCode, supplier: (r) => r.supplier,
+      week: (r) => Number(r.consumptionVelocity), onhand: (r) => Number(r.availableQty),
+      onorder: (r) => Number(r.incomingQty), target: (r) => Number(r.targetStockQty),
+      order: (r) => Number(r.suggestedQty), confidence: (r) => r.confidence,
+    },
+    defaultSort: { key: 'order', dir: 'desc' },
   });
 
   return (
@@ -95,22 +117,26 @@ export default function ReplenishmentPage() {
                 description="Replenishment needs consumption history. Post production outcomes, or look back further."
               />
             ) : (
-              <div className="scroll-x">
+              <>
+<div className="border-b border-line px-5 py-3">
+  <FilterBar {...ctl.barProps} search={ctl.barProps.search && { ...ctl.barProps.search, placeholder: 'Material or supplier' }} />
+</div>
+<div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
-                      <th className="px-3 py-1.5 text-left font-semibold">Material</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Supplier</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Per week</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">On hand</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">On order</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Target</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Order</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Confidence</th>
+                      <SortTh label="Material" sortKey="material" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Supplier" sortKey="supplier" sort={ctl.sort} onSort={ctl.onSort} />
+                      <SortTh label="Per week" sortKey="week" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="On hand" sortKey="onhand" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="On order" sortKey="onorder" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Target" sortKey="target" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Order" sortKey="order" sort={ctl.sort} onSort={ctl.onSort} align="right" numeric />
+                      <SortTh label="Confidence" sortKey="confidence" sort={ctl.sort} onSort={ctl.onSort} />
                     </tr>
                   </thead>
                   <tbody>
-                    {data.rows.map((r) => (
+                    {ctl.rows.map((r) => (
                       <tr key={r.rawMaterialId} className="border-b border-line last:border-0 align-top">
                         <td className="px-3 py-1.5">
                           <span className="font-mono text-[12px]">{r.materialCode}</span>
@@ -140,6 +166,7 @@ export default function ReplenishmentPage() {
                   </tbody>
                 </table>
               </div>
+</>
             )}
           </Card>
         </>

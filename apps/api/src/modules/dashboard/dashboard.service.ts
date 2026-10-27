@@ -244,11 +244,12 @@ export class DashboardService {
    * summed over inspections — a re-inspection is its own inspection, so the
    * count of inspections is reported alongside.
    */
-  private async qualitySummary(organizationId: string) {
-    const since = new Date(Date.now() - 30 * 86_400_000);
+  async qualitySummary(organizationId: string, from?: Date, to?: Date) {
+    const since = from ?? new Date(Date.now() - 30 * 86_400_000);
+    const until = to ?? new Date();
     const [agg, openRework] = await Promise.all([
       this.prisma.qualityInspection.aggregate({
-        where: { organizationId, inspectedAt: { gte: since } },
+        where: { organizationId, inspectedAt: { gte: since, lte: until } },
         _count: { _all: true },
         _sum: { inspectedQty: true, passedQty: true, failedQty: true, reworkQty: true, holdQty: true },
       }),
@@ -258,7 +259,9 @@ export class DashboardService {
     ]);
     const q = (v: { toFixed(): string } | null) => (v ? dec(v.toFixed()) : dec(0)).toFixed();
     return {
-      windowDays: 30,
+      windowDays: Math.max(1, Math.round((until.getTime() - since.getTime()) / 86_400_000)),
+      from: since.toISOString(),
+      to: until.toISOString(),
       inspections: agg._count._all,
       inspectedQty: q(agg._sum.inspectedQty),
       passedQty: q(agg._sum.passedQty),
