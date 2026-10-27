@@ -3,38 +3,41 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Loader2, TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
+import { Info, Loader2, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { GlassTooltip } from './tooltip';
 
 /* ------------------------------------------------------------------ button */
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded font-medium transition-colors ' +
+  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl font-medium ' +
+    'transition-[background-color,border-color,color,box-shadow,filter] duration-200 ease-out ' +
     'disabled:pointer-events-none disabled:opacity-45 [&_svg]:shrink-0',
   {
     variants: {
       /*
-       * Without hue, a destructive button cannot simply be "the red one".
-       * It is the only variant drawn as a heavy outline that INVERTS on
-       * hover — the moment of fill is the moment of pause, and it cannot be
-       * mistaken for `primary`, which is solid from the start.
+       * Primary is a solid chip of the ink colour — near-white on night,
+       * graphite on day — so it is the highest-contrast thing on the glass in
+       * both themes. Destructive is an outline in the danger colour that FILLS
+       * on hover: the moment of fill is the moment of pause.
        */
       variant: {
-        primary: 'bg-ink text-canvas font-medium hover:bg-ink/85',
-        default: 'glass-raised text-ink hover:border-ink hover:bg-surface-muted',
+        primary: 'bg-ink text-canvas font-semibold shadow-sm hover:brightness-110',
+        default: 'glass-raised text-ink hover:bg-[var(--glass-surface-elevated)] hover:brightness-105',
         ghost: 'text-ink-muted hover:bg-surface-muted hover:text-ink',
         danger:
-          'border-2 border-ink bg-transparent font-semibold text-ink hover:bg-ink hover:text-canvas',
+          'border-[1.5px] border-danger bg-transparent font-semibold text-danger hover:bg-danger hover:text-canvas',
         // An unusual action, not a dangerous one: dashed, so it reads as
         // deliberate without borrowing the destructive treatment.
         elevated:
-          'border border-dashed border-ink bg-transparent text-ink hover:bg-surface-muted',
+          'border border-dashed border-line-strong bg-transparent text-ink hover:bg-surface-muted',
       },
       size: {
-        sm: 'h-7 px-2.5 text-[12px] [&_svg]:size-3.5',
-        md: 'h-8 px-3 text-[13px] [&_svg]:size-4',
-        lg: 'h-10 px-4 text-[14px] [&_svg]:size-4',
-        icon: 'h-8 w-8 [&_svg]:size-4',
+        sm: 'h-8 px-3 text-[12.5px] [&_svg]:size-3.5',
+        md: 'h-9 px-3.5 text-[13.5px] [&_svg]:size-4',
+        lg: 'h-11 px-5 text-[14.5px] [&_svg]:size-4',
+        icon: 'h-9 w-9 [&_svg]:size-4',
       },
     },
     defaultVariants: { variant: 'default', size: 'md' },
@@ -74,7 +77,9 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       ref={ref}
       type={type}
       className={cn(
-        'h-8 w-full rounded border border-line-strong bg-surface px-2 text-[13px] text-ink',
+        'h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13.5px] text-ink',
+        'transition-[border-color,box-shadow] duration-200',
+        'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
         'placeholder:text-ink-subtle disabled:bg-surface-muted disabled:text-ink-subtle',
         'aria-[invalid=true]:border-danger',
         className,
@@ -113,7 +118,9 @@ export const Textarea = React.forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      'w-full rounded border border-line-strong bg-surface px-2 py-1.5 text-[13px] text-ink',
+      'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[13.5px] text-ink',
+      'transition-[border-color,box-shadow] duration-200',
+      'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
       'placeholder:text-ink-subtle aria-[invalid=true]:border-danger',
       className,
     )}
@@ -130,7 +137,9 @@ export const NativeSelect = React.forwardRef<
   <select
     ref={ref}
     className={cn(
-      'h-8 w-full rounded border border-line-strong bg-surface px-2 text-[13px] text-ink',
+      'h-9 w-full rounded-lg border border-line-strong bg-surface px-2.5 text-[13.5px] text-ink',
+      'transition-[border-color,box-shadow] duration-200 [&>option]:bg-canvas [&>option]:text-ink',
+      'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
       'disabled:bg-surface-muted disabled:text-ink-subtle aria-[invalid=true]:border-danger',
       className,
     )}
@@ -151,7 +160,7 @@ export function Label({
   ...props
 }: React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean; hint?: string }) {
   return (
-    <label className={cn('block text-[12px] font-medium text-ink-muted', className)} {...props}>
+    <label className={cn('block text-[12.5px] font-medium text-ink-muted', className)} {...props}>
       {children}
       {required ? <span className="ml-0.5 text-danger">*</span> : null}
       {hint ? <span className="ml-1.5 font-normal text-ink-subtle">{hint}</span> : null}
@@ -183,7 +192,7 @@ export function Field({
         </Label>
       ) : null}
       {children}
-      {message ? <p className="text-[11.5px] text-danger">{message}</p> : null}
+      {message ? <p className="text-[12px] font-medium text-danger">{message}</p> : null}
     </div>
   );
 }
@@ -192,7 +201,7 @@ export function Field({
 
 export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('glass rounded-lg', className)} {...props}>
+    <div className={cn('glass rounded-2xl', className)} {...props}>
       {children}
     </div>
   );
@@ -210,10 +219,10 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 border-b border-line px-4 py-3', className)}>
+    <div className={cn('flex items-start justify-between gap-3 border-b border-line px-5 py-4', className)}>
       <div className="min-w-0">
-        <h2 className="truncate text-[13.5px] font-semibold text-ink">{title}</h2>
-        {description ? <p className="mt-0.5 text-[12px] text-ink-muted">{description}</p> : null}
+        <h2 className="truncate text-[15.5px] font-semibold tracking-tight text-ink">{title}</h2>
+        {description ? <p className="mt-0.5 text-[12.5px] text-ink-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </div>
@@ -221,33 +230,39 @@ export function CardHeader({
 }
 
 export function CardBody({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn('px-4 py-3', className)}>{children}</div>;
+  return <div className={cn('px-5 py-4', className)}>{children}</div>;
 }
 
 /* ------------------------------------------------------------------- badge */
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium leading-tight whitespace-nowrap',
+  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] font-medium leading-tight whitespace-nowrap',
   {
     /*
-     * Severity by FILL, since there is no hue to spend.
+     * One colour per business meaning, the same on every screen:
      *
-     *   danger  solid ink      — act on this now
-     *   warn    outlined, bold — waiting on someone
-     *   ok      quiet grey     — nothing to do, and it should look like it
+     *   ok       emerald  completed, passed, healthy
+     *   info     blue     in progress
+     *   warn     amber    pending, waiting on someone
+     *   hold     orange   on hold, rework
+     *   danger   red      rejected, failed — FILLED, because it needs action
+     *   violet   violet   quality check
+     *   neutral  slate    cancelled, closed, inactive
      *
-     * Every badge sits beside a word, so the fill is reinforcement rather
-     * than the only signal.
+     * Every badge carries its word, so colour is reinforcement and never the
+     * only signal; danger is also the only filled tone.
      */
     variants: {
       tone: {
-        neutral: 'bg-surface-muted text-ink-muted',
-        brand: 'bg-brand font-medium text-white',
-        ok: 'bg-ok-soft font-medium text-ok',
-        warn: 'border-[1.5px] border-warn bg-transparent font-semibold text-ink',
-        danger: 'bg-danger font-semibold text-white',
-        info: 'bg-surface-muted text-ink-muted',
-        outline: 'border border-line-strong bg-surface text-ink-muted',
+        neutral: 'border-line bg-neutral-soft text-ink-muted',
+        brand: 'border-transparent bg-brand font-semibold text-canvas',
+        ok: 'border-ok/30 bg-ok-soft text-ok',
+        warn: 'border-warn/35 bg-warn-soft font-semibold text-warn',
+        hold: 'border-hold/35 bg-hold-soft font-semibold text-hold',
+        danger: 'border-transparent bg-danger font-semibold text-canvas',
+        info: 'border-info/30 bg-info-soft text-info',
+        violet: 'border-violet/30 bg-violet-soft text-violet',
+        outline: 'border-line-strong bg-transparent text-ink-muted',
       },
     },
     defaultVariants: { tone: 'neutral' },
@@ -277,29 +292,38 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   // approvals
   PENDING_APPROVAL: 'warn', PENDING: 'warn', APPROVED: 'ok', REJECTED: 'danger',
   CANCELLED: 'neutral', CLOSED: 'neutral', CONVERTED: 'info',
+  // manufacturing orders and stage tasks
+  PENDING_MATERIAL: 'warn', MATERIAL_RESERVED: 'info', RELEASED: 'info', IN_PROGRESS: 'info',
+  ON_HOLD: 'hold', COMPLETED: 'ok', NOT_STARTED: 'neutral', SKIPPED: 'neutral',
   // purchasing
-  PARTIALLY_RECEIVED: 'info', RECEIVED: 'ok', PENDING_INSPECTION: 'warn',
-  INSPECTED: 'info', POSTED: 'ok',
+  PARTIALLY_RECEIVED: 'info', RECEIVED: 'ok', PENDING_INSPECTION: 'violet',
+  INSPECTED: 'violet', POSTED: 'ok',
   // inspection
-  PASS: 'ok', FAIL: 'danger', REWORK: 'warn', HOLD: 'warn',
+  PASS: 'ok', FAIL: 'danger', REWORK: 'hold', HOLD: 'hold', QC_PASSED: 'ok', INWARDED: 'ok',
   // stock alert levels
   OK: 'ok', AT_REORDER_LEVEL: 'info', BELOW_MINIMUM: 'warn', OUT_OF_STOCK: 'danger',
   // fabric rolls
-  QC_PENDING: 'warn', AVAILABLE: 'ok', PARTIALLY_ISSUED: 'info',
+  QC_PENDING: 'violet', AVAILABLE: 'ok', PARTIALLY_ISSUED: 'info',
   ISSUED: 'neutral', EXHAUSTED: 'neutral', BLOCKED: 'danger', RETURNED_TO_SUPPLIER: 'neutral',
+  // commerce orders and shipping
+  OPEN: 'info', FULFILLED: 'ok', PROCESSING: 'info', COMPLETE: 'ok', DISPATCHED: 'ok',
+  SHIPPED: 'ok', DELIVERED: 'ok', RETURNED: 'neutral',
+  // demand and fulfilment routing
+  NEEDS_MAPPING: 'warn', NEEDS_CHECK: 'warn', DISPATCH: 'ok', SWITCH_FACILITY: 'info',
+  MANUFACTURE: 'violet',
   // sync
-  SYNC_PENDING: 'warn', SYNC_SUCCESS: 'ok', SYNC_FAILED: 'danger',
+  SYNC_PENDING: 'warn', SYNC_SUCCESS: 'ok', SYNC_FAILED: 'danger', SUCCESS: 'ok', FAILED: 'danger',
   RECONCILIATION_REQUIRED: 'danger', RECONCILED: 'ok', NOT_REQUIRED: 'neutral',
   // location kinds
   PHYSICAL: 'outline', PRODUCTION_FLOOR: 'info', JOB_WORKER: 'info',
-  QUALITY_HOLD: 'warn', IN_TRANSIT: 'info', SINK: 'neutral', COUNTERPARTY: 'neutral',
+  QUALITY_HOLD: 'hold', IN_TRANSIT: 'info', SINK: 'neutral', COUNTERPARTY: 'neutral',
   // severities
   CRITICAL: 'danger', WARNING: 'warn', INFO: 'info',
 };
 
 export function StatusBadge({ status, className }: { status: string | null | undefined; className?: string }) {
   if (!status) return <span className="text-ink-subtle">-</span>;
-  const tone = STATUS_TONES[status] ?? 'neutral';
+  const tone = STATUS_TONES[status] ?? STATUS_TONES[status.toUpperCase()] ?? 'neutral';
   return (
     <Badge tone={tone} className={className}>
       {status.replace(/_/g, ' ').toLowerCase()}
@@ -315,7 +339,7 @@ export function Spinner({ className }: { className?: string }) {
 
 export function LoadingBlock({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-10 text-[12.5px] text-ink-muted">
+    <div role="status" className="flex items-center justify-center gap-2 py-10 text-[13px] text-ink-muted">
       <Spinner />
       {label}
     </div>
@@ -335,9 +359,13 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-      {Icon ? <Icon className="size-7 text-ink-subtle" /> : null}
-      <p className="text-[13px] font-medium text-ink">{title}</p>
-      {description ? <p className="max-w-md text-[12.5px] text-ink-muted">{description}</p> : null}
+      {Icon ? (
+        <span className="glass-inset mb-1 grid size-11 place-items-center rounded-2xl">
+          <Icon className="size-5 text-ink-muted" />
+        </span>
+      ) : null}
+      <p className="text-[14px] font-semibold text-ink">{title}</p>
+      {description ? <p className="max-w-md text-[13px] text-ink-muted">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
@@ -369,7 +397,7 @@ export function ErrorPanel({
   const details = e?.details ?? undefined;
 
   return (
-    <div className={cn('rounded-lg border border-danger/30 bg-danger-soft px-4 py-3', className)}>
+    <div role="alert" className={cn('rounded-2xl border border-danger/35 bg-danger-soft px-4 py-3.5', className)}>
       <div className="flex items-start gap-2">
         <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" />
         <div className="min-w-0 flex-1">
@@ -429,11 +457,11 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[17px] font-semibold tracking-tight text-ink">{title}</h1>
-          {description ? <p className="mt-0.5 text-[12.5px] text-ink-muted">{description}</p> : null}
+          <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-ink lg:text-[34px]">{title}</h1>
+          {description ? <p className="mt-1 max-w-3xl text-[13.5px] text-ink-muted">{description}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
@@ -442,8 +470,19 @@ export function PageHeader({
   );
 }
 
-/** A labelled figure. `hint` carries the definition, which matters a lot here:
- *  "available" and "on hand" are different numbers and users must see which. */
+/** A semantic accent from the chart palette — the same meaning everywhere. */
+export type Accent =
+  | 'release' | 'issue' | 'cutting' | 'stitching' | 'finishing' | 'qc' | 'rework'
+  | 'rejected' | 'completed' | 'inventory' | 'purchasing' | 'delayed' | 'hold' | 'neutral';
+
+/**
+ * A labelled figure on glass — the metric card.
+ *
+ * `hint` carries the definition, which matters a lot here: "available" and
+ * "on hand" are different numbers and users must see which. `info` explains
+ * the calculation in a tooltip; `sparkline` draws only when real history is
+ * passed in, never as decoration.
+ */
 export function Stat({
   label,
   value,
@@ -451,59 +490,135 @@ export function Stat({
   tone,
   href,
   icon: Icon,
+  accent,
+  info,
+  sparkline,
+  footer,
+  className,
 }: {
   label: string;
   value: React.ReactNode;
-  hint?: string;
+  hint?: React.ReactNode;
   tone?: 'default' | 'ok' | 'warn' | 'danger' | 'info';
   href?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  accent?: Accent;
+  info?: string;
+  sparkline?: number[];
+  footer?: React.ReactNode;
+  className?: string;
 }) {
-  // A figure that needs attention gets WEIGHT, not colour. 'ok' is
-  // deliberately the quietest of the three: most numbers are fine.
   const toneClass =
     tone === 'ok' ? 'text-ok'
     : tone === 'warn' ? 'text-warn'
     : tone === 'danger' ? 'text-danger'
-    : tone === 'info' ? 'text-ink-muted'
+    : tone === 'info' ? 'text-info'
     : 'text-ink';
+
+  // The icon chip takes the accent colour; a tone that needs attention
+  // overrides it, so a red figure never sits beside a calm blue icon.
+  const chipColour =
+    tone === 'danger' ? 'var(--chart-rejected)'
+    : tone === 'warn' ? 'var(--chart-qc)'
+    : accent ? `var(--chart-${accent})`
+    : 'var(--chart-neutral)';
+
+  const showSpark = sparkline && sparkline.length > 1 && sparkline.some((v) => v !== 0);
 
   const inner = (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[11.5px] font-medium uppercase tracking-wide text-ink-subtle">{label}</p>
-        {Icon ? <Icon className="size-3.5 shrink-0 text-ink-subtle" /> : null}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className="truncate text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</p>
+          {info ? <InfoHint text={info} /> : null}
+        </div>
+        {Icon ? (
+          <span
+            className="grid size-10 shrink-0 place-items-center rounded-full border shadow-[inset_0_1px_0_var(--glass-highlight)]"
+            style={{
+              color: chipColour,
+              background: `color-mix(in srgb, ${chipColour} 16%, transparent)`,
+              borderColor: `color-mix(in srgb, ${chipColour} 30%, transparent)`,
+            }}
+            aria-hidden="true"
+          >
+            <Icon className="size-[18px]" />
+          </span>
+        ) : null}
       </div>
-      <p className={cn('num font-display mt-1.5 text-[26px] font-semibold leading-none tracking-tight', toneClass)}>
-        {value}
-      </p>
-      {hint ? <p className="mt-1 text-[11.5px] text-ink-muted">{hint}</p> : null}
+      <div className="mt-1 flex items-end justify-between gap-3">
+        <p className={cn('num text-[32px] font-semibold leading-none tracking-tight', toneClass)}>{value}</p>
+        {showSpark ? <Sparkline values={sparkline!} colour={chipColour} /> : null}
+      </div>
+      {hint ? <p className="mt-2 text-[12.5px] leading-snug text-ink-muted">{hint}</p> : null}
+      {footer ? <div className="mt-2">{footer}</div> : null}
     </>
   );
 
-  // A tile that needs attention carries a solid rule down its edge. With no
-  // hue available this is what separates "look here" from "this is fine",
-  // and it survives a bad panel and a colour-blind reader alike.
+  // A tile that needs attention carries a rule down its edge, as well as
+  // its colour, so it survives a bad panel and a colour-blind reader alike.
   const flagged = tone === 'danger' || tone === 'warn';
-  const shell = cn('glass rounded-lg px-3.5 py-3', flagged && 'row-flag');
+  const shell = cn(
+    'glass block rounded-2xl px-4 pb-4 pt-3.5',
+    flagged && (tone === 'danger' ? 'shadow-[inset_3px_0_0_0_var(--color-danger)]' : 'shadow-[inset_3px_0_0_0_var(--color-warn)]'),
+    className,
+  );
 
   if (href) {
     return (
-      <a
-        href={href}
-        className={cn(
-          shell,
-          // A tile you can open lifts a little. On glass the movement reads as
-          // the pane coming forward, which is the whole point of the material.
-          'block transition-[transform,background-color,border-color] duration-200',
-          'hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface-muted',
-        )}
-      >
+      <Link href={href} className={cn(shell, 'glass-interactive')}>
         {inner}
-      </a>
+      </Link>
     );
   }
   return <div className={shell}>{inner}</div>;
+}
+
+/** A small "how is this calculated" affordance, keyboard reachable. */
+export function InfoHint({ text }: { text: string }) {
+  return (
+    <GlassTooltip content={text}>
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        aria-label={text}
+        className="grid size-4 shrink-0 place-items-center rounded-full text-ink-subtle hover:text-ink"
+      >
+        <Info className="size-3.5" />
+      </button>
+    </GlassTooltip>
+  );
+}
+
+/** A tiny trend line. No axes: it shows shape, the card shows the number. */
+export function Sparkline({
+  values, colour, width = 84, height = 30,
+}: {
+  values: number[];
+  colour: string;
+  width?: number;
+  height?: number;
+}) {
+  const id = React.useId();
+  const max = Math.max(...values);
+  const min = Math.min(...values, 0);
+  const span = max - min || 1;
+  const step = width / (values.length - 1);
+  const pts = values.map((v, i) => [i * step, height - 2 - ((v - min) / span) * (height - 4)] as const);
+  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${width},${height} L0,${height} Z`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" className="shrink-0">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={colour} stopOpacity={0.28} />
+          <stop offset="100%" stopColor={colour} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${id})`} />
+      <path d={line} fill="none" stroke={colour} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 export function Separator({ className }: { className?: string }) {
@@ -529,8 +644,8 @@ export function DescList({
     <dl className={cn('grid grid-cols-1 gap-x-6 gap-y-2.5', cols, className)}>
       {items.map((it) => (
         <div key={it.label} className="min-w-0">
-          <dt className="text-[11.5px] font-medium uppercase tracking-wide text-ink-subtle">{it.label}</dt>
-          <dd className="mt-0.5 truncate text-[13px] text-ink">{it.value ?? '-'}</dd>
+          <dt className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{it.label}</dt>
+          <dd className="mt-0.5 truncate text-[13.5px] text-ink">{it.value ?? '-'}</dd>
         </div>
       ))}
     </dl>

@@ -74,7 +74,7 @@ export function Tabs<T extends string>({
         <span
           aria-hidden="true"
           // Sits on the baseline rule, the way a cursor sits on a ruler.
-          className="slab bottom-0 h-[2px]"
+          className="slab bottom-0 h-[2.5px]"
           style={{ transform: `translateX(${slab.left}px)`, width: slab.width }}
         />
       ) : null}
@@ -89,8 +89,8 @@ export function Tabs<T extends string>({
             data-active={active || undefined}
             onClick={() => onChange(t.value)}
             className={cn(
-              'relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t transition-colors',
-              size === 'sm' ? 'px-2.5 py-1.5 text-[12px]' : 'px-3 py-2 text-[13px]',
+              'relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-lg transition-colors duration-200',
+              size === 'sm' ? 'px-3 py-1.5 text-[12.5px]' : 'px-3.5 py-2.5 text-[13.5px]',
               active ? 'font-semibold text-ink' : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
             )}
           >
@@ -99,7 +99,7 @@ export function Tabs<T extends string>({
             {t.count !== undefined ? (
               <span
                 className={cn(
-                  'num rounded px-1.5 py-px text-[11px] font-medium tabular-nums',
+                  'num rounded-full px-2 py-px text-[11.5px] font-semibold tabular-nums',
                   // The count inverts on the active tab: the number you are
                   // looking at should be the heaviest mark in the strip.
                   active ? 'bg-ink text-canvas' : 'bg-surface-muted text-ink-muted',

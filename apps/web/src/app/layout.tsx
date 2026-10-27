@@ -1,32 +1,30 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Mono, Instrument_Sans, Inter } from 'next/font/google';
+import { IBM_Plex_Mono, Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/app/providers';
 import { AuthProvider } from '@/components/app/auth-context';
+import { ThemeProvider, THEME_BOOT_SCRIPT } from '@/components/theme/theme';
 
 /*
- * Three faces, three jobs — and with no colour in the system, type carries
- * almost all of the hierarchy, so the pairing has to do real work.
+ * Three faces, three jobs.
  *
- * Instrument Sans is a confident, slightly narrow grotesque: it holds a 40px
- * figure without looking inflated and a 12px eyebrow without looking thin,
- * which is the range a monochrome page asks of its display face.
- *
- * Inter takes the interface. At 13px across eight hours it is simply the right
- * tool — a large x-height and real tabular figures matter more here than
- * novelty. Plex Mono takes SKUs and quantities, where a column must line up.
+ * Plus Jakarta Sans carries the interface and the headings: open counters and
+ * a geometric calm that suits glass, and it holds a 40px figure without
+ * looking inflated. Inter sets the numbers — its tabular figures are the most
+ * reliable at small sizes, which matters in a column of quantities. Plex Mono
+ * takes SKUs and barcodes, where every character must be unambiguous.
  */
-const display = Instrument_Sans({
+const body = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-display-face',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body-face',
   display: 'swap',
 });
 
-const body = Inter({
+const numeric = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-body-face',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-numeric-face',
   display: 'swap',
 });
 
@@ -52,7 +50,18 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    // suppressHydrationWarning on <html>: the pre-paint script sets data-theme
+    // before React hydrates, which is the point, not a mismatch.
+    <html
+      lang="en-IN"
+      data-theme="night"
+      suppressHydrationWarning
+      className={`${body.variable} ${numeric.variable} ${mono.variable}`}
+    >
+      <head>
+        {/* Sets the theme before first paint, so the page never flashes. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       {/*
         suppressHydrationWarning on <body> only.
 
@@ -62,9 +71,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         genuine hydration bug anywhere inside the tree still surfaces.
       */}
       <body suppressHydrationWarning>
-        <Providers>
-          <AuthProvider>{children}</AuthProvider>
-        </Providers>
+        <ThemeProvider>
+          <Providers>
+            <AuthProvider>{children}</AuthProvider>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

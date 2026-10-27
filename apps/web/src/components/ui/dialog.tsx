@@ -27,21 +27,21 @@ export function DialogContent({
 }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/35 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[var(--glass-scrim)] backdrop-blur-[6px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
       <DialogPrimitive.Content
         className={cn(
           'fixed left-1/2 top-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-1/2',
-          'flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-xl',
+          'glass-modal flex-col overflow-hidden rounded-3xl',
           'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           wide ? 'max-w-5xl' : 'max-w-lg',
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0">
-            <DialogPrimitive.Title className="text-[14px] font-semibold text-ink">{title}</DialogPrimitive.Title>
+            <DialogPrimitive.Title className="text-[16px] font-semibold tracking-tight text-ink">{title}</DialogPrimitive.Title>
             {description ? (
-              <DialogPrimitive.Description className="mt-0.5 text-[12px] text-ink-muted">
+              <DialogPrimitive.Description className="mt-0.5 text-[12.5px] text-ink-muted">
                 {description}
               </DialogPrimitive.Description>
             ) : null}
@@ -53,10 +53,10 @@ export function DialogContent({
           </DialogPrimitive.Close>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer ? (
-          <div className="flex items-center justify-end gap-2 border-t border-line bg-surface-muted px-4 py-2.5">
+          <div className="flex items-center justify-end gap-2 border-t border-line bg-surface-muted px-5 py-3">
             {footer}
           </div>
         ) : null}

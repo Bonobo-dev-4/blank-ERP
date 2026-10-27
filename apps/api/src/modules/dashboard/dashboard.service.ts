@@ -7,9 +7,7 @@ import { InventoryService } from '../inventory/inventory.service';
 /**
  * Dashboard figures.
  *
- * Every number here is a live aggregate over real rows. Modules that are not
- * built yet report `available: false` with the phase they are due in, rather
- * than a zero that looks like a real measurement - the specification is
+ * Every number here is a live aggregate over real rows - the specification is
  * explicit that the dashboard must not fake interactions or figures.
  */
 @Injectable()
@@ -28,7 +26,7 @@ export class DashboardService {
       supplierCount, locationCount, lotCount, rollCount,
       openPoCount, pendingApprovalPoCount, overduePoCount, pendingInspectionCount,
       movementsToday, alerts, rollLengths, inventoryValue, recentMovements, recentReceipts,
-      production,
+      production, poByStatus,
     ] = await Promise.all([
       this.prisma.rawMaterial.count({ where: { organizationId } }),
       this.prisma.rawMaterial.count({ where: { organizationId, status: 'ACTIVE' } }),
@@ -77,6 +75,11 @@ export class DashboardService {
         },
       }),
       this.productionLine(organizationId),
+      this.prisma.rawMaterialPurchaseOrder.groupBy({
+        by: ['status'],
+        where: { organizationId },
+        _count: { _all: true },
+      }),
     ]);
 
     return {
@@ -109,27 +112,127 @@ export class DashboardService {
         awaitingApproval: pendingApprovalPoCount,
         overdue: overduePoCount,
         receiptsPendingInspection: pendingInspectionCount,
+        byStatus: Object.fromEntries(poByStatus.map((r) => [r.status, r._count._all])),
       },
 
       production,
-
-      // These are honest placeholders: the modules do not exist yet, so the
-      // dashboard says so rather than showing a zero that reads as a fact.
-      demand: {
-        available: false,
-        phase: 4,
-        note: 'Shopify and Unicommerce order intelligence arrives in phase 4',
-      },
-      finishedGoods: {
-        available: false,
-        phase: 5,
-        note: 'Finished goods inward and Unicommerce inventory push arrive in phase 5',
-      },
 
       topAlerts: alerts.alerts.slice(0, 8),
       recentMovements,
       receiptsAwaitingInspection: recentReceipts,
       buildStatus: BUILD_STATUS_SUMMARY,
+    };
+  }
+
+  /**
+   * Daily history for the trend charts, bucketed in the organisation's own
+   * timezone so "today" means the factory's today, not UTC's.
+   *
+   * Every series is read from an immutable ledger — stage movements and
+   * material movements — so a day with no rows is a real zero, and a window
+   * with no rows at all is reported as having no history rather than drawn
+   * as a flat line that looks like a measurement.
+   *
+   * "Stage work completed" counts completions at EVERY stage, so it is
+   * throughput (work done), not garments finished; the label says so.
+   */
+  async trends(organizationId: string, from: Date, to: Date) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { timezone: true },
+    });
+    const timeZone = org?.timezone ?? 'Asia/Kolkata';
+    const dayOf = new Intl.DateTimeFormat('en-CA', {
+      timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const key = (d: Date) => dayOf.format(d);
+
+    const [stageMoves, materialMoves] = await Promise.all([
+      this.prisma.productionStageMovement.findMany({
+        where: {
+          organizationId,
+          occurredAt: { gte: from, lte: to },
+          movementType: { in: ['RELEASE_TO_FIRST_STAGE', 'CANCEL_RELEASE', 'COMPLETE', 'REJECT'] },
+        },
+        select: { movementType: true, qty: true, occurredAt: true },
+      }),
+      this.prisma.materialMovement.findMany({
+        where: { organizationId, occurredAt: { gte: from, lte: to } },
+        select: { occurredAt: true },
+      }),
+    ]);
+
+    // Every calendar day in the window, so gaps render as zeros in place.
+    const days: string[] = [];
+    for (let t = new Date(from); t <= to; t = new Date(t.getTime() + 86_400_000)) {
+      const k = key(t);
+      if (days[days.length - 1] !== k) days.push(k);
+    }
+    const lastKey = key(to);
+    if (days[days.length - 1] !== lastKey) days.push(lastKey);
+
+    const rows = new Map(
+      days.map((d) => [d, { released: dec(0), completed: dec(0), rejected: dec(0), movements: 0 }]),
+    );
+    for (const m of stageMoves) {
+      const row = rows.get(key(m.occurredAt));
+      if (!row) continue;
+      const qty = dec(m.qty.toFixed());
+      if (m.movementType === 'RELEASE_TO_FIRST_STAGE') row.released = row.released.plus(qty);
+      else if (m.movementType === 'CANCEL_RELEASE') row.released = row.released.minus(qty);
+      else if (m.movementType === 'COMPLETE') row.completed = row.completed.plus(qty);
+      else if (m.movementType === 'REJECT') row.rejected = row.rejected.plus(qty);
+    }
+    for (const m of materialMoves) {
+      const row = rows.get(key(m.occurredAt));
+      if (row) row.movements += 1;
+    }
+
+    return {
+      timeZone,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      hasProductionHistory: stageMoves.length > 0,
+      hasMovementHistory: materialMoves.length > 0,
+      days: days.map((d) => {
+        const r = rows.get(d)!;
+        return {
+          date: d,
+          released: Decimal.max(r.released, 0).toFixed(),
+          completed: r.completed.toFixed(),
+          rejected: r.rejected.toFixed(),
+          movements: r.movements,
+        };
+      }),
+    };
+  }
+
+  /**
+   * When the ERP last heard from each commerce system, for the top bar.
+   *
+   * Read from the orders themselves rather than a heartbeat table: the newest
+   * imported Shopify order and the newest Unicommerce status check are the
+   * facts a person actually means by "is the sync working".
+   */
+  async syncPulse(organizationId: string) {
+    const [shopify, unicommerce] = await Promise.all([
+      this.prisma.shopifyOrder.aggregate({
+        where: { organizationId },
+        _max: { importedAt: true, updatedAt: true },
+      }),
+      this.prisma.shopifyOrder.aggregate({
+        where: { organizationId, externalStatusSyncedAt: { not: null } },
+        _max: { externalStatusSyncedAt: true },
+      }),
+    ]);
+    return {
+      shopify: {
+        lastImportedAt: shopify._max.importedAt?.toISOString() ?? null,
+        lastUpdatedAt: shopify._max.updatedAt?.toISOString() ?? null,
+      },
+      unicommerce: {
+        lastStatusSyncAt: unicommerce._max.externalStatusSyncedAt?.toISOString() ?? null,
+      },
     };
   }
 
@@ -168,7 +271,7 @@ export class DashboardService {
    * a spreadsheet.
    */
   private async productionLine(organizationId: string) {
-    const [stageRows, stages, orderRows, orderTotals] = await Promise.all([
+    const [stageRows, stages, orderRows, orderTotals, overdueOrders] = await Promise.all([
       this.prisma.productionStageTask.groupBy({
         by: ['productionStageId'],
         where: { organizationId },
@@ -189,7 +292,16 @@ export class DashboardService {
       }),
       this.prisma.manufacturingOrder.aggregate({
         where: { organizationId, status: { notIn: ['CANCELLED', 'DRAFT'] } },
-        _sum: { orderedQty: true, completedQty: true, rejectedQty: true },
+        _sum: { orderedQty: true, releasedQty: true, completedQty: true, rejectedQty: true },
+      }),
+      // Past due and still open. Closed, completed and cancelled orders are
+      // finished business, whatever their due date said.
+      this.prisma.manufacturingOrder.count({
+        where: {
+          organizationId,
+          dueDate: { lt: new Date() },
+          status: { in: ['PENDING_MATERIAL', 'MATERIAL_RESERVED', 'RELEASED', 'IN_PROGRESS', 'ON_HOLD'] },
+        },
       }),
     ]);
 
@@ -234,8 +346,10 @@ export class DashboardService {
         total: orderRows.reduce((n, r) => n + r._count._all, 0),
         byStatus: statusCounts,
         orderedQty: (orderTotals._sum.orderedQty ?? dec(0)).toFixed(),
+        releasedQty: (orderTotals._sum.releasedQty ?? dec(0)).toFixed(),
         completedQty: (orderTotals._sum.completedQty ?? dec(0)).toFixed(),
         rejectedQty: (orderTotals._sum.rejectedQty ?? dec(0)).toFixed(),
+        overdue: overdueOrders,
       },
       line,
       /** Stages holding work right now - what a supervisor walks to first. */

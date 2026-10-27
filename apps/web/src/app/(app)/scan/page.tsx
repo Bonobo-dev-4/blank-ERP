@@ -160,8 +160,10 @@ export default function ScanStationPage() {
       {/* ---- station bar ---- */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ScanLine className="size-5 text-brand-strong" />
-          <h1 className="text-[16px] font-semibold text-ink">Scan Station</h1>
+          <span className="glass-inset grid size-10 place-items-center rounded-full">
+            <ScanLine className="size-5 text-brand" />
+          </span>
+          <h1 className="text-[26px] font-semibold tracking-tight text-ink lg:text-[30px]">Scan Station</h1>
           <NativeSelect
             value={stageId}
             onChange={(e) => setStageId(e.target.value)}
@@ -191,7 +193,7 @@ export default function ScanStationPage() {
               autoComplete="off"
               spellCheck={false}
               aria-label="Barcode"
-              className="h-14 flex-1 rounded border border-line-strong bg-surface px-4 font-mono text-[18px] tracking-wide text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="h-16 flex-1 rounded-2xl border-2 border-line-strong bg-surface px-5 font-mono text-[22px] tracking-wide text-ink outline-none focus:border-brand focus:ring-4 focus:ring-brand-soft"
             />
             <Button type="submit" variant="primary" size="lg" loading={resolve.isPending}>
               Look up
@@ -201,7 +203,7 @@ export default function ScanStationPage() {
           {resolve.error ? <ErrorPanel error={resolve.error} className="mt-3" /> : null}
 
           {resolution && !resolution.found ? (
-            <div className="mt-3 flex items-center gap-2 rounded border border-danger/40 bg-danger-soft px-3 py-2.5 text-[13px]">
+            <div role="alert" className="mt-3 flex items-center gap-2 rounded-2xl border border-danger/40 bg-danger-soft px-4 py-3 text-[14px] font-medium">
               <TriangleAlert className="size-4 shrink-0 text-danger" />
               <span>
                 <strong className="font-mono">{resolution.code}</strong> is not known to this system.
@@ -230,9 +232,9 @@ export default function ScanStationPage() {
                 ['Finished', resolution.batch.progress.finishedQty],
                 ['Rejected', resolution.batch.progress.rejectedQty],
               ].map(([label, value]) => (
-                <div key={label} className="rounded border border-line px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-ink-subtle">{label}</p>
-                  <p className="num text-[20px] font-semibold text-ink">{fmtQty(value, 0)}</p>
+                <div key={label} className="glass-inset rounded-2xl px-4 py-3">
+                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</p>
+                  <p className="num text-[28px] font-semibold leading-tight text-ink">{fmtQty(value, 0)}</p>
                 </div>
               ))}
             </div>
@@ -240,7 +242,7 @@ export default function ScanStationPage() {
             <RouteStrip stages={resolution.batch.progress.stages} currentCode={resolution.currentStageCode} />
 
             {resolution.actions.length === 0 ? (
-              <p className="mt-3 rounded border border-line bg-surface-muted px-3 py-2.5 text-[13px] text-ink-muted">
+              <p className="mt-3 rounded-2xl border border-line bg-surface-muted px-4 py-3 text-[13.5px] text-ink-muted">
                 {resolution.message ?? 'There is nothing to do with this batch at your stage right now.'}
               </p>
             ) : (

@@ -4,8 +4,11 @@ import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ApiError } from '@/lib/api';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { useTheme } from '@/components/theme/theme';
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const { resolved } = useTheme();
   const [client] = React.useState(
     () =>
       new QueryClient({
@@ -29,12 +32,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      {children}
+      <TooltipProvider delayDuration={250}>{children}</TooltipProvider>
       <Toaster
         position="bottom-right"
+        theme={resolved === 'day' ? 'light' : 'dark'}
         toastOptions={{
-          style: { fontSize: '12.5px', borderRadius: '6px' },
-          className: 'border border-line',
+          style: { fontSize: '13px', borderRadius: '14px' },
+          className: 'glass-elevated !text-ink',
         }}
       />
     </QueryClientProvider>

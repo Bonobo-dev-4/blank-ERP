@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { KeyRound, ScanLine } from 'lucide-react';
+import { ThemeSwitcher } from '@/components/theme/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/components/app/auth-context';
 import { Button, Card, ErrorPanel, Field, Input } from '@/components/ui/primitives';
@@ -44,20 +45,23 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
-      <div className="w-full max-w-sm">
+    <main className="relative flex min-h-dvh items-center justify-center px-4 py-10">
+      <div className="absolute right-4 top-4">
+        <ThemeSwitcher />
+      </div>
+      <div className="w-full max-w-[400px]">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-rail text-[13px] font-bold tracking-tighter text-white">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-ink text-[14px] font-bold tracking-tighter text-canvas shadow-sm">
             D·D
           </div>
           <div>
-            <h1 className="text-[15px] font-semibold text-ink">DASH AND DOT</h1>
-            <p className="text-[12px] text-ink-muted">Manufacturing ERP</p>
+            <h1 className="text-[18px] font-bold tracking-tight text-ink">DASH AND DOT</h1>
+            <p className="text-[13px] text-ink-muted">Manufacturing ERP</p>
           </div>
         </div>
 
-        <Card className="p-5">
-          <div className="mb-4 flex rounded border border-line bg-surface-muted p-0.5">
+        <Card className="rounded-3xl p-6">
+          <div className="mb-5 flex rounded-full border border-line bg-surface-muted p-1">
             {([
               ['password', 'Staff sign in', KeyRound],
               ['pin', 'Shop floor', ScanLine],
@@ -67,8 +71,8 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => { setMode(value); setError(null); }}
                 className={
-                  'flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-[12px] font-medium transition-colors ' +
-                  (mode === value ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink')
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium transition-colors ' +
+                  (mode === value ? 'glass-raised text-ink' : 'text-ink-muted hover:text-ink')
                 }
               >
                 <Icon className="size-3.5" />
@@ -137,7 +141,7 @@ export default function LoginPage() {
           </form>
         </Card>
 
-        <p className="mt-4 text-center text-[11.5px] text-ink-subtle">
+        <p className="mt-4 text-center text-[12px] text-ink-subtle">
           Credentials are created by an administrator. There is no self sign-up.
         </p>
       </div>

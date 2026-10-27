@@ -100,23 +100,23 @@ export function DataTable<T>({
   };
 
   return (
-    <div className="rounded-lg border border-line bg-surface">
+    <div className="glass-dense overflow-hidden rounded-2xl">
       {search || toolbar || exportFileName ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           {search ? (
             <div className="relative min-w-[200px] flex-1 max-w-sm">
-              <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-subtle" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
               <Input
                 value={search.value}
                 onChange={(e) => search.onChange(e.target.value)}
                 placeholder={search.placeholder ?? 'Search'}
-                className="pl-7 pr-7"
+                className="pl-9 pr-8"
               />
               {search.value ? (
                 <button
                   type="button"
                   onClick={() => search.onChange('')}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-subtle hover:bg-surface-muted hover:text-ink"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-ink-subtle hover:bg-surface-muted hover:text-ink"
                   aria-label="Clear search"
                 >
                   <X className="size-3.5" />
@@ -146,7 +146,7 @@ export function DataTable<T>({
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <div className="scroll-x">
-          <table className="w-full border-collapse text-[12.5px]">
+          <table className="w-full border-collapse text-[13px]">
             <thead className={cn(stickyHeader && 'sticky top-0 z-10')}>
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id} className="border-b border-line bg-surface-muted">
@@ -158,7 +158,7 @@ export function DataTable<T>({
                       <th
                         key={header.id}
                         className={cn(
-                          'whitespace-nowrap px-2.5 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-muted',
+                          'whitespace-nowrap px-3.5 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-subtle',
                           meta?.align === 'right' && 'text-right',
                           meta?.align === 'center' && 'text-center',
                           sortable && 'cursor-pointer select-none hover:text-ink',
@@ -183,8 +183,8 @@ export function DataTable<T>({
                   key={row.id}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                   className={cn(
-                    'border-b border-line last:border-0',
-                    onRowClick && 'cursor-pointer hover:bg-brand-soft/60',
+                    'border-b border-line transition-colors duration-150 last:border-0',
+                    onRowClick && 'cursor-pointer hover:bg-brand-soft',
                     !onRowClick && 'hover:bg-surface-muted',
                   )}
                 >
@@ -196,7 +196,7 @@ export function DataTable<T>({
                       <td
                         key={cell.id}
                         className={cn(
-                          'px-2.5 py-1.5 align-middle text-ink',
+                          'px-3.5 py-2.5 align-middle text-ink',
                           meta?.align === 'right' && 'text-right',
                           meta?.align === 'center' && 'text-center',
                           meta?.numeric && 'num',
@@ -214,7 +214,7 @@ export function DataTable<T>({
       )}
 
       {pagination && pagination.total > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2 text-[12px] text-ink-muted">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[12.5px] text-ink-muted">
           <span className="num">
             {(pagination.page - 1) * pagination.pageSize + 1}
             {'-'}
@@ -227,7 +227,7 @@ export function DataTable<T>({
               <select
                 value={pagination.pageSize}
                 onChange={(e) => pagination.onPageSizeChange?.(Number(e.target.value))}
-                className="h-7 rounded border border-line-strong bg-surface px-1.5 text-[12px]"
+                className="h-8 rounded-lg border border-line-strong bg-surface px-2 text-[12.5px] text-ink [&>option]:bg-canvas"
                 aria-label="Rows per page"
               >
                 {[25, 50, 100, 200].map((n) => (
@@ -278,7 +278,7 @@ function csvCell(value: string): string {
 
 /** Monospaced code cell for SKUs, lot codes, barcodes and document numbers. */
 export function CodeCell({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={cn('font-mono text-[11.5px] text-ink', className)}>{children}</span>;
+  return <span className={cn('font-mono text-[12px] text-ink', className)}>{children}</span>;
 }
 
 /** Two-line cell: a primary identifier with context underneath. */
@@ -293,8 +293,8 @@ export function StackedCell({
 }) {
   return (
     <div className="min-w-0">
-      <div className={cn('truncate font-medium text-ink', mono && 'font-mono text-[11.5px]')}>{primary}</div>
-      {secondary ? <div className="truncate text-[11.5px] text-ink-muted">{secondary}</div> : null}
+      <div className={cn('truncate font-medium text-ink', mono && 'font-mono text-[12px]')}>{primary}</div>
+      {secondary ? <div className="truncate text-[12px] text-ink-muted">{secondary}</div> : null}
     </div>
   );
 }

@@ -1,99 +1,167 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import type { Accent } from './primitives';
 
 /**
- * Charts, monochrome.
+ * Charts — semantic colour, both themes.
  *
- * With no hue, a chart distinguishes series by FILL and WEIGHT: the series
- * being read is solid white, everything else is a translucent wash. That is
- * also the honest limit — these are built for one or two series. A monochrome
- * chart with six series is a chart nobody can read, and the right answer there
- * is a table, not more shades of grey.
- *
- * Axes and grid sit at low alpha so the data is the brightest thing in the
- * frame; a grid competing with the bars is a grid drawn for its own sake.
+ * Every colour is a CSS variable (`--chart-release`, `--chart-rejected` …)
+ * defined per theme in globals.css, so a chart re-themes with the app and a
+ * colour MEANS the same thing on every screen: blue is release, red is
+ * rejected, emerald is completed. Series are never coloured at random, and
+ * every chart also carries labels, so colour is never the only signal.
  */
 
-// Ice white reads the series you are meant to look at; a white wash reads
-// the rest. Neutral on midnight — the glass carries no hue, nor do the bars.
-const JADE = 'oklch(0.9 0.025 250)';
-const MUTED = 'oklch(1 0 0 / 0.32)';
-const FAINT = 'oklch(1 0 0 / 0.1)';
+export const accentVar = (a: Accent) => `var(--chart-${a})`;
+
+/** Which semantic colour a production stage takes, from its own name. */
+export function stageAccent(name: string, code = '', index = 0): Accent {
+  const s = `${name} ${code}`.toLowerCase();
+  if (/release/.test(s)) return 'release';
+  if (/issue|material/.test(s)) return 'issue';
+  if (/cut/.test(s)) return 'cutting';
+  if (/stitch|sew|embroider/.test(s)) return 'stitching';
+  if (/finish|press|iron|wash|pack/.test(s)) return 'finishing';
+  if (/qc|quality|inspect/.test(s)) return 'qc';
+  if (/rework/.test(s)) return 'rework';
+  if (/dispatch|ready|handover|complete/.test(s)) return 'completed';
+  const fallback: Accent[] = ['release', 'issue', 'cutting', 'stitching', 'finishing', 'qc', 'completed'];
+  return fallback[index % fallback.length]!;
+}
+
+const fmt = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 const axis = {
-  stroke: 'transparent',
-  tick: { fill: 'oklch(0.72 0.03 250)', fontSize: 11 },
+  stroke: 'var(--chart-grid)',
+  tick: { fill: 'var(--chart-axis)', fontSize: 12 },
   tickLine: false,
   axisLine: false,
 } as const;
 
-function ChartTooltip({ active, payload, label, unit }: {
+/* ------------------------------------------------------------- tooltip */
+
+interface TipRow { name?: string; value?: number | string; dataKey?: string | number; color?: string; payload?: Record<string, unknown> }
+
+export function ChartTooltip({
+  active, payload, label, unit, labelFormatter,
+}: {
   active?: boolean;
-  payload?: { name?: string; value?: number | string; dataKey?: string }[];
-  label?: string;
+  payload?: TipRow[];
+  label?: string | number;
   unit?: string;
+  labelFormatter?: (l: string) => string;
 }) {
   if (!active || !payload?.length) return null;
+  const heading = label !== undefined ? (labelFormatter ? labelFormatter(String(label)) : String(label)) : null;
   return (
-    <div className="glass-raised rounded-md px-2.5 py-1.5 text-[11.5px] shadow-lg">
-      {label ? <p className="mb-0.5 font-medium text-ink">{label}</p> : null}
-      {payload.map((p) => (
-        <p key={String(p.dataKey)} className="num text-ink-muted">
-          {p.name ? `${p.name}: ` : ''}
-          <span className="font-semibold text-ink">{p.value}</span>
-          {unit ? ` ${unit}` : ''}
-        </p>
-      ))}
+    <div className="glass-elevated min-w-[140px] rounded-xl px-3 py-2 text-[12.5px]">
+      {heading ? <p className="mb-1 font-semibold text-ink">{heading}</p> : null}
+      <ul className="space-y-0.5">
+        {payload.map((p) => {
+          const colour = (p.payload?.fill as string | undefined) ?? p.color;
+          return (
+            <li key={String(p.dataKey ?? p.name)} className="flex items-center gap-2">
+              <span className="size-2.5 shrink-0 rounded-full" style={{ background: colour }} />
+              <span className="flex-1 text-ink-muted">{p.name}</span>
+              <span className="num font-semibold text-ink">
+                {typeof p.value === 'number' ? fmt(p.value) : p.value}
+                {unit ? <span className="ml-1 font-normal text-ink-subtle">{unit}</span> : null}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
 
-export interface SeriesPoint {
+/* ------------------------------------------------------- category bars */
+
+export interface CategoryPoint {
   label: string;
   value: number;
-  /** Marks the bar as the one to look at — drawn solid rather than washed. */
-  emphasis?: boolean;
+  accent: Accent;
+  href?: string;
 }
 
 /**
- * Bars.
- *
- * `highlightMax` solid-fills the tallest bar and washes the rest, which is the
- * monochrome way of saying "this is the one" without an arrow or a caption.
+ * Rounded bars, one semantic colour per category, with a soft vertical
+ * gradient so they read as lit glass rather than flat paint.
  */
-export function BarSeries({
-  data, height = 160, unit, highlightMax = true, className,
+export function CategoryBars({
+  data, height = 220, unit, layout = 'vertical-bars', onSelect, className,
 }: {
-  data: SeriesPoint[];
+  data: CategoryPoint[];
   height?: number;
   unit?: string;
-  highlightMax?: boolean;
+  /** 'vertical-bars' stands bars up; 'horizontal-bars' lays them down for long labels. */
+  layout?: 'vertical-bars' | 'horizontal-bars';
+  onSelect?: (p: CategoryPoint) => void;
   className?: string;
 }) {
-  const max = Math.max(...data.map((d) => d.value), 0);
+  const uid = React.useId().replace(/:/g, '');
+  const horizontal = layout === 'horizontal-bars';
   return (
     <div className={cn('w-full', className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
-          <CartesianGrid vertical={false} stroke={FAINT} />
-          <XAxis dataKey="label" {...axis} interval="preserveStartEnd" />
-          <YAxis {...axis} width={44} />
+        <BarChart
+          data={data}
+          layout={horizontal ? 'vertical' : 'horizontal'}
+          margin={horizontal ? { top: 4, right: 16, bottom: 4, left: 4 } : { top: 8, right: 8, bottom: 0, left: -12 }}
+          barCategoryGap={horizontal ? '28%' : '22%'}
+        >
+          <defs>
+            {data.map((d, i) => (
+              <linearGradient
+                key={i}
+                id={`${uid}-g${i}`}
+                x1="0" y1="0"
+                x2={horizontal ? '1' : '0'} y2={horizontal ? '0' : '1'}
+              >
+                <stop offset="0%" stopColor={accentVar(d.accent)} stopOpacity={horizontal ? 0.75 : 1} />
+                <stop offset="100%" stopColor={accentVar(d.accent)} stopOpacity={horizontal ? 1 : 0.62} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid
+            vertical={horizontal}
+            horizontal={!horizontal}
+            stroke="var(--chart-grid)"
+            strokeDasharray="3 4"
+          />
+          {horizontal ? (
+            <>
+              <XAxis type="number" {...axis} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" {...axis} width={128} />
+            </>
+          ) : (
+            <>
+              <XAxis dataKey="label" {...axis} interval={0} />
+              <YAxis {...axis} width={48} allowDecimals={false} />
+            </>
+          )}
           <Tooltip
-            cursor={{ fill: 'oklch(1 0 0 / 0.07)' }}
+            cursor={{ fill: 'var(--chart-cursor)', radius: 10 } as never}
             content={<ChartTooltip unit={unit} />}
           />
-          <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={34}>
+          <Bar
+            dataKey="value"
+            name={unit ? unit.replace(/^./, (c) => c.toUpperCase()) : 'Value'}
+            radius={horizontal ? [0, 8, 8, 0] : [10, 10, 4, 4]}
+            maxBarSize={horizontal ? 22 : 56}
+            onClick={onSelect ? (_: unknown, i: number) => onSelect(data[i]!) : undefined}
+            style={onSelect ? { cursor: 'pointer' } : undefined}
+            isAnimationActive={false}
+          >
             {data.map((d, i) => (
-              <Cell
-                key={i}
-                fill={d.emphasis ?? (highlightMax && d.value === max && max > 0) ? JADE : MUTED}
-              />
+              <Cell key={i} fill={`url(#${uid}-g${i})`} stroke={accentVar(d.accent)} strokeOpacity={0.5} />
             ))}
           </Bar>
         </BarChart>
@@ -102,94 +170,249 @@ export function BarSeries({
   );
 }
 
-/** A filled trend. One series only — see the note at the top of this file. */
-export function TrendSeries({
-  data, height = 160, unit, className,
+/* ---------------------------------------------------------- trend lines */
+
+export interface TrendSeriesDef {
+  key: string;
+  label: string;
+  accent: Accent;
+}
+
+/**
+ * Multi-series trend: a clear stroke per series over a transparent gradient
+ * fill. The legend is interactive — click a series to hide or show it —
+ * and is keyboard operable.
+ */
+export function TrendChart({
+  data, series, height = 260, unit, xFormatter, className,
 }: {
-  data: SeriesPoint[];
+  data: Record<string, number | string>[];
+  series: TrendSeriesDef[];
   height?: number;
   unit?: string;
+  xFormatter?: (v: string) => string;
   className?: string;
 }) {
+  const uid = React.useId().replace(/:/g, '');
+  const [hidden, setHidden] = React.useState<Record<string, boolean>>({});
+  const toggle = (k: string) => setHidden((h) => ({ ...h, [k]: !h[k] }));
+
   return (
-    <div className={cn('w-full', className)} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
-          <defs>
-            <linearGradient id="dnd-trend" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={JADE} stopOpacity={0.28} />
-              <stop offset="100%" stopColor={JADE} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} stroke={FAINT} />
-          <XAxis dataKey="label" {...axis} interval="preserveStartEnd" />
-          <YAxis {...axis} width={44} />
-          <Tooltip cursor={{ stroke: MUTED }} content={<ChartTooltip unit={unit} />} />
-          <Area
-            type="monotone"
-            dataKey="value"
-            stroke={JADE}
-            strokeWidth={1.75}
-            fill="url(#dnd-trend)"
-            dot={false}
-            activeDot={{ r: 3, fill: JADE, stroke: 'none' }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className={className}>
+      <ul className="mb-3 flex flex-wrap gap-2" aria-label="Series">
+        {series.map((s) => {
+          const off = hidden[s.key];
+          return (
+            <li key={s.key}>
+              <button
+                type="button"
+                aria-pressed={!off}
+                onClick={() => toggle(s.key)}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors',
+                  off ? 'border-line text-ink-subtle' : 'border-line bg-surface-muted text-ink',
+                )}
+              >
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ background: off ? 'transparent' : accentVar(s.accent), boxShadow: `inset 0 0 0 2px ${accentVar(s.accent)}` }}
+                />
+                {s.label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
+            <defs>
+              {series.map((s) => (
+                <linearGradient key={s.key} id={`${uid}-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={accentVar(s.accent)} stopOpacity={0.32} />
+                  <stop offset="100%" stopColor={accentVar(s.accent)} stopOpacity={0} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 4" />
+            <XAxis
+              dataKey="date"
+              {...axis}
+              tickFormatter={xFormatter}
+              minTickGap={24}
+            />
+            <YAxis {...axis} width={48} allowDecimals={false} />
+            <Tooltip
+              cursor={{ stroke: 'var(--chart-axis)', strokeDasharray: '3 3', strokeOpacity: 0.6 }}
+              content={<ChartTooltip unit={unit} labelFormatter={xFormatter} />}
+            />
+            {series.map((s) =>
+              hidden[s.key] ? null : (
+                <Area
+                  key={s.key}
+                  type="monotone"
+                  dataKey={s.key}
+                  name={s.label}
+                  stroke={accentVar(s.accent)}
+                  strokeWidth={2.25}
+                  fill={`url(#${uid}-${s.key})`}
+                  dot={false}
+                  activeDot={{ r: 4.5, fill: accentVar(s.accent), stroke: 'var(--color-canvas)', strokeWidth: 2 }}
+                  isAnimationActive={false}
+                />
+              ),
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
 
+/* ---------------------------------------------------------------- donut */
+
+export interface Segment {
+  label: string;
+  value: number;
+  accent: Accent;
+  href?: string;
+}
+
 /**
- * A horizontal share bar — how a total splits, in one line.
- *
- * Segments are told apart by descending opacity and are always labelled
- * underneath, because opacity alone is not a legend anyone can read.
+ * Donut with the total in the centre and a legend that carries the
+ * quantities, so the chart is readable without hovering anything.
  */
-export function ShareBar({
-  segments, className,
+export function Donut({
+  segments, centerLabel, size = 184, unit, className,
 }: {
-  segments: { label: string; value: number }[];
+  segments: Segment[];
+  centerLabel: string;
+  size?: number;
+  unit?: string;
   className?: string;
+}) {
+  const total = segments.reduce((n, s) => n + s.value, 0);
+  const shown = segments.filter((s) => s.value > 0);
+  return (
+    <div className={cn('flex flex-col items-center gap-5 sm:flex-row sm:items-center', className)}>
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Tooltip content={<ChartTooltip unit={unit} />} />
+            <Pie
+              data={shown.length ? shown : [{ label: 'None', value: 1, accent: 'neutral' as Accent }]}
+              dataKey="value"
+              nameKey="label"
+              innerRadius="68%"
+              outerRadius="100%"
+              paddingAngle={shown.length > 1 ? 2.5 : 0}
+              cornerRadius={6}
+              stroke="none"
+              isAnimationActive={false}
+            >
+              {(shown.length ? shown : [{ accent: 'neutral' as Accent }]).map((s, i) => (
+                <Cell key={i} fill={accentVar(s.accent)} fillOpacity={shown.length ? 0.92 : 0.25} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span className="num text-[28px] font-semibold leading-none text-ink">{fmt(total)}</span>
+          <span className="mt-1 text-[11.5px] font-medium uppercase tracking-[0.06em] text-ink-subtle">{centerLabel}</span>
+        </div>
+      </div>
+      <Legend segments={segments} total={total} className="w-full sm:flex-1" />
+    </div>
+  );
+}
+
+function Legend({ segments, total, className }: { segments: Segment[]; total: number; className?: string }) {
+  return (
+    <ul className={cn('space-y-1.5', className)}>
+      {segments.map((s) => {
+        const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+        const row = (
+          <>
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: accentVar(s.accent) }} />
+            <span className="flex-1 truncate text-ink-muted">{s.label}</span>
+            <span className="num font-semibold text-ink">{fmt(s.value)}</span>
+            <span className="num w-10 text-right text-ink-subtle">{pct}%</span>
+          </>
+        );
+        return (
+          <li key={s.label}>
+            {s.href ? (
+              <Link
+                href={s.href}
+                className="flex items-center gap-2.5 rounded-lg px-2 py-1 text-[13px] transition-colors hover:bg-surface-muted"
+              >
+                {row}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-2.5 px-2 py-1 text-[13px]">{row}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/* ---------------------------------------------------------- segment bar */
+
+/**
+ * How a total splits, in one line — a stacked bar with a labelled legend
+ * underneath, because a segment colour alone is not a legend.
+ */
+export function SegmentBar({
+  segments, className, emptyText = 'Nothing to show yet.',
+}: {
+  segments: Segment[];
+  className?: string;
+  emptyText?: string;
 }) {
   const total = segments.reduce((s, x) => s + x.value, 0);
   if (total <= 0) {
-    return <p className={cn('text-[12px] text-ink-subtle', className)}>Nothing to show yet.</p>;
+    return <p className={cn('text-[12.5px] text-ink-subtle', className)}>{emptyText}</p>;
   }
   return (
     <div className={className}>
-      <div className="flex h-2.5 w-full overflow-hidden bg-surface-muted">
-        {segments.map((s, i) => (
+      <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-surface-muted">
+        {segments.map((s) =>
           s.value > 0 ? (
             <div
               key={s.label}
-              className="h-full"
+              className="bar-grow h-full first:rounded-l-full last:rounded-r-full"
               style={{
                 width: `${(s.value / total) * 100}%`,
-                background: i === 0
-                  ? 'oklch(0.9 0.025 250)'
-                  : `oklch(1 0 0 / ${Math.max(0.14, 0.46 - (i - 1) * 0.15)})`,
+                background: `linear-gradient(180deg, ${accentVar(s.accent)}, color-mix(in srgb, ${accentVar(s.accent)} 72%, transparent))`,
               }}
-              title={`${s.label}: ${s.value}`}
+              title={`${s.label}: ${fmt(s.value)}`}
             />
-          ) : null
-        ))}
+          ) : null,
+        )}
       </div>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-        {segments.map((s, i) => (
-          <li key={s.label} className="flex items-center gap-1.5 text-[11.5px]">
-            <span
-              className="size-2 shrink-0 rounded-sm"
-              style={{
-                background: i === 0
-                  ? 'oklch(0.9 0.025 250)'
-                  : `oklch(1 0 0 / ${Math.max(0.14, 0.46 - (i - 1) * 0.15)})`,
-              }}
-            />
-            <span className="text-ink-muted">{s.label}</span>
-            <span className="num font-medium text-ink">{s.value}</span>
-          </li>
-        ))}
+      <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+        {segments.map((s) => {
+          const body = (
+            <>
+              <span className="size-2.5 shrink-0 rounded-full" style={{ background: accentVar(s.accent) }} />
+              <span className="flex-1 truncate text-ink-muted">{s.label}</span>
+              <span className="num font-semibold text-ink">{fmt(s.value)}</span>
+            </>
+          );
+          return (
+            <li key={s.label}>
+              {s.href ? (
+                <Link href={s.href} className="flex items-center gap-2 rounded-md text-[12.5px] hover:underline">
+                  {body}
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2 text-[12.5px]">{body}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -2,20 +2,28 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
-import { fmtQty } from '@/lib/utils';
+import {
+  ArrowRight, ArrowUpRight, CircleCheck, Factory, PackageCheck, PackageOpen, PlayCircle,
+  RefreshCw, Scissors, ShieldCheck, Shirt, Sparkles, TriangleAlert,
+} from 'lucide-react';
+import { ALL_NAV_ITEMS } from '@dnd/contracts';
+import { cn, fmtQty } from '@/lib/utils';
+import type { Accent } from '@/components/ui/primitives';
+import { InfoHint } from '@/components/ui/primitives';
+import { accentVar, stageAccent } from '@/components/ui/charts';
+import { useAuth } from './auth-context';
 
 /**
- * Garments are discrete, so a count shows as a whole number - "88", not
- * "88.00". Fabric is continuous and keeps its decimals elsewhere; carrying
- * them onto a piece count just puts noise on the largest type on the page.
- * A genuine fraction still prints, because hiding one would be a lie.
+ * Garments are discrete, so a count shows as a whole number — "88", not
+ * "88.00". A genuine fraction still prints, because hiding one would be a lie.
  */
-function pieces(value: string): string {
+function pieces(value: string | number): string {
   const n = Number(value);
-  if (!Number.isFinite(n)) return value;
-  return Number.isInteger(n) ? fmtQty(value, 0) : fmtQty(value, 2);
+  if (!Number.isFinite(n)) return String(value);
+  return Number.isInteger(n) ? fmtQty(String(n), 0) : fmtQty(String(n), 2);
 }
+
+const num = (v: string) => Number(v) || 0;
 
 export interface LineStage {
   stageId: string;
@@ -31,18 +39,53 @@ export interface LineStage {
   hasActivity: boolean;
 }
 
+const STAGE_ICON: Record<Accent, React.ComponentType<{ className?: string }>> = {
+  release: PlayCircle,
+  issue: PackageOpen,
+  cutting: Scissors,
+  stitching: Shirt,
+  finishing: Sparkles,
+  qc: ShieldCheck,
+  rework: RefreshCw,
+  completed: PackageCheck,
+  rejected: TriangleAlert,
+  inventory: PackageOpen,
+  purchasing: PackageOpen,
+  delayed: TriangleAlert,
+  hold: TriangleAlert,
+  neutral: Factory,
+};
+
 /**
- * The Line.
+ * Where a stage card leads: the screen that works that stage, if one exists
+ * and the person can open it. A stage with no screen is simply not a link —
+ * a card that leads to a 404 is worse than a card that leads nowhere.
+ */
+const DRILLDOWN: [RegExp, RegExp][] = [
+  [/release/i, /^Manufacturing Orders$/],
+  [/issue/i, /^Material Movements$/],
+  [/cut/i, /^Cutting$/],
+  [/embroider/i, /^Embroidery$/],
+  [/stitch|sew/i, /^Stitching$/],
+  [/wash|process/i, /^Washing/],
+  [/finish/i, /^Finishing$/],
+  [/qc|quality|inspect/i, /^Quality Control$/],
+  [/rework/i, /^Rework$/],
+  [/handover|dispatch/i, /^Production Handover$/],
+];
+
+/**
+ * The production flow.
  *
- * A garment is counted once, at the stage it has actually reached, so these
- * figures deliberately do NOT sum - 120 cut, 112 stitched and 96 finished is
- * 96 garments, not 328. The thing worth looking at is where quantity leaves
- * the line, which is why loss is drawn between the stages rather than inside
- * them.
+ * Connected stage cards, in route order. Each card's headline is what sits AT
+ * that stage right now; the bar is how much of what it took in it has
+ * completed; and losses — rejection and open rework — are flagged on the card
+ * where they happened, because where quantity leaves the line is the thing
+ * nobody has on a spreadsheet.
  *
- * The running stitch is `stroke-dasharray`, so the animation is the subject
- * rather than decoration applied to it. On a phone it runs vertically, which
- * is the better reading of a sequence anyway.
+ * A garment is counted once, at the stage it has reached, so stage figures
+ * deliberately do NOT sum across cards. Everything here is read from the
+ * stage ledger; nothing is estimated.
  */
 export function ProductionLine({
   stages, wipTotal, activeStages,
@@ -51,276 +94,287 @@ export function ProductionLine({
   wipTotal: string;
   activeStages: number;
 }) {
+  const { can } = useAuth();
   const working = stages.filter((s) => s.hasActivity);
   const shown = working.length > 0 ? working : stages;
-  const peak = Math.max(1, ...shown.map((s) => num(s.receivedQty)));
+
+  const rejected = shown.reduce((n, s) => n + num(s.rejectedQty), 0);
+  const rework = shown.reduce((n, s) => n + num(s.reworkOpenQty), 0);
+
+  const hrefFor = (s: LineStage): string | undefined => {
+    const rule = DRILLDOWN.find(([stage]) => stage.test(`${s.name} ${s.code}`));
+    if (!rule) return undefined;
+    const item = ALL_NAV_ITEMS.find(
+      (i) => rule[1].test(i.label) && i.status !== 'PLANNED' && (!i.permission || can(i.permission)),
+    );
+    return item?.href;
+  };
 
   return (
-    <section
-      aria-label="Production line"
-      className="solid-accent relative overflow-hidden rounded-lg"
-    >
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 pt-3.5 sm:px-5">
-        <div>
-          <h2 className="font-display text-[15px] font-semibold tracking-tight text-chalk sm:text-[16px]">
-            The line
-          </h2>
-          <p className="mt-0.5 text-[12px] text-chalk-muted">
+    <section aria-labelledby="flow-title" className="glass rounded-3xl p-4 sm:p-5">
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 id="flow-title" className="text-[20px] font-semibold tracking-tight text-ink sm:text-[22px]">
+              Production flow
+            </h2>
+            <InfoHint text="Each garment is counted once, at the stage it has reached, so stage figures do not sum across cards. Read live from the stage ledger." />
+          </div>
+          <p className="mt-0.5 text-[13px] text-ink-muted">
             {shown.length === 0
-              ? 'No route steps configured yet.'
-              : 'Each garment counted once, at the stage it has reached. These do not sum.'}
+              ? 'No production stages are configured yet.'
+              : `${shown.length} stages in route order · live from the stage ledger`}
           </p>
         </div>
-        <Link
-          href="/production/stages"
-          className="group inline-flex items-center gap-1 rounded text-[12px] font-medium text-chalk-muted transition-colors hover:text-zari focus-visible:text-zari"
-        >
-          Open stages
-          <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </Link>
+
+        <dl className="flex flex-wrap items-stretch gap-2">
+          <Summary label="On the floor" value={pieces(wipTotal)} accent="stitching" note={`${activeStages} stages holding work`} />
+          <Summary label="Rejected" value={pieces(rejected)} accent="rejected" alert={rejected > 0} />
+          <Summary label="Out for rework" value={pieces(rework)} accent="rework" alert={rework > 0} />
+        </dl>
       </header>
 
       {shown.length === 0 ? (
-        <p className="px-4 pb-5 pt-3 text-[12.5px] text-chalk-muted sm:px-5">
-          Define a production route and its steps, then released orders will appear here.
+        <p className="mt-4 rounded-2xl border border-dashed border-line-strong px-4 py-6 text-center text-[13px] text-ink-muted">
+          Configure production stages and a route to see work flow through them here.
         </p>
       ) : (
-        <>
-          {/* Totals: the one big statement this page makes. */}
-          {/*
-            Three across on a phone rather than wrapped. Flow-wrapping these
-            put one figure on its own row with a stray hint beside it, which
-            reads as a mistake; a fixed three-up keeps the baselines true at
-            every width.
-          */}
-          <div className="grid grid-cols-3 items-start gap-x-3 px-4 pb-1 pt-3 sm:flex sm:flex-wrap sm:items-end sm:gap-x-7 sm:px-5">
-            <Figure
-              delay={0}
-              value={pieces(wipTotal)}
-              label="on the floor now"
-              hint={`${activeStages} ${activeStages === 1 ? 'stage holding work' : 'stages holding work'}`}
-            />
-            <Figure
-              delay={80}
-              value={pieces(totalOf(shown, 'rejectedQty'))}
-              label="rejected"
-              tone={num(totalOf(shown, 'rejectedQty')) > 0 ? 'loss' : 'none'}
-            />
-            <Figure
-              delay={140}
-              value={pieces(totalOf(shown, 'reworkOpenQty'))}
-              label="out for rework"
-              tone={num(totalOf(shown, 'reworkOpenQty')) > 0 ? 'loss' : 'none'}
-              hint="Outstanding, not cumulative"
-            />
-          </div>
-
-          <StitchTrack stages={shown} peak={peak} />
-        </>
+        <ol
+          className={cn(
+            'mt-5 flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-0',
+            shown.length > 5 && 'lg:overflow-x-auto lg:pb-2',
+          )}
+          aria-label="Production stages in order"
+        >
+          {shown.map((s, i) => {
+            const accent = stageAccent(s.name, s.code, i);
+            const next = shown[i + 1];
+            return (
+              <React.Fragment key={s.stageId}>
+                <li className={cn('min-w-0 lg:flex-1', shown.length > 5 && 'lg:min-w-[210px]')}>
+                  <StageCard stage={s} index={i} accent={accent} href={hrefFor(s)} />
+                </li>
+                {next ? (
+                  <Connector
+                    from={accent}
+                    to={stageAccent(next.name, next.code, i + 1)}
+                    handedOn={num(s.forwardedQty)}
+                  />
+                ) : null}
+              </React.Fragment>
+            );
+          })}
+        </ol>
       )}
     </section>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-
-function Figure({
-  value, label, hint, tone, delay,
+function Summary({
+  label, value, accent, note, alert,
 }: {
-  value: string; label: string; hint?: string; tone?: 'loss' | 'none'; delay: number;
+  label: string;
+  value: string;
+  accent: Accent;
+  note?: string;
+  alert?: boolean;
 }) {
-  // A zero loss is good news and should read as calm, not as an alarm showing
-  // nothing. Only a real loss earns the madder.
-  const colour =
-    tone === 'loss' ? 'text-madder' : tone === 'none' ? 'text-chalk-muted/60' : 'text-chalk';
   return (
-    <div className="line-figure" style={{ animationDelay: `${delay}ms` }}>
-      <div
-        className={`font-display text-[24px] leading-none font-semibold tracking-tight num sm:text-[30px] ${colour}`}
-      >
-        {value}
+    <div className="glass-inset flex min-w-[118px] items-center gap-3 rounded-2xl px-3.5 py-2">
+      <span className="size-2.5 shrink-0 rounded-full" style={{ background: accentVar(accent) }} aria-hidden="true" />
+      <div>
+        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</dt>
+        <dd
+          className={cn('num text-[20px] font-semibold leading-tight', alert ? '' : 'text-ink')}
+          style={alert ? { color: accentVar(accent) } : undefined}
+        >
+          {value}
+          {note ? <span className="ml-1.5 text-[11.5px] font-normal text-ink-subtle">{note}</span> : null}
+        </dd>
       </div>
-      <div className="mt-1.5 text-[10.5px] leading-tight font-medium tracking-wide text-chalk-muted uppercase sm:text-[11px]">
-        {label}
-      </div>
-      {hint ? (
-        <div className="mt-0.5 hidden text-[11px] leading-tight text-chalk-muted/70 sm:block">{hint}</div>
-      ) : null}
     </div>
   );
 }
 
-/**
- * The stitch itself.
- *
- * Rendered twice: a horizontal run for tablets and desktops, a vertical one for
- * phones. Two SVGs rather than one reflowed, because a sequence read top-to-
- * bottom on a narrow screen needs different proportions, not the same drawing
- * squeezed.
- */
-function StitchTrack({ stages, peak }: { stages: LineStage[]; peak: number }) {
-  return (
+function StageCard({
+  stage, index, accent, href,
+}: {
+  stage: LineStage;
+  index: number;
+  accent: Accent;
+  href?: string;
+}) {
+  const Icon = STAGE_ICON[accent];
+  const colour = accentVar(accent);
+  const received = num(stage.receivedQty);
+  const completed = num(stage.completedQty);
+  const rejected = num(stage.rejectedQty);
+  const rework = num(stage.reworkOpenQty);
+  const wip = num(stage.wipQty);
+  const pct = received > 0 ? Math.min(100, Math.round((completed / received) * 100)) : 0;
+
+  const body = (
     <>
-      {/* Phone: vertical */}
-      <ol className="space-y-0 px-4 pb-5 pt-3 sm:hidden">
-        {stages.map((s, i) => (
-          <li key={s.stageId} className="relative pl-7">
-            {i < stages.length - 1 ? (
-              <svg
-                className="absolute left-[7px] top-4 h-full w-px overflow-visible"
-                aria-hidden="true"
-                style={{ ['--stitch-length' as string]: '120' }}
-              >
-                <line
-                  x1="0" y1="0" x2="0" y2="100%"
-                  className="stitch"
-                  stroke="var(--color-chalk-muted)"
-                  strokeWidth="1.5"
-                  strokeDashoffset="120"
-                  style={{ animationDelay: `${300 + i * 110}ms` }}
-                />
-              </svg>
-            ) : null}
-
-            <span
-              className="line-node absolute left-0 top-[5px] block size-3.5 border-2"
-              style={{
-                animationDelay: `${260 + i * 110}ms`,
-                borderColor: num(s.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat-line)',
-                background: num(s.wipQty) > 0 ? 'var(--color-zari)' : 'transparent',
-              }}
-            />
-
-            <div
-              className="line-node pb-5"
-              style={{ animationDelay: `${300 + i * 110}ms` }}
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-[12.5px] font-medium text-chalk">{s.name}</span>
-                <span
-                  className={`font-display text-[22px] leading-none font-semibold num ${
-                    num(s.wipQty) > 0 ? 'text-chalk' : 'text-chalk-muted/55'
-                  }`}
-                >
-                  {pieces(s.wipQty)}
-                </span>
-              </div>
-              <Meter stage={s} peak={peak} />
-              <StageCaption stage={s} />
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      {/* Tablet and up: horizontal */}
-      <div className="hidden sm:block">
-        <div className="scroll-x px-5 pb-4 pt-3">
-          <div
-            // Columns cap rather than stretch. Three active stages spread
-            // across a wide monitor turn the meters into long empty bars that
-            // read as the most important thing on the strip; capped, the line
-            // simply looks like what it is - a line that has not filled yet.
-            className="grid min-w-[480px] gap-x-4"
-            style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(104px, 236px))` }}
-          >
-            {/* the thread */}
-            <svg
-              className="col-span-full h-3 w-full overflow-visible"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-              style={{ ['--stitch-length' as string]: '1200' }}
-            >
-              <line
-                x1="0" y1="6" x2="100%" y2="6"
-                className="stitch"
-                stroke="var(--color-chalk-muted)"
-                strokeWidth="1.5"
-                strokeDashoffset="1200"
-              />
-            </svg>
-
-            {stages.map((s, i) => (
-              <div key={s.stageId} className="relative -mt-[13px]">
-                <span
-                  className="line-node mb-3 block size-3 border-2"
-                  style={{
-                    animationDelay: `${300 + i * 110}ms`,
-                    borderColor: num(s.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat-line)',
-                    background: num(s.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat)',
-                  }}
-                />
-                <div className="line-node" style={{ animationDelay: `${340 + i * 110}ms` }}>
-                  <div className="truncate text-[11.5px] font-medium text-chalk-muted" title={s.name}>
-                    {s.name}
-                  </div>
-                  <div
-                    className={`mt-1 font-display text-[26px] leading-none font-semibold num ${
-                      num(s.wipQty) > 0 ? 'text-chalk' : 'text-chalk-muted/55'
-                    }`}
-                  >
-                    {pieces(s.wipQty)}
-                  </div>
-                  <Meter stage={s} peak={peak} />
-                  <StageCaption stage={s} />
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* A fine wash of the stage colour, so the card reads as tinted glass. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
+        style={{
+          background: `radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, ${colour} 20%, transparent), transparent 62%)`,
+        }}
+      />
+      <div className="flex items-center gap-2.5">
+        <span
+          className="grid size-9 shrink-0 place-items-center rounded-full border"
+          style={{
+            color: colour,
+            background: `color-mix(in srgb, ${colour} 16%, transparent)`,
+            borderColor: `color-mix(in srgb, ${colour} 34%, transparent)`,
+          }}
+          aria-hidden="true"
+        >
+          <Icon className="size-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">
+            Stage {index + 1}
+          </p>
+          <h3 className="truncate text-[14.5px] font-semibold leading-tight text-ink">{stage.name}</h3>
         </div>
+        {href ? <ArrowUpRight className="size-4 shrink-0 text-ink-subtle transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /> : null}
+      </div>
+
+      <div className="mt-4 flex items-end justify-between gap-2">
+        <div>
+          <p className="num line-figure text-[38px] font-semibold leading-none tracking-tight text-ink">{pieces(wip)}</p>
+          <p className="mt-1 text-[12px] text-ink-muted">at this stage now</p>
+        </div>
+        <div className="text-right">
+          <p className="num text-[15px] font-semibold text-ink">{pct}%</p>
+          <p className="text-[11.5px] text-ink-subtle">completed</p>
+        </div>
+      </div>
+
+      <div
+        className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-muted"
+        role="progressbar"
+        aria-label={`${stage.name}: ${pct}% of work taken in is completed`}
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="bar-grow h-full rounded-full"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, color-mix(in srgb, ${colour} 70%, transparent), ${colour})`,
+            boxShadow: `0 0 12px color-mix(in srgb, ${colour} 55%, transparent)`,
+          }}
+        />
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-[12.5px]">
+        <div>
+          <dt className="text-ink-subtle">Taken in</dt>
+          <dd className="num font-semibold text-ink">{pieces(received)}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-subtle">Completed</dt>
+          <dd className="num font-semibold text-ink">{pieces(completed)}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-line pt-3">
+        {rejected > 0 ? (
+          <Exception accent="rejected" icon={TriangleAlert} label={`${pieces(rejected)} rejected`} />
+        ) : null}
+        {rework > 0 ? (
+          <Exception accent="rework" icon={RefreshCw} label={`${pieces(rework)} in rework`} />
+        ) : null}
+        {rejected === 0 && rework === 0 ? (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-subtle">
+            <CircleCheck className="size-3.5" style={{ color: accentVar('completed') }} />
+            No losses at this stage
+          </span>
+        ) : null}
       </div>
     </>
   );
+
+  const shell = cn(
+    'glass-inset group relative isolate flex h-full flex-col rounded-2xl p-4',
+    'shadow-[inset_0_1px_0_var(--glass-highlight)]',
+  );
+
+  return href ? (
+    <Link
+      href={href}
+      aria-label={`${stage.name}: ${pieces(wip)} at this stage. Open ${stage.name}.`}
+      className={cn(shell, 'glass-interactive hover:border-[var(--glass-border)]')}
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className={shell}>{body}</div>
+  );
 }
 
-/** How much of the line's peak throughput passed through here. */
-function Meter({ stage, peak }: { stage: LineStage; peak: number }) {
-  const pct = Math.min(100, Math.round((num(stage.receivedQty) / peak) * 100));
+function Exception({
+  accent, icon: Icon, label,
+}: {
+  accent: Accent;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  const colour = accentVar(accent);
   return (
-    <div
-      className="mt-2 h-[3px] w-full bg-vat-deep"
-      role="img"
-      aria-label={`${pieces(stage.receivedQty)} taken into ${stage.name}`}
+    <span
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] font-semibold"
+      style={{
+        color: `var(--color-${accent === 'rejected' ? 'danger' : 'hold'})`,
+        background: `color-mix(in srgb, ${colour} 14%, transparent)`,
+        borderColor: `color-mix(in srgb, ${colour} 34%, transparent)`,
+      }}
     >
-      <div
-        className="h-full transition-[width] duration-700 ease-out"
-        style={{
-          width: `${pct}%`,
-          background: num(stage.wipQty) > 0 ? 'var(--color-zari)' : 'var(--color-vat-line)',
-        }}
-      />
-    </div>
+      <Icon className="size-3.5" />
+      {label}
+    </span>
   );
 }
 
 /**
- * What the big number means, and where quantity left.
- *
- * The figure above is what is SITTING here; the bar is what has passed
- * through. Saying "of 50 taken in" makes that relationship explicit - without
- * it the number and the bar look like they should agree, and they never will.
+ * The transition between two stages: a lit line from one stage's colour to
+ * the next, carrying what was handed on. Vertical on a phone, where a
+ * sequence reads top to bottom anyway.
  */
-function StageCaption({ stage }: { stage: LineStage }) {
-  const rejected = num(stage.rejectedQty);
-  const rework = num(stage.reworkOpenQty);
+function Connector({ from, to, handedOn }: { from: Accent; to: Accent; handedOn: number }) {
   return (
-    <div className="mt-1.5 space-y-0.5">
-      <div className="text-[11px] text-chalk-muted/70">
-        <span className="num">{pieces(stage.receivedQty)}</span> taken in
-      </div>
-      {rejected > 0 || rework > 0 ? (
-        <div className="flex flex-wrap gap-x-2.5 text-[11px] text-madder">
-          {rejected > 0 ? (
-            <span className="num struck">{pieces(stage.rejectedQty)} rejected</span>
-          ) : null}
-          {rework > 0 ? (
-            <span className="num struck">{pieces(stage.reworkOpenQty)} rework</span>
-          ) : null}
+    <li aria-hidden="true" className="flex items-center justify-center lg:w-[74px] lg:shrink-0">
+      {/* desktop: horizontal */}
+      <div className="hidden w-full flex-col items-center gap-1 lg:flex">
+        <span className="num text-[12px] font-semibold text-ink">{pieces(handedOn)}</span>
+        <div className="relative flex w-full items-center">
+          <span
+            className="h-[3px] flex-1 rounded-full"
+            style={{
+              background: `linear-gradient(90deg, ${accentVar(from)}, ${accentVar(to)})`,
+              boxShadow: `0 0 10px color-mix(in srgb, ${accentVar(to)} 45%, transparent)`,
+            }}
+          />
+          <ArrowRight className="-ml-1.5 size-4 shrink-0" style={{ color: accentVar(to) }} />
         </div>
-      ) : null}
-    </div>
+        <span className="text-[11px] text-ink-subtle">handed on</span>
+      </div>
+      {/* phone and tablet: vertical */}
+      <div className="flex items-center gap-2 py-0.5 lg:hidden">
+        <span
+          className="h-6 w-[3px] rounded-full"
+          style={{ background: `linear-gradient(180deg, ${accentVar(from)}, ${accentVar(to)})` }}
+        />
+        <span className="text-[12px] text-ink-muted">
+          <span className="num font-semibold text-ink">{pieces(handedOn)}</span> handed on
+        </span>
+      </div>
+    </li>
   );
 }
-
-const num = (v: string): number => Number(v) || 0;
-const totalOf = (stages: LineStage[], key: keyof LineStage): string =>
-  stages.reduce((sum, s) => sum + num(String(s[key])), 0).toFixed(2);

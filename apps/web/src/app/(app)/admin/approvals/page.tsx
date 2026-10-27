@@ -75,7 +75,7 @@ export default function ApprovalsPage() {
                       key={k}
                       onClick={() => setKind(k)}
                       className={`rounded px-2 py-1 text-[11.5px] font-medium transition-colors ${
-                        kind === k ? 'bg-brand text-white' : 'text-ink-muted hover:bg-surface-muted'
+                        kind === k ? 'bg-brand text-canvas' : 'text-ink-muted hover:bg-surface-muted'
                       }`}
                     >
                       {k === 'ALL' ? 'All' : KIND_LABEL[k]}

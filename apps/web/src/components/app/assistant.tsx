@@ -110,7 +110,7 @@ export function Assistant() {
             className="absolute inset-0 cursor-default bg-transparent"
           />
 
-          <div className="glass relative flex h-[min(620px,88vh)] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl">
+          <div className="glass-modal relative flex h-[min(620px,88vh)] w-full max-w-[440px] flex-col overflow-hidden rounded-3xl">
             <header className="flex items-center gap-2 border-b border-line px-4 py-3">
               <Sparkles className="size-4 text-ink" />
               <div className="min-w-0 flex-1">
