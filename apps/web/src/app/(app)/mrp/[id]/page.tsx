@@ -101,7 +101,7 @@ export default function MrpRunDetailPage() {
         <CardBody className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] text-[12.5px]">
-              <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+              <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Material</th>
                   <th className="px-2 py-2 text-right font-medium">Net</th>
@@ -124,7 +124,7 @@ export default function MrpRunDetailPage() {
                     <tr key={l.rawMaterialId} className="border-b border-line last:border-0">
                       <td className="px-3 py-2">
                         <CodeCell>{l.materialCode}</CodeCell>
-                        <div className="text-[11.5px] text-ink-muted">{l.materialName}</div>
+                        <div className="text-[12px] text-ink-muted">{l.materialName}</div>
                       </td>
                       <td className="px-2 py-2 text-right num text-ink-muted">{fmtQty(l.netRequiredQty, 4)}</td>
                       <td className="px-2 py-2 text-right num text-ink-muted">{fmtQty(l.wastageQty, 4)}</td>
@@ -146,7 +146,7 @@ export default function MrpRunDetailPage() {
                         {Number(l.openPurchaseQty) > 0 ? (
                           <span title={`Expected ${fmtDate(l.expectedArrivalDate)}`}>
                             {fmtQty(l.openPurchaseQty, 4)}
-                            <span className="ml-1 text-[11px] text-ink-subtle">
+                            <span className="ml-1 text-[12px] text-ink-subtle">
                               {fmtDate(l.expectedArrivalDate)}
                             </span>
                           </span>
@@ -318,7 +318,7 @@ function RaiseRequisitionDialog({
               />
               <div className="min-w-0 flex-1">
                 <CodeCell>{l.materialCode}</CodeCell>
-                <div className="truncate text-[11.5px] text-ink-muted">
+                <div className="truncate text-[12px] text-ink-muted">
                   short {fmtQty(l.uncoveredShortageQty, 4)} {uomShort(l.uom)}
                 </div>
               </div>

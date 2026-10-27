@@ -100,7 +100,7 @@ export function DataTable<T>({
   };
 
   return (
-    <div className="glass-dense overflow-hidden rounded-2xl">
+    <div className="glass-dense overflow-hidden rounded-3xl">
       {search || toolbar || exportFileName ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           {search ? (
@@ -145,11 +145,13 @@ export function DataTable<T>({
       ) : rows.length === 0 ? (
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
-        <div className="scroll-x">
-          <table className="w-full border-collapse text-[13px]">
-            <thead className={cn(stickyHeader && 'sticky top-0 z-10')}>
+        // The scroll box owns both axes, so the header sticks inside it on
+        // long tables and wide ones still scroll sideways.
+        <div className={cn('table-scroll', stickyHeader === false && 'max-h-none')}>
+          <table className="w-full border-separate border-spacing-0 text-[13px]">
+            <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-line bg-surface-muted">
+                <tr key={hg.id}>
                   {hg.headers.map((header) => {
                     const sortable = header.column.getCanSort();
                     const dir = header.column.getIsSorted();
@@ -157,8 +159,10 @@ export function DataTable<T>({
                     return (
                       <th
                         key={header.id}
+                        scope="col"
+                        aria-sort={dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : sortable ? 'none' : undefined}
                         className={cn(
-                          'whitespace-nowrap px-3.5 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-subtle',
+                          'whitespace-nowrap px-3.5 py-2.5 text-left text-[12px] font-semibold text-ink-muted',
                           meta?.align === 'right' && 'text-right',
                           meta?.align === 'center' && 'text-center',
                           sortable && 'cursor-pointer select-none hover:text-ink',
@@ -183,7 +187,7 @@ export function DataTable<T>({
                   key={row.id}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                   className={cn(
-                    'border-b border-line transition-colors duration-150 last:border-0',
+                    'transition-colors duration-150 [&>td]:border-b [&>td]:border-line last:[&>td]:border-0',
                     onRowClick && 'cursor-pointer hover:bg-brand-soft',
                     !onRowClick && 'hover:bg-surface-muted',
                   )}
@@ -196,7 +200,7 @@ export function DataTable<T>({
                       <td
                         key={cell.id}
                         className={cn(
-                          'px-3.5 py-2.5 align-middle text-ink',
+                          'px-3.5 py-2 align-middle text-ink',
                           meta?.align === 'right' && 'text-right',
                           meta?.align === 'center' && 'text-center',
                           meta?.numeric && 'num',
@@ -227,7 +231,7 @@ export function DataTable<T>({
               <select
                 value={pagination.pageSize}
                 onChange={(e) => pagination.onPageSizeChange?.(Number(e.target.value))}
-                className="h-8 rounded-lg border border-line-strong bg-surface px-2 text-[12.5px] text-ink [&>option]:bg-canvas"
+                className="h-8 rounded-lg border border-line-strong bg-surface px-2 text-[13px] text-ink [&>option]:bg-canvas"
                 aria-label="Rows per page"
               >
                 {[25, 50, 100, 200].map((n) => (

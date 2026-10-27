@@ -113,7 +113,7 @@ export default function QualityPage() {
           row.original.defects.length === 0 ? (
             <span className="text-ink-subtle">—</span>
           ) : (
-            <span className="block max-w-[220px] truncate text-[11.5px] text-ink-muted">
+            <span className="block max-w-[220px] truncate text-[12px] text-ink-muted">
               {row.original.defects
                 .map((d) => `${humanise(d.category)} ${fmtQty(d.qty, 0)}`)
                 .join(', ')}
@@ -379,7 +379,7 @@ function RecordInspectionDialog({
                 </Button>
               </div>
               {needsDefect ? (
-                <p className="text-[11.5px] text-danger">
+                <p className="text-[12px] text-danger">
                   A failure or rework needs at least one recorded defect — that record is what makes the
                   cause traceable later.
                 </p>

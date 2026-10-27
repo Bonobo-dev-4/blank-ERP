@@ -78,7 +78,7 @@ export default function ConsumptionReportPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Material</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Consumed</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Wastage</th>
@@ -92,7 +92,7 @@ export default function ConsumptionReportPage() {
                     {data.lines.map((l) => (
                       <tr key={l.rawMaterialId} className="border-b border-line last:border-0">
                         <td className="px-3 py-1.5">
-                          <span className="font-mono text-[11.5px]">{l.materialCode}</span>
+                          <span className="font-mono text-[12px]">{l.materialCode}</span>
                           <span className="ml-2 text-ink-muted">{l.name}</span>
                         </td>
                         <td className="num px-3 py-1.5 text-right">
@@ -105,7 +105,7 @@ export default function ConsumptionReportPage() {
                         <td className="num px-3 py-1.5 text-right text-ink-muted">{fmtQty(l.standardQty)}</td>
                         <td className={`num px-3 py-1.5 text-right font-medium ${l.isOverConsumption ? 'text-danger' : 'text-ok'}`}>
                           {Number(l.varianceQty) > 0 ? '+' : ''}{fmtQty(l.varianceQty)}
-                          {l.variancePct ? <span className="ml-1 text-[11px] font-normal">({l.variancePct}%)</span> : null}
+                          {l.variancePct ? <span className="ml-1 text-[12px] font-normal">({l.variancePct}%)</span> : null}
                         </td>
                         <td className="num px-3 py-1.5 text-right">{fmtMoneyCompact(l.totalCost)}</td>
                       </tr>

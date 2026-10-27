@@ -99,7 +99,7 @@ export function Tabs<T extends string>({
             {t.count !== undefined ? (
               <span
                 className={cn(
-                  'num rounded-full px-2 py-px text-[11.5px] font-semibold tabular-nums',
+                  'num rounded-full px-2 py-px text-[12px] font-semibold tabular-nums',
                   // The count inverts on the active tab: the number you are
                   // looking at should be the heaviest mark in the strip.
                   active ? 'bg-ink text-canvas' : 'bg-surface-muted text-ink-muted',

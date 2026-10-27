@@ -6,9 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import {
   ArrowDownToLine, ArrowLeftRight, ArrowRight, ArrowRightFromLine, ArrowUpDown, BadgeCheck,
-  Boxes, CalendarRange, CircleCheck, ClipboardList, Clock, Factory, FileCheck2, Hourglass, Layers,
-  PackageCheck, PlayCircle, Scroll, Search, ShieldCheck, ShieldX, SlidersHorizontal, Trash2,
-  TriangleAlert, Truck, Undo2, Wallet,
+  Boxes, CalendarRange, CircleCheck, ClipboardList, Clock, Factory, FileCheck2, Gauge, Hourglass,
+  Layers, PackageCheck, PlayCircle, RefreshCw, Scroll, Search, ShieldCheck, ShieldX,
+  SlidersHorizontal, Trash2, TriangleAlert, Truck, Undo2, Wallet,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import {
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/primitives';
 import { ProductionLine, type LineStage } from '@/components/app/production-line';
 import {
-  accentVar, CategoryBars, Donut, SegmentBar, stageAccent, TrendChart,
+  accentVar, CategoryBars, Donut, RadialProgress, SegmentBar, stageAccent, TrendChart,
 } from '@/components/ui/charts';
 import { useAuth } from '@/components/app/auth-context';
 
@@ -53,6 +53,11 @@ interface DashboardSummary {
         activeStages: number;
         wipTotal: string;
       };
+  quality?: {
+    windowDays: number; inspections: number;
+    inspectedQty: string; passedQty: string; failedQty: string; reworkQty: string; holdQty: string;
+    openReworkOrders: number;
+  };
   topAlerts: AlertRow[];
   recentMovements: {
     id: string; movementNo: string; movementType: string; baseQty: string; occurredAt: string;
@@ -96,6 +101,9 @@ const dayLabel = (d: string) => {
   try { return format(parseISO(d), 'd MMM'); } catch { return d; }
 };
 
+/** Garments are discrete: whole numbers print whole. */
+const garments = (n: number) => fmtInt(Math.round(n));
+
 /* ------------------------------------------------------------------- page */
 
 export default function DashboardPage() {
@@ -117,79 +125,76 @@ export default function DashboardPage() {
   const lastStage = (working.length ? working : line).at(-1);
   const rejectedTotal = line.reduce((n, s) => n + Number(s.rejectedQty), 0);
 
-  const series = (k: 'released' | 'completed' | 'rejected') =>
+  const series = (k: 'released' | 'rejected') =>
     month.data?.hasProductionHistory ? month.data.days.map((d) => Number(d[k])) : undefined;
 
   return (
-    <div className="mx-auto max-w-[1680px] space-y-4 lg:space-y-5">
+    <div className="mx-auto max-w-[1680px] space-y-5">
       {/* --- heading ------------------------------------------------------ */}
-      <header className="flex flex-col gap-3 pt-1 md:flex-row md:items-end md:justify-between">
+      <header className="flex flex-col gap-1 pt-1 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ink-subtle">DASH AND DOT</p>
-          <h1 className="text-[32px] font-semibold leading-tight tracking-tight text-ink lg:text-[38px]">
-            Manufacturing overview
-          </h1>
-          <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
-            <span className="size-2 rounded-full bg-ok" aria-hidden="true" />
+          <h1 className="t-page-title text-ink">Manufacturing Overview</h1>
+          <p className="mt-1 flex items-center gap-2 text-[13px] text-ink-subtle">
+            <span className="size-1.5 rounded-full bg-ok shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-ok)_22%,transparent)]" aria-hidden="true" />
             Live as of {fmtDateTime(data.generatedAt)} · refreshes every minute
           </p>
         </div>
       </header>
 
       {/* --- KPI row ------------------------------------------------------ */}
-      <section aria-label="Key figures" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 lg:gap-4">
+      <section aria-label="Key figures" className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Stat
           label="On the floor"
-          value={fmtInt(Math.round(Number(prod?.wipTotal ?? 0)))}
-          hint={prod ? `${prod.activeStages} stages holding work` : 'Production not configured'}
+          value={garments(Number(prod?.wipTotal ?? 0))}
+          hint={prod ? `garments at ${prod.activeStages} stages` : 'production not configured'}
           icon={Factory}
           accent="stitching"
-          info="Garments taken into a stage and not yet handed on, rejected or out for rework — counted once, at the stage each has reached."
+          info="Garments taken into a stage and not yet handed on, rejected or out for rework — each counted once, at the stage it has reached."
           href="/manufacturing"
         />
         <Stat
           label="Released"
-          value={fmtInt(Math.round(Number(prod?.orders.releasedQty ?? 0)))}
-          hint={`of ${fmtInt(Math.round(Number(prod?.orders.orderedQty ?? 0)))} ordered`}
+          value={garments(Number(prod?.orders.releasedQty ?? 0))}
+          hint={`garments of ${garments(Number(prod?.orders.orderedQty ?? 0))} ordered`}
           icon={PlayCircle}
           accent="release"
-          info="Quantity released to the first production stage across active manufacturing orders. The trend is daily releases over 30 days."
+          info="Garments released to the first production stage, across active manufacturing orders. The line shows daily releases over 30 days."
           sparkline={series('released')}
           href="/manufacturing"
         />
         <Stat
           label="Completed"
-          value={fmtInt(Math.round(Number(lastStage?.completedQty ?? 0)))}
-          hint={lastStage ? `Finished ${lastStage.name}` : 'No stages yet'}
+          value={garments(Number(lastStage?.completedQty ?? 0))}
+          hint={lastStage ? `garments through ${lastStage.name}` : 'no stages yet'}
           icon={CircleCheck}
           accent="completed"
-          info="Garments completed at the last stage of the line — work that has been all the way through."
+          info="Garments completed at the LAST stage of the line — work that has been all the way through. This is not finished-goods stock and not completed orders."
         />
         <Stat
           label="Rejected"
-          value={fmtInt(Math.round(rejectedTotal))}
-          hint="Lost to rejection, all stages"
+          value={garments(rejectedTotal)}
+          hint="garments, across all stages"
           icon={TriangleAlert}
           accent="rejected"
           tone={rejectedTotal > 0 ? 'danger' : undefined}
-          info="Garments rejected at any stage. A rejected garment leaves the line, so this does sum across stages. The trend is daily rejections."
+          info="Garments rejected at any stage. A rejected garment leaves the line, so rejections do add up across stages. The line shows daily rejections."
           sparkline={series('rejected')}
           href="/quality"
         />
         <Stat
           label="Pending inspection"
           value={fmtInt(data.purchasing.receiptsPendingInspection)}
-          hint="Deliveries not yet usable"
+          hint="deliveries awaiting QC"
           icon={ShieldCheck}
           accent="qc"
           tone={data.purchasing.receiptsPendingInspection > 0 ? 'warn' : undefined}
-          info="Goods receipts received but not yet inspected. The stock is owned but cannot be issued to production until it passes."
+          info="Goods receipts (deliveries) received but not yet inspected. The stock is owned but cannot be issued to production until it passes."
           href="/purchasing/receipts?status=PENDING_INSPECTION"
         />
         <Stat
           label="Stock value"
           value={fmtMoneyCompact(data.inventory.rawMaterialStockValue)}
-          hint="Raw material at lot cost"
+          hint="raw material at lot cost"
           icon={Wallet}
           accent="inventory"
           info="Owned raw-material stock valued at each lot's unit cost, across physical, floor, job-worker, hold and in-transit locations."
@@ -205,44 +210,34 @@ export default function DashboardPage() {
       {/* --- trends + order distribution ---------------------------------- */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <ProductionTrends className="xl:col-span-8" />
-        {prod ? <OrderDistribution className="xl:col-span-4" byStatus={prod.orders.byStatus} total={prod.orders.total} /> : null}
+        {prod ? (
+          <OrderDistribution className="xl:col-span-4" byStatus={prod.orders.byStatus} total={prod.orders.total} />
+        ) : null}
       </div>
 
-      {/* --- stage workload + inventory health ---------------------------- */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        {working.length > 0 ? (
-          <Card className="xl:col-span-5">
-            <PanelHeader
-              title="Work taken in, by stage"
-              description="Garments each stage has received. Per stage — never summed."
-              icon={Layers}
-            />
-            <div className="px-3 pb-4 sm:px-5">
-              <CategoryBars
-                unit="garments"
-                height={248}
-                data={working.map((s, i) => ({
-                  label: s.name.replace(/^Production\s+/i, ''),
-                  value: Number(s.receivedQty),
-                  accent: stageAccent(s.name, s.code, i),
-                }))}
-              />
-            </div>
-          </Card>
+      {/* --- bottlenecks, quality, purchasing ------------------------------ */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
+        {prod ? (
+          <ProductionBottlenecks className="xl:col-span-4" stages={working} wipTotal={Number(prod.wipTotal)} />
         ) : null}
+        <QualityPanel
+          className="xl:col-span-4"
+          quality={data.quality}
+          pendingInspection={data.purchasing.receiptsPendingInspection}
+        />
+        <PurchasingOverview className="md:col-span-2 xl:col-span-4" purchasing={data.purchasing} />
+      </div>
+
+      {/* --- inventory + exceptions ---------------------------------------- */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <InventoryHealth
-          className={working.length > 0 ? 'xl:col-span-7' : 'xl:col-span-12'}
+          className="xl:col-span-7"
           inventory={data.inventory}
           activeMaterials={data.masterData.activeRawMaterials}
           trends={month.data}
           trendsLoading={month.isLoading}
         />
-      </div>
-
-      {/* --- purchasing + attention ---------------------------------------- */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <PurchasingOverview className="xl:col-span-5" purchasing={data.purchasing} />
-        <RequiresAttention className="xl:col-span-7" data={data} rejected={rejectedTotal} />
+        <OperationalExceptions className="xl:col-span-5" data={data} rejected={rejectedTotal} />
       </div>
 
       {/* --- alerts + movements -------------------------------------------- */}
@@ -252,9 +247,9 @@ export default function DashboardPage() {
       </div>
 
       {/* --- master data, compact ------------------------------------------ */}
-      <section aria-label="Master data" className="glass rounded-2xl px-4 py-3">
+      <section aria-label="Master data" className="glass-subtle rounded-2xl px-5 py-3">
         <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
-          <li className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">Master data</li>
+          <li className="t-micro text-ink-subtle">Master data</li>
           {([
             ['Raw materials', data.masterData.rawMaterials, '/materials'],
             ['Active', data.masterData.activeRawMaterials, '/materials?status=ACTIVE'],
@@ -277,31 +272,41 @@ export default function DashboardPage() {
   );
 }
 
-/* ---------------------------------------------------------- panel header */
+/* ---------------------------------------------------------- panel pieces */
 
 function PanelHeader({
-  title, description, icon: Icon, actions, info,
+  title, description, icon: Icon, accent, actions, info,
 }: {
   title: string;
   description?: React.ReactNode;
   icon?: React.ComponentType<{ className?: string }>;
+  accent?: Accent;
   actions?: React.ReactNode;
   info?: string;
 }) {
+  const colour = accent ? accentVar(accent) : undefined;
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-3 pt-4">
-      <div className="flex min-w-0 items-start gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-3 pt-[18px]">
+      <div className="flex min-w-0 items-center gap-3">
         {Icon ? (
-          <span className="glass-inset mt-0.5 grid size-9 shrink-0 place-items-center rounded-full">
-            <Icon className="size-4 text-ink-muted" />
+          <span
+            className="grid size-8 shrink-0 place-items-center rounded-full border"
+            style={colour ? {
+              color: colour,
+              background: `color-mix(in srgb, ${colour} 14%, transparent)`,
+              borderColor: `color-mix(in srgb, ${colour} 28%, transparent)`,
+            } : { color: 'var(--color-ink-muted)', background: 'var(--glass-inset)', borderColor: 'var(--glass-inset-border)' }}
+            aria-hidden="true"
+          >
+            <Icon className="size-4" />
           </span>
         ) : null}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <h2 className="text-[16px] font-semibold tracking-tight text-ink">{title}</h2>
+            <h2 className="t-section-title truncate text-ink">{title}</h2>
             {info ? <InfoHint text={info} /> : null}
           </div>
-          {description ? <p className="mt-0.5 text-[12.5px] text-ink-muted">{description}</p> : null}
+          {description ? <p className="text-[13px] text-ink-subtle">{description}</p> : null}
         </div>
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -313,21 +318,55 @@ function PanelLink({ href, children }: { href: string; children: React.ReactNode
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12.5px] font-medium text-brand transition-colors hover:bg-brand-soft"
+      className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[13px] font-medium text-brand transition-colors hover:bg-brand-soft"
     >
       {children} <ArrowRight className="size-3.5" />
     </Link>
   );
 }
 
-function CompactEmpty({ icon: Icon, title, children }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
+function CompactEmpty({
+  icon: Icon, title, children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-dashed border-line-strong px-4 py-4">
+    <div className="flex items-start gap-3 rounded-xl border border-dashed border-line-strong/60 px-4 py-3.5">
       <Icon className="mt-0.5 size-4 shrink-0 text-ink-subtle" />
       <div>
-        <p className="text-[13px] font-semibold text-ink">{title}</p>
-        <p className="mt-0.5 text-[12.5px] text-ink-muted">{children}</p>
+        <p className="text-[13.5px] font-medium text-ink">{title}</p>
+        <p className="mt-0.5 text-[13px] text-ink-muted">{children}</p>
       </div>
+    </div>
+  );
+}
+
+function Segmented<T extends string | number>({
+  options, value, onChange, label,
+}: {
+  options: { value: T; label: string }[];
+  value: T | null;
+  onChange: (v: T) => void;
+  label: string;
+}) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex h-8 items-center gap-0.5 rounded-lg border border-line bg-surface-muted p-0.5">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            'h-full rounded-md px-2.5 text-[12.5px] font-medium transition-colors',
+            value === o.value ? 'glass-raised text-ink' : 'text-ink-subtle hover:text-ink',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -356,44 +395,31 @@ function ProductionTrends({ className }: { className?: string }) {
     { released: 0, completed: 0, rejected: 0 },
   );
 
-  const presets: (7 | 30 | 90)[] = [7, 30, 90];
-  const active = 'days' in range ? range.days : 'custom';
+  const active: 7 | 30 | 90 | 'custom' = 'days' in range ? range.days : 'custom';
 
   return (
-    <Card className={className}>
+    <Card material="elevated" className={className}>
       <PanelHeader
         title="Production trends"
-        description="Daily, from the stage ledger. “Stage work completed” counts completions at every stage — throughput, not finished garments."
+        description="Daily, in garments, from the stage ledger"
         icon={CalendarRange}
+        accent="release"
+        info="“Stage work completed” counts completions at EVERY stage — it measures throughput, not finished garments. Released and rejected count each garment once."
         actions={
-          <div role="group" aria-label="Date range" className="glass-raised inline-flex rounded-full p-0.5">
-            {presets.map((d) => (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={active === d}
-                onClick={() => { setRange({ days: d }); setShowCustom(false); }}
-                className={cn(
-                  'rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors',
-                  active === d ? 'bg-ink text-canvas' : 'text-ink-muted hover:text-ink',
-                )}
-              >
-                {d} days
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-pressed={active === 'custom'}
-              aria-expanded={showCustom}
-              onClick={() => setShowCustom((s) => !s)}
-              className={cn(
-                'rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors',
-                active === 'custom' ? 'bg-ink text-canvas' : 'text-ink-muted hover:text-ink',
-              )}
-            >
-              Custom
-            </button>
-          </div>
+          <Segmented<7 | 30 | 90 | 'custom'>
+            label="Date range"
+            value={active}
+            onChange={(v) => {
+              if (v === 'custom') { setShowCustom((s) => !s); return; }
+              setRange({ days: v }); setShowCustom(false);
+            }}
+            options={[
+              { value: 7, label: '7D' },
+              { value: 30, label: '30D' },
+              { value: 90, label: '90D' },
+              { value: 'custom', label: 'Custom' },
+            ]}
+          />
         }
       />
 
@@ -402,22 +428,22 @@ function ProductionTrends({ className }: { className?: string }) {
           className="mx-5 mb-3 flex flex-wrap items-end gap-2"
           onSubmit={(e) => { e.preventDefault(); setRange({ from: custom.from, to: custom.to }); }}
         >
-          <label className="text-[12px] text-ink-muted">
+          <label className="text-[12.5px] text-ink-muted">
             From
             <Input type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} className="mt-1 w-[160px]" />
           </label>
-          <label className="text-[12px] text-ink-muted">
+          <label className="text-[12.5px] text-ink-muted">
             To
             <Input type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} className="mt-1 w-[160px]" />
           </label>
-          <Button type="submit" size="md" variant="primary">Apply</Button>
-          <span className="pb-2 text-[11.5px] text-ink-subtle">Up to 90 days.</span>
+          <Button type="submit" variant="primary">Apply</Button>
+          <span className="pb-2 text-[12px] text-ink-subtle">Up to 90 days.</span>
         </form>
       ) : null}
 
-      <div className="px-3 pb-4 sm:px-5">
+      <div className="px-3 pb-5 sm:px-5">
         {isLoading ? (
-          <div className="h-[300px] animate-pulse rounded-2xl bg-surface-muted" aria-label="Loading trends" />
+          <div className="h-[300px] animate-pulse rounded-xl bg-surface-muted" aria-label="Loading trends" />
         ) : error ? (
           <ErrorPanel error={error} onRetry={() => void refetch()} />
         ) : !data?.hasProductionHistory ? (
@@ -426,25 +452,25 @@ function ProductionTrends({ className }: { className?: string }) {
           </CompactEmpty>
         ) : (
           <>
-            <dl className="mb-3 grid grid-cols-3 gap-2">
+            <dl className="mb-4 grid grid-cols-3 gap-2">
               {([
                 ['Released', totals.released, 'release'],
                 ['Stage work completed', totals.completed, 'completed'],
                 ['Rejected', totals.rejected, 'rejected'],
               ] as const).map(([label, value, accent]) => (
-                <div key={label} className="glass-inset rounded-xl px-3 py-2">
-                  <dt className="flex items-center gap-1.5 text-[11.5px] text-ink-subtle">
-                    <span className="size-2 rounded-full" style={{ background: accentVar(accent) }} />
+                <div key={label} className="glass-inset rounded-xl px-3.5 py-2.5">
+                  <dt className="flex items-center gap-1.5 truncate text-[12.5px] text-ink-subtle">
+                    <span className="size-2 shrink-0 rounded-full" style={{ background: accentVar(accent) }} />
                     {label}
                   </dt>
-                  <dd className="num text-[18px] font-semibold text-ink">{fmtInt(Math.round(value))}</dd>
+                  <dd className="num mt-0.5 text-[20px] font-semibold tracking-[-0.02em] text-ink">{garments(value)}</dd>
                 </div>
               ))}
             </dl>
             <TrendChart
               data={rows}
               unit="garments"
-              height={248}
+              height={240}
               xFormatter={dayLabel}
               series={[
                 { key: 'released', label: 'Released', accent: 'release' },
@@ -464,7 +490,7 @@ function ProductionTrends({ className }: { className?: string }) {
 const ORDER_GROUPS: { label: string; statuses: string[]; accent: Accent }[] = [
   { label: 'In production', statuses: ['RELEASED', 'IN_PROGRESS'], accent: 'release' },
   { label: 'Pending', statuses: ['DRAFT', 'PENDING_MATERIAL', 'MATERIAL_RESERVED'], accent: 'qc' },
-  { label: 'On hold', statuses: ['ON_HOLD'], accent: 'rework' },
+  { label: 'On hold', statuses: ['ON_HOLD'], accent: 'hold' },
   { label: 'Completed', statuses: ['COMPLETED', 'CLOSED'], accent: 'completed' },
   { label: 'Cancelled', statuses: ['CANCELLED'], accent: 'neutral' },
 ];
@@ -476,19 +502,26 @@ function OrderDistribution({
   total: number;
   className?: string;
 }) {
-  const segments = ORDER_GROUPS.map((g) => ({
-    label: g.label,
-    accent: g.accent,
-    value: g.statuses.reduce((n, s) => n + (byStatus[s] ?? 0), 0),
-    href: `/manufacturing?status=${g.statuses[0]}`,
-  }));
+  const segments = ORDER_GROUPS.map((g) => {
+    const present = g.statuses.filter((s) => (byStatus[s] ?? 0) > 0);
+    return {
+      label: g.label,
+      accent: g.accent,
+      value: g.statuses.reduce((n, s) => n + (byStatus[s] ?? 0), 0),
+      // The order list filters by ONE status, so a slice links only when a
+      // single status accounts for all of it — otherwise the link would show
+      // a different number from the one clicked.
+      href: present.length === 1 ? `/manufacturing?status=${present[0]}` : undefined,
+    };
+  });
   return (
     <Card className={className}>
       <PanelHeader
         title="Manufacturing orders"
-        description="Every order, by where it stands"
+        description="Orders, not garments — by where each stands"
         icon={Factory}
-        actions={<PanelLink href="/manufacturing">All orders</PanelLink>}
+        accent="stitching"
+        actions={<PanelLink href="/manufacturing">All</PanelLink>}
       />
       <div className="px-5 pb-5">
         {total === 0 ? (
@@ -496,8 +529,155 @@ function OrderDistribution({
             Orders appear here once created from demand or by hand.
           </CompactEmpty>
         ) : (
-          <Donut segments={segments} centerLabel="Orders" unit="orders" className="sm:flex-col 2xl:flex-row" />
+          <Donut segments={segments} centerLabel="orders" unit="orders" size={176} className="sm:flex-col 2xl:flex-row" />
         )}
+      </div>
+    </Card>
+  );
+}
+
+/* ---------------------------------------------------- production bottlenecks */
+
+function ProductionBottlenecks({
+  stages, wipTotal, className,
+}: {
+  stages: LineStage[];
+  wipTotal: number;
+  className?: string;
+}) {
+  const ranked = stages
+    .map((s, i) => ({ ...s, wip: Number(s.wipQty), accent: stageAccent(s.name, s.code, stages.indexOf(s) >= 0 ? stages.indexOf(s) : i) }))
+    .filter((s) => s.wip > 0)
+    .sort((a, b) => b.wip - a.wip);
+  const top = ranked[0];
+  const max = top?.wip ?? 1;
+
+  return (
+    <Card className={className}>
+      <PanelHeader
+        title="Bottlenecks"
+        description="Where garments are waiting now"
+        icon={Gauge}
+        accent="qc"
+        info="Garments sitting at each stage now — taken in, not yet handed on, rejected or out for rework. Each garment is at exactly one stage, so these shares add up to the floor total. The longest queue is usually the constraint."
+      />
+      <div className="px-5 pb-5">
+        {!top ? (
+          <CompactEmpty icon={CircleCheck} title="No work is waiting">
+            No stage is holding garments right now.
+          </CompactEmpty>
+        ) : (
+          <>
+            <p className="mb-4 text-[13.5px] leading-snug text-ink-muted">
+              <span className="font-semibold text-ink">{top.name}</span> holds{' '}
+              <span className="num font-semibold text-ink">{garments(top.wip)}</span> of{' '}
+              <span className="num">{garments(wipTotal)}</span> garments on the floor
+              {wipTotal > 0 ? <> ({Math.round((top.wip / wipTotal) * 100)}%)</> : null}.
+            </p>
+            <ul className="space-y-3">
+              {ranked.map((s) => {
+                const share = wipTotal > 0 ? Math.round((s.wip / wipTotal) * 100) : 0;
+                return (
+                  <li key={s.stageId}>
+                    <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="size-2 shrink-0 rounded-full" style={{ background: accentVar(s.accent) }} />
+                        <span className="truncate font-medium text-ink">{s.name}</span>
+                      </span>
+                      <span className="num shrink-0 text-ink">
+                        <span className="font-semibold">{garments(s.wip)}</span>
+                        <span className="ml-1.5 text-ink-subtle">{share}%</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                      <div
+                        className="bar-grow h-full rounded-full"
+                        style={{
+                          width: `${(s.wip / max) * 100}%`,
+                          background: `linear-gradient(90deg, color-mix(in srgb, ${accentVar(s.accent)} 65%, transparent), ${accentVar(s.accent)})`,
+                        }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/* --------------------------------------------------------- QC and inspection */
+
+function QualityPanel({
+  quality, pendingInspection, className,
+}: {
+  quality?: DashboardSummary['quality'];
+  pendingInspection: number;
+  className?: string;
+}) {
+  const inspected = Number(quality?.inspectedQty ?? 0);
+  const passed = Number(quality?.passedQty ?? 0);
+  const yieldPct = inspected > 0 ? (passed / inspected) * 100 : 0;
+
+  return (
+    <Card className={className}>
+      <PanelHeader
+        title="QC & inspection"
+        description={`Production inspections · last ${quality?.windowDays ?? 30} days`}
+        icon={ShieldCheck}
+        accent="qc"
+        actions={<PanelLink href="/quality">QC</PanelLink>}
+      />
+      <div className="space-y-4 px-5 pb-5">
+        {!quality || quality.inspections === 0 ? (
+          <CompactEmpty icon={ShieldCheck} title="No production inspections in 30 days">
+            Pass, rework and reject results appear here as inspections are recorded.
+          </CompactEmpty>
+        ) : (
+          <div className="flex items-center gap-5">
+            <RadialProgress value={yieldPct} accent="completed" label="passed" />
+            <dl className="min-w-0 flex-1 space-y-1.5 text-[13px]">
+              {([
+                ['Passed', quality.passedQty, 'completed'],
+                ['Rework', quality.reworkQty, 'rework'],
+                ['Failed', quality.failedQty, 'rejected'],
+                ['On hold', quality.holdQty, 'hold'],
+              ] as const).map(([label, value, accent]) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="size-2 shrink-0 rounded-full" style={{ background: accentVar(accent) }} />
+                  <dt className="flex-1 text-ink-muted">{label}</dt>
+                  <dd className="num font-semibold text-ink">{garments(Number(value))}</dd>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 border-t border-line pt-1.5 text-ink-subtle">
+                <dt className="flex-1">{fmtInt(quality.inspections)} inspections</dt>
+                <dd className="num">{garments(inspected)} garments</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Link href="/quality/rework" className="glass-inset rounded-xl px-3.5 py-2.5 transition-colors hover:bg-[var(--glass-surface-hover)]">
+            <p className="flex items-center gap-1.5 text-[12.5px] text-ink-subtle">
+              <RefreshCw className="size-3.5" style={{ color: accentVar('rework') }} /> Open rework orders
+            </p>
+            <p className="num mt-0.5 text-[20px] font-semibold tracking-[-0.02em] text-ink">{fmtInt(quality?.openReworkOrders ?? 0)}</p>
+          </Link>
+          <Link href="/purchasing/receipts?status=PENDING_INSPECTION" className="glass-inset rounded-xl px-3.5 py-2.5 transition-colors hover:bg-[var(--glass-surface-hover)]">
+            <p className="flex items-center gap-1.5 text-[12.5px] text-ink-subtle">
+              <PackageCheck className="size-3.5" style={{ color: accentVar('qc') }} /> Deliveries to inspect
+            </p>
+            <p
+              className="num mt-0.5 text-[20px] font-semibold tracking-[-0.02em]"
+              style={{ color: pendingInspection > 0 ? 'var(--color-warn)' : 'var(--color-ink)' }}
+            >
+              {fmtInt(pendingInspection)}
+            </p>
+          </Link>
+        </div>
       </div>
     </Card>
   );
@@ -518,50 +698,45 @@ function InventoryHealth({
   const healthy = Math.max(0, activeMaterials - flagged);
   const movementRows = (trends?.days ?? []).map((d) => ({ date: d.date, movements: d.movements }));
 
-  const tiles: [string, string, React.ComponentType<{ className?: string }>, string, Accent][] = [
-    ['Issuable rolls', fmtInt(inventory.issuableFabricRolls), Scroll, `${fmtQty(inventory.fabricMetresOnHand)} m on hand`, 'cutting'],
-    ['Out of stock', fmtInt(inventory.outOfStockCount), TriangleAlert, 'Nothing available', 'rejected'],
-    ['Below minimum', fmtInt(inventory.belowMinimumCount), Hourglass, 'Under minimum stock', 'rework'],
-    ['Movements today', fmtInt(inventory.movementsToday), ArrowLeftRight, 'Ledger entries', 'inventory'],
+  const tiles: [string, string, React.ComponentType<{ className?: string }>, string, Accent, boolean][] = [
+    ['Issuable rolls', fmtInt(inventory.issuableFabricRolls), Scroll, `${fmtQty(inventory.fabricMetresOnHand)} m of fabric`, 'cutting', false],
+    ['Out of stock', fmtInt(inventory.outOfStockCount), TriangleAlert, 'materials with nothing available', 'rejected', inventory.outOfStockCount > 0],
+    ['Below minimum', fmtInt(inventory.belowMinimumCount), Hourglass, 'materials under minimum', 'rework', inventory.belowMinimumCount > 0],
+    ['Movements today', fmtInt(inventory.movementsToday), ArrowLeftRight, 'ledger entries', 'inventory', false],
   ];
 
   return (
     <Card className={className}>
       <PanelHeader
         title="Raw material inventory"
-        description="Stock health across active materials, and how much stock is moving"
+        description="Stock health across active materials"
         icon={Boxes}
+        accent="inventory"
         actions={<PanelLink href="/inventory/stock">Stock</PanelLink>}
       />
-      <div className="space-y-4 px-5 pb-5">
+      <div className="space-y-5 px-5 pb-5">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          {tiles.map(([label, value, Icon, hint, accent]) => {
-            const alert = (accent === 'rejected' || accent === 'rework') && value !== '0';
-            return (
-              <div key={label} className="glass-inset rounded-2xl px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="grid size-7 place-items-center rounded-full"
-                    style={{ color: accentVar(accent), background: `color-mix(in srgb, ${accentVar(accent)} 16%, transparent)` }}
-                  >
-                    <Icon className="size-3.5" />
-                  </span>
-                  <span className="truncate text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-subtle">{label}</span>
-                </div>
-                <p
-                  className="num mt-1.5 text-[22px] font-semibold leading-none"
-                  style={{ color: alert ? `var(--color-${accent === 'rejected' ? 'danger' : 'hold'})` : 'var(--color-ink)' }}
-                >
-                  {value}
-                </p>
-                <p className="mt-1 truncate text-[11.5px] text-ink-muted">{hint}</p>
-              </div>
-            );
-          })}
+          {tiles.map(([label, value, Icon, hint, accent, alert]) => (
+            <div key={label} className="glass-inset rounded-xl px-3.5 py-3">
+              <p className="flex items-center gap-1.5 truncate text-[12.5px] text-ink-subtle">
+                <span className="shrink-0" style={{ color: accentVar(accent) }}><Icon className="size-3.5" /></span>
+                {label}
+              </p>
+              <p
+                className="num mt-1 text-[22px] font-semibold leading-tight tracking-[-0.025em]"
+                style={{ color: alert ? `var(--color-${accent === 'rejected' ? 'danger' : 'hold'})` : 'var(--color-ink)' }}
+              >
+                {value}
+              </p>
+              <p className="truncate text-[12px] text-ink-subtle">{hint}</p>
+            </div>
+          ))}
         </div>
 
         <div>
-          <p className="mb-2 text-[12.5px] font-semibold text-ink">Stock status · {fmtInt(activeMaterials)} active materials</p>
+          <p className="mb-2.5 text-[13px] font-medium text-ink">
+            Stock status <span className="font-normal text-ink-subtle">· {fmtInt(activeMaterials)} active materials</span>
+          </p>
           <SegmentBar
             segments={[
               { label: 'Healthy', value: healthy, accent: 'completed' },
@@ -573,9 +748,11 @@ function InventoryHealth({
         </div>
 
         <div>
-          <p className="mb-1 text-[12.5px] font-semibold text-ink">Stock movements · last 30 days</p>
+          <p className="mb-1 text-[13px] font-medium text-ink">
+            Stock movements <span className="font-normal text-ink-subtle">· ledger entries per day, last 30 days</span>
+          </p>
           {trendsLoading ? (
-            <div className="h-[150px] animate-pulse rounded-2xl bg-surface-muted" />
+            <div className="h-[150px] animate-pulse rounded-xl bg-surface-muted" />
           ) : !trends?.hasMovementHistory ? (
             <CompactEmpty icon={ArrowLeftRight} title="No stock movements in the last 30 days">
               Receipts, issues and consumption appear here as they post to the ledger.
@@ -617,11 +794,11 @@ function PurchasingOverview({
     .map((p) => ({ label: p.label, value: purchasing.byStatus?.[p.status] ?? 0, accent: p.accent }))
     .filter((b) => b.value > 0);
 
-  const tiles: [string, number, string, Accent, boolean][] = [
-    ['Open orders', purchasing.openPurchaseOrders, '/purchasing/orders?status=APPROVED', 'purchasing', false],
-    ['Awaiting approval', purchasing.awaitingApproval, '/purchasing/approvals', 'qc', purchasing.awaitingApproval > 0],
-    ['Overdue', purchasing.overdue, '/purchasing/orders?overdueOnly=true', 'delayed', purchasing.overdue > 0],
-    ['Pending inspection', purchasing.receiptsPendingInspection, '/purchasing/receipts?status=PENDING_INSPECTION', 'qc', purchasing.receiptsPendingInspection > 0],
+  const tiles: [string, number, string, Accent, 'danger' | 'warn' | null][] = [
+    ['Open orders', purchasing.openPurchaseOrders, '/purchasing/orders?status=APPROVED', 'purchasing', null],
+    ['Awaiting approval', purchasing.awaitingApproval, '/purchasing/approvals', 'qc', purchasing.awaitingApproval > 0 ? 'warn' : null],
+    ['Overdue', purchasing.overdue, '/purchasing/orders?overdueOnly=true', 'delayed', purchasing.overdue > 0 ? 'danger' : null],
+    ['Pending inspection', purchasing.receiptsPendingInspection, '/purchasing/receipts?status=PENDING_INSPECTION', 'qc', purchasing.receiptsPendingInspection > 0 ? 'warn' : null],
   ];
 
   return (
@@ -630,6 +807,7 @@ function PurchasingOverview({
         title="Purchasing"
         description="Purchase orders by status"
         icon={ClipboardList}
+        accent="purchasing"
         actions={<PanelLink href="/purchasing/orders">Orders</PanelLink>}
       />
       <div className="space-y-4 px-5 pb-5">
@@ -638,15 +816,15 @@ function PurchasingOverview({
             <Link
               key={label}
               href={href}
-              className="glass-inset group flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 transition-colors hover:bg-[var(--glass-surface-hover)]"
+              className="glass-inset group rounded-xl px-3.5 py-2.5 transition-colors hover:bg-[var(--glass-surface-hover)]"
             >
-              <span className="flex min-w-0 items-center gap-2">
+              <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-ink-subtle group-hover:text-ink-muted">
                 <span className="size-2 shrink-0 rounded-full" style={{ background: accentVar(accent) }} />
-                <span className="truncate text-[12.5px] text-ink-muted group-hover:text-ink">{label}</span>
+                <span className="truncate">{label}</span>
               </span>
               <span
-                className="num text-[20px] font-semibold leading-none"
-                style={{ color: alert ? (accent === 'delayed' ? 'var(--color-danger)' : 'var(--color-warn)') : 'var(--color-ink)' }}
+                className="num mt-0.5 block text-[20px] font-semibold tracking-[-0.02em]"
+                style={{ color: alert ? `var(--color-${alert})` : 'var(--color-ink)' }}
               >
                 {fmtInt(value)}
               </span>
@@ -658,16 +836,16 @@ function PurchasingOverview({
             Raise a purchase request to start the purchasing flow.
           </CompactEmpty>
         ) : (
-          <CategoryBars data={bars} unit="orders" layout="horizontal-bars" height={Math.max(120, bars.length * 40)} />
+          <CategoryBars data={bars} unit="orders" layout="horizontal-bars" height={Math.max(96, bars.length * 34)} />
         )}
       </div>
     </Card>
   );
 }
 
-/* --------------------------------------------------------- requires attention */
+/* ------------------------------------------------------ operational exceptions */
 
-function RequiresAttention({
+function OperationalExceptions({
   data, rejected, className,
 }: {
   data: DashboardSummary;
@@ -678,70 +856,61 @@ function RequiresAttention({
   const blocked = (prod?.orders.byStatus.ON_HOLD ?? 0) + (prod?.orders.byStatus.PENDING_MATERIAL ?? 0);
 
   const items: {
-    key: string; n: number; label: string; detail: string; href: string;
+    key: string; n: number; unit: string; label: string; href: string;
     severity: 'critical' | 'attention'; icon: React.ComponentType<{ className?: string }>; accent: Accent;
   }[] = [
-    { key: 'oos', n: data.inventory.outOfStockCount, label: 'Materials out of stock', detail: 'Active materials with nothing available to issue', href: '/intelligence/alerts', severity: 'critical', icon: TriangleAlert, accent: 'rejected' },
-    { key: 'po-overdue', n: data.purchasing.overdue, label: 'Overdue purchase orders', detail: 'Past their expected delivery date', href: '/purchasing/orders?overdueOnly=true', severity: 'critical', icon: Truck, accent: 'delayed' },
-    { key: 'mo-overdue', n: prod?.orders.overdue ?? 0, label: 'Overdue production', detail: 'Manufacturing orders past their due date', href: '/manufacturing', severity: 'critical', icon: Clock, accent: 'delayed' },
-    { key: 'blocked', n: blocked, label: 'Blocked orders', detail: 'On hold or waiting for material', href: '/manufacturing', severity: 'attention', icon: Hourglass, accent: 'hold' },
-    { key: 'rejected', n: Math.round(rejected), label: 'Rejected garments', detail: 'Lost to rejection across stages', href: '/quality', severity: 'attention', icon: ShieldX, accent: 'rejected' },
-    { key: 'below-min', n: data.inventory.belowMinimumCount, label: 'Below minimum stock', detail: 'Under the configured minimum', href: '/intelligence/alerts', severity: 'attention', icon: Boxes, accent: 'rework' },
-    { key: 'approval', n: data.purchasing.awaitingApproval, label: 'Awaiting approval', detail: 'Purchase orders blocked until someone decides', href: '/purchasing/approvals', severity: 'attention', icon: BadgeCheck, accent: 'qc' },
-    { key: 'inspection', n: data.purchasing.receiptsPendingInspection, label: 'Pending inspection', detail: 'Received, not yet usable', href: '/purchasing/receipts?status=PENDING_INSPECTION', severity: 'attention', icon: PackageCheck, accent: 'qc' },
+    { key: 'oos', n: data.inventory.outOfStockCount, unit: 'materials', label: 'out of stock', href: '/intelligence/alerts', severity: 'critical', icon: TriangleAlert, accent: 'rejected' },
+    { key: 'po-overdue', n: data.purchasing.overdue, unit: 'purchase orders', label: 'overdue', href: '/purchasing/orders?overdueOnly=true', severity: 'critical', icon: Truck, accent: 'delayed' },
+    { key: 'mo-overdue', n: prod?.orders.overdue ?? 0, unit: 'manufacturing orders', label: 'past due date', href: '/manufacturing?overdueOnly=true', severity: 'critical', icon: Clock, accent: 'delayed' },
+    { key: 'blocked', n: blocked, unit: 'manufacturing orders', label: 'on hold or waiting for material', href: '/manufacturing', severity: 'attention', icon: Hourglass, accent: 'hold' },
+    { key: 'rejected', n: Math.round(rejected), unit: 'garments', label: 'rejected across stages', href: '/quality', severity: 'attention', icon: ShieldX, accent: 'rejected' },
+    { key: 'below-min', n: data.inventory.belowMinimumCount, unit: 'materials', label: 'below minimum stock', href: '/intelligence/alerts', severity: 'attention', icon: Boxes, accent: 'rework' },
+    { key: 'approval', n: data.purchasing.awaitingApproval, unit: 'purchase orders', label: 'awaiting approval', href: '/purchasing/approvals', severity: 'attention', icon: BadgeCheck, accent: 'qc' },
+    { key: 'inspection', n: data.purchasing.receiptsPendingInspection, unit: 'deliveries', label: 'awaiting inspection', href: '/purchasing/receipts?status=PENDING_INSPECTION', severity: 'attention', icon: PackageCheck, accent: 'qc' },
   ];
 
-  const open = items.filter((i) => i.n > 0);
+  const open = items.filter((i) => i.n > 0).sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'critical' ? -1 : 1));
   const clear = items.filter((i) => i.n === 0);
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      {/* A thin lit edge in the colour of the most serious item — emphasis
-          without an opaque block. */}
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-6 top-0 h-px"
-        style={{
-          background: `linear-gradient(90deg, transparent, ${accentVar(open.some((i) => i.severity === 'critical') ? 'rejected' : open.length ? 'qc' : 'completed')}, transparent)`,
-        }}
-      />
+    <Card className={className}>
       <PanelHeader
-        title="Requires attention"
-        description={open.length ? `${open.length} things are waiting on someone` : 'Nothing is waiting on anyone right now'}
+        title="Operational exceptions"
+        description={open.length ? `${open.length} need someone's attention` : 'Nothing is waiting on anyone'}
         icon={TriangleAlert}
+        accent={open.some((i) => i.severity === 'critical') ? 'rejected' : 'qc'}
       />
-      <div className="px-5 pb-5">
+      <div className="px-3 pb-4">
         {open.length === 0 ? (
-          <CompactEmpty icon={CircleCheck} title="All clear">
-            No shortages, overdue orders, rejections or pending inspections.
-          </CompactEmpty>
+          <div className="px-2">
+            <CompactEmpty icon={CircleCheck} title="All clear">
+              No shortages, overdue orders, rejections or pending inspections.
+            </CompactEmpty>
+          </div>
         ) : (
-          <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <ul className="divide-y divide-line">
             {open.map((i) => {
               const Icon = i.icon;
               return (
                 <li key={i.key}>
                   <Link
                     href={i.href}
-                    className={cn(
-                      'glass-inset group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-[var(--glass-surface-hover)]',
-                      i.severity === 'critical' && 'shadow-[inset_3px_0_0_0_var(--color-danger)]',
-                    )}
+                    className="group flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-muted"
                   >
                     <span
-                      className="grid size-9 shrink-0 place-items-center rounded-full"
-                      style={{ color: accentVar(i.accent), background: `color-mix(in srgb, ${accentVar(i.accent)} 16%, transparent)` }}
+                      className="grid size-8 shrink-0 place-items-center rounded-full"
+                      style={{ color: accentVar(i.accent), background: `color-mix(in srgb, ${accentVar(i.accent)} 15%, transparent)` }}
+                      aria-hidden="true"
                     >
                       <Icon className="size-4" />
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="num text-[18px] font-semibold leading-none text-ink">{fmtInt(i.n)}</span>
-                        <span className="truncate text-[13px] font-medium text-ink">{i.label}</span>
-                      </span>
-                      <span className="mt-0.5 block truncate text-[12px] text-ink-muted">{i.detail}</span>
+                    <span className="min-w-0 flex-1 text-[13.5px] leading-snug">
+                      <span className="num font-semibold text-ink">{fmtInt(i.n)}</span>{' '}
+                      <span className="text-ink">{i.unit}</span>{' '}
+                      <span className="text-ink-muted">{i.label}</span>
                     </span>
                     <StatusBadge status={i.severity === 'critical' ? 'CRITICAL' : 'WARNING'} />
+                    <ArrowRight className="size-3.5 shrink-0 text-ink-subtle transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </li>
               );
@@ -749,9 +918,9 @@ function RequiresAttention({
           </ul>
         )}
         {clear.length > 0 && open.length > 0 ? (
-          <p className="mt-3 flex flex-wrap items-center gap-x-1.5 text-[12px] text-ink-subtle">
+          <p className="mx-2 mt-2 flex flex-wrap items-center gap-x-1.5 border-t border-line pt-3 text-[12.5px] text-ink-subtle">
             <CircleCheck className="size-3.5" style={{ color: accentVar('completed') }} />
-            Clear: {clear.map((c) => c.label.toLowerCase()).join(' · ')}
+            Clear: {clear.map((c) => `${c.unit} ${c.label}`).join(' · ')}
           </p>
         ) : null}
       </div>
@@ -808,26 +977,33 @@ function StockAlerts({ fallback, className }: { fallback: AlertRow[]; className?
   const pages = Math.max(1, Math.ceil(rows.length / pageSize));
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
 
-  const header = (key: SortKey, label: string, right?: boolean) => (
-    <th scope="col" className={cn('px-3 py-2.5 font-semibold', right ? 'text-right' : 'text-left')}>
-      <button
-        type="button"
-        onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))}
-        className={cn('inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-ink', sort.key === key && 'text-ink')}
-        aria-label={`Sort by ${label}`}
+  const header = (key: SortKey, label: string, right?: boolean) => {
+    const activeSort = sort.key === key;
+    return (
+      <th
+        scope="col"
+        aria-sort={activeSort ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
+        className={cn('whitespace-nowrap px-3 py-2.5 font-semibold', right ? 'text-right' : 'text-left')}
       >
-        {label}
-        <ArrowUpDown className="size-3" />
-      </button>
-    </th>
-  );
+        <button
+          type="button"
+          onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))}
+          className={cn('inline-flex items-center gap-1 transition-colors hover:text-ink', activeSort && 'text-ink')}
+        >
+          {label}
+          <ArrowUpDown className="size-3 opacity-70" />
+        </button>
+      </th>
+    );
+  };
 
   return (
     <Card className={className}>
       <PanelHeader
         title="Stock alerts"
-        description={`${all.length} materials below a threshold`}
+        description={`${all.length} materials at or below a threshold`}
         icon={TriangleAlert}
+        accent="rework"
         actions={<PanelLink href="/intelligence/alerts">All alerts</PanelLink>}
       />
       <div className="flex flex-wrap items-center gap-2 px-5 pb-3">
@@ -852,13 +1028,13 @@ function StockAlerts({ fallback, className }: { fallback: AlertRow[]; className?
         <>
           <div className="scroll-x border-y border-line">
             <table className="w-full min-w-[560px] text-[13px]">
-              <thead className="bg-surface-muted text-[11.5px] text-ink-subtle">
+              <thead className="bg-surface-muted text-[12px] text-ink-muted">
                 <tr>
                   {header('material', 'Material')}
                   {header('available', 'Available', true)}
                   {header('reorder', 'Reorder at', true)}
                   {header('suggest', 'Suggest', true)}
-                  <th scope="col" className="px-3 py-2.5 text-left font-semibold uppercase tracking-[0.06em]">Level</th>
+                  <th scope="col" className="px-3 py-2.5 text-left font-semibold">Level</th>
                   <th scope="col" className="px-3 py-2.5"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -867,24 +1043,24 @@ function StockAlerts({ fallback, className }: { fallback: AlertRow[]; className?
                   <tr
                     key={a.rawMaterialId}
                     className={cn(
-                      'border-b border-line transition-colors last:border-0 hover:bg-surface-muted',
+                      'border-t border-line transition-colors hover:bg-surface-muted',
                       a.alertLevel === 'OUT_OF_STOCK' && 'row-flag',
                     )}
                   >
-                    <td className="px-3 py-2.5">
-                      <span className="font-mono text-[12px] text-ink">{a.materialCode}</span>
+                    <td className="px-3 py-2">
+                      <span className="font-mono text-[12.5px] text-ink">{a.materialCode}</span>
                       <span className="ml-2 text-ink-muted">{a.materialName}</span>
                     </td>
-                    <td className="num px-3 py-2.5 text-right font-semibold text-ink">
+                    <td className="num px-3 py-2 text-right font-semibold text-ink">
                       {fmtQty(a.availableQty)} <span className="font-normal text-ink-subtle">{uomShort(a.baseUom)}</span>
                     </td>
-                    <td className="num px-3 py-2.5 text-right text-ink-muted">{fmtQty(a.reorderLevel)}</td>
-                    <td className="num px-3 py-2.5 text-right text-ink">{fmtQty(a.suggestedOrderQty, 0)}</td>
-                    <td className="px-3 py-2.5"><StatusBadge status={a.alertLevel} /></td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="num px-3 py-2 text-right text-ink-muted">{fmtQty(a.reorderLevel)}</td>
+                    <td className="num px-3 py-2 text-right text-ink">{fmtQty(a.suggestedOrderQty, 0)}</td>
+                    <td className="px-3 py-2"><StatusBadge status={a.alertLevel} /></td>
+                    <td className="px-3 py-2 text-right">
                       <Link
                         href={`/materials/${a.rawMaterialId}`}
-                        className="rounded-full px-2.5 py-1 text-[12px] font-medium text-brand hover:bg-brand-soft"
+                        className="rounded-md px-2 py-1 text-[12.5px] font-medium text-brand hover:bg-brand-soft"
                         aria-label={`View ${a.materialCode}`}
                       >
                         View
@@ -895,12 +1071,12 @@ function StockAlerts({ fallback, className }: { fallback: AlertRow[]; className?
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between gap-2 px-5 py-3 text-[12.5px] text-ink-muted">
+          <div className="flex items-center justify-between gap-2 px-5 py-3 text-[13px] text-ink-subtle">
             <span className="num">
               {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} of {rows.length}
             </span>
             <div className="flex items-center gap-1.5">
-              <Button size="sm" variant="default" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+              <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
               <Button size="sm" variant="default" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           </div>
@@ -943,29 +1119,30 @@ function MovementTimeline({
         title="Recent stock movements"
         description="The immutable ledger, newest first"
         icon={ArrowLeftRight}
-        actions={<PanelLink href="/inventory/movements">Full ledger</PanelLink>}
+        accent="inventory"
+        actions={<PanelLink href="/inventory/movements">Ledger</PanelLink>}
       />
-      <div className="px-5 pb-4">
+      <div className="px-5 pb-5">
         {movements.length === 0 ? (
           <CompactEmpty icon={ArrowLeftRight} title="No stock has moved yet">
             Receive a purchase order to create the first ledger entries.
           </CompactEmpty>
         ) : (
-          <ol className="relative">
-            {movements.slice(0, 8).map((m, i, arr) => {
+          <ol>
+            {movements.slice(0, 7).map((m, i, arr) => {
               const style = MOVEMENT_STYLE[m.movementType] ?? { icon: ArrowLeftRight, accent: 'neutral' as Accent };
               const Icon = style.icon;
               return (
-                <li key={m.id} className="relative flex gap-3 pb-3 last:pb-0">
+                <li key={m.id} className="relative flex gap-3 pb-3.5 last:pb-0">
                   {i < arr.length - 1 ? (
-                    <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%-26px)] w-px bg-line" />
+                    <span aria-hidden="true" className="absolute left-[15px] top-9 bottom-1 w-px bg-line" />
                   ) : null}
                   <span
-                    className="relative z-10 grid size-8 shrink-0 place-items-center rounded-full border"
+                    className="relative grid size-8 shrink-0 place-items-center rounded-full border"
                     style={{
                       color: accentVar(style.accent),
-                      background: `color-mix(in srgb, ${accentVar(style.accent)} 15%, var(--glass-solid) 60%)`,
-                      borderColor: `color-mix(in srgb, ${accentVar(style.accent)} 32%, transparent)`,
+                      background: `color-mix(in srgb, ${accentVar(style.accent)} 14%, transparent)`,
+                      borderColor: `color-mix(in srgb, ${accentVar(style.accent)} 28%, transparent)`,
                     }}
                     aria-hidden="true"
                   >
@@ -973,17 +1150,17 @@ function MovementTimeline({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="truncate text-[13px] font-semibold text-ink">{humanise(m.movementType)}</p>
-                      <p className="num shrink-0 text-[13px] font-semibold text-ink">
+                      <p className="truncate text-[13.5px] font-medium text-ink">{humanise(m.movementType)}</p>
+                      <p className="num shrink-0 text-[13.5px] font-semibold text-ink">
                         {fmtQty(m.baseQty)} <span className="font-normal text-ink-subtle">{uomShort(m.rawMaterial.baseUom)}</span>
                       </p>
                     </div>
-                    <p className="truncate text-[12px] text-ink-muted">
+                    <p className="truncate text-[12.5px] text-ink-muted">
                       <span className="font-mono text-ink">{m.rawMaterial.materialCode}</span>
-                      <span className="mx-1.5">·</span>
-                      {m.sourceLocation.code} <ArrowRight className="inline size-3" /> {m.destinationLocation.code}
+                      <span className="mx-1.5 text-ink-subtle">·</span>
+                      {m.sourceLocation.code} <ArrowRight className="inline size-3 text-ink-subtle" /> {m.destinationLocation.code}
                     </p>
-                    <p className="text-[11.5px] text-ink-subtle">
+                    <p className="text-[12px] text-ink-subtle">
                       <span className="font-mono">{m.movementNo}</span> · {fmtRelative(m.occurredAt)}
                     </p>
                   </div>

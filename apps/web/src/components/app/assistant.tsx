@@ -96,7 +96,7 @@ export function Assistant() {
         >
           <Sparkles className="size-4" />
           Ask about your data
-          <kbd className="ml-1 rounded bg-ink/8 px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">⌘K</kbd>
+          <kbd className="ml-1 rounded bg-ink/8 px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">⌘K</kbd>
         </button>
       ) : null}
 
@@ -115,7 +115,7 @@ export function Assistant() {
               <Sparkles className="size-4 text-ink" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold leading-tight text-ink">Ask about your data</p>
-                <p className="truncate text-[11px] leading-tight text-ink-muted">
+                <p className="truncate text-[12px] leading-tight text-ink-muted">
                   {status.data?.configured
                     ? `Reads live figures · ${status.data.provider} ${status.data.model}`
                     : 'Reads live figures from this ERP'}
@@ -137,8 +137,8 @@ export function Assistant() {
                     <Lock className="size-3.5" /> No AI provider is connected yet
                   </p>
                   <p className="mt-1.5 text-ink-muted">
-                    Add <code className="font-mono text-[11.5px]">ANTHROPIC_API_KEY</code> or{' '}
-                    <code className="font-mono text-[11.5px]">OPENAI_API_KEY</code> to the API environment
+                    Add <code className="font-mono text-[12px]">ANTHROPIC_API_KEY</code> or{' '}
+                    <code className="font-mono text-[12px]">OPENAI_API_KEY</code> to the API environment
                     and restart it. The key stays on the server — it is never sent to this browser.
                   </p>
                 </div>
@@ -178,7 +178,7 @@ export function Assistant() {
                     >
                       <p className="whitespace-pre-wrap">{t.content}</p>
                       {t.tools?.length ? (
-                        <p className="mt-2 border-t border-line pt-1.5 text-[10.5px] text-ink-subtle">
+                        <p className="mt-2 border-t border-line pt-1.5 text-[11px] text-ink-subtle">
                           Looked at: {[...new Set(t.tools)].map((x) => x.replace(/_/g, ' ')).join(', ')}
                         </p>
                       ) : null}
@@ -230,7 +230,7 @@ export function Assistant() {
                   <ArrowUp className="size-3.5" />
                 </button>
               </div>
-              <p className="mt-1.5 px-1 text-[10.5px] text-ink-subtle">
+              <p className="mt-1.5 px-1 text-[11px] text-ink-subtle">
                 Read-only. It cannot change stock, approve anything, or send data to Shopify or Unicommerce.
               </p>
             </form>

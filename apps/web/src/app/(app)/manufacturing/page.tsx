@@ -61,7 +61,7 @@ export default function ManufacturingOrdersPage() {
       {
         id: 'sizes', header: 'Sizes', accessorFn: (r) => r.items.length,
         cell: ({ row }) => (
-          <span className="block max-w-[200px] truncate text-[11.5px] text-ink-muted">
+          <span className="block max-w-[200px] truncate text-[12px] text-ink-muted">
             {row.original.items
               .map((i) => `${i.productVariant.size ?? i.productVariant.sku} ${fmtQty(i.orderedQty, 0)}`)
               .join(', ')}

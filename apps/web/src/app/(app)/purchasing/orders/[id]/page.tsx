@@ -151,7 +151,7 @@ export default function PurchaseOrderDetailPage() {
         <CardBody className="flex flex-wrap items-center gap-3 py-2.5">
           <Badge tone={data.closure.canAutoClose ? 'ok' : 'warn'}>{humanise(data.closure.status)}</Badge>
           <span className="text-[12.5px] text-ink">{data.closure.reason}</span>
-          <span className="text-[11.5px] text-ink-subtle">
+          <span className="text-[12px] text-ink-subtle">
             Tolerance: {fmtQty(data.overReceiptTolerancePct, 1)}% over, {fmtQty(data.underReceiptTolerancePct, 1)}% under
           </span>
         </CardBody>
@@ -162,7 +162,7 @@ export default function PurchaseOrderDetailPage() {
         <div className="scroll-x">
           <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+              <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                 <th className="px-3 py-1.5 text-left font-semibold">#</th>
                 <th className="px-3 py-1.5 text-left font-semibold">Material</th>
                 <th className="px-3 py-1.5 text-right font-semibold">Ordered</th>
@@ -182,13 +182,13 @@ export default function PurchaseOrderDetailPage() {
                   <td className="px-3 py-1.5">
                     <Link href={`/materials/${i.rawMaterial.id}`} className="hover:underline">
                       <CodeCell>{i.rawMaterial.materialCode}</CodeCell>
-                      <div className="text-[11.5px] text-ink-muted">{i.rawMaterial.name}</div>
+                      <div className="text-[12px] text-ink-muted">{i.rawMaterial.name}</div>
                     </Link>
                   </td>
                   <td className="num px-3 py-1.5 text-right font-medium">
                     {fmtQty(i.orderedQty)} {uomShort(i.uom)}
                     {i.uom !== i.rawMaterial.baseUom ? (
-                      <div className="text-[11px] text-ink-muted">
+                      <div className="text-[12px] text-ink-muted">
                         = {fmtQty(i.orderedBaseQty)} {uomShort(i.rawMaterial.baseUom)}
                       </div>
                     ) : null}
@@ -258,7 +258,7 @@ export default function PurchaseOrderDetailPage() {
                     <StatusBadge status={r.status} />
                     <span className="text-[12px] text-ink-muted">{fmtDate(r.receiptDate)}</span>
                     {r.supplierInvoiceNo ? (
-                      <span className="text-[11.5px] text-ink-subtle">inv {r.supplierInvoiceNo}</span>
+                      <span className="text-[12px] text-ink-subtle">inv {r.supplierInvoiceNo}</span>
                     ) : null}
                     <span className="num ml-auto text-[12px]">
                       received {fmtQty(String(received))}

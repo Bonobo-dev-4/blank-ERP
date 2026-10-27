@@ -68,7 +68,7 @@ export default function LocationsPage() {
         <div className="scroll-x">
           <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+              <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                 <th className="px-3 py-1.5 text-left font-semibold">Code</th>
                 <th className="px-3 py-1.5 text-left font-semibold">Name</th>
                 <th className="px-3 py-1.5 text-left font-semibold">Kind</th>
@@ -122,7 +122,7 @@ export default function LocationsPage() {
           <div className="scroll-x">
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                   <th className="px-3 py-1.5 text-left font-semibold">Code</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Name</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Kind</th>
@@ -248,7 +248,7 @@ function LocationDialog({
             />
             <span>
               <span className="font-medium text-ink">Block issues from this location</span>
-              <span className="block text-[11.5px] text-ink-muted">
+              <span className="block text-[12px] text-ink-muted">
                 Stock here will never count as available to production.
               </span>
             </span>

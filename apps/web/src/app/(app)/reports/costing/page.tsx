@@ -89,7 +89,7 @@ export default function CostingReportPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Order</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Status</th>
@@ -103,7 +103,7 @@ export default function CostingReportPage() {
                   <tbody>
                     {data.orders.map((o) => (
                       <tr key={o.id} className="border-b border-line last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{o.orderNo}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{o.orderNo}</td>
                         <td className="px-3 py-1.5">{o.productName ?? '—'}</td>
                         <td className="px-3 py-1.5"><StatusBadge status={o.status} /></td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(o.acceptedQty, 0)}</td>
@@ -111,7 +111,7 @@ export default function CostingReportPage() {
                         <td className="num px-3 py-1.5 text-right">{fmtMoneyCompact(o.actualTotal)}</td>
                         <td className={`num px-3 py-1.5 text-right font-medium ${Number(o.varianceAmount) > 0 ? 'text-danger' : Number(o.varianceAmount) < 0 ? 'text-ok' : 'text-ink-subtle'}`}>
                           {Number(o.varianceAmount) > 0 ? '+' : ''}{fmtMoneyCompact(o.varianceAmount)}
-                          {o.variancePct ? <span className="ml-1 text-[11px] font-normal">({o.variancePct}%)</span> : null}
+                          {o.variancePct ? <span className="ml-1 text-[12px] font-normal">({o.variancePct}%)</span> : null}
                         </td>
                         <td className="px-3 py-1.5 text-right">
                           <Figure value={o.costPerAcceptedUnit ? fmtMoney(o.costPerAcceptedUnit) : null} />

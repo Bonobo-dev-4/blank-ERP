@@ -163,7 +163,7 @@ export default function FulfilmentBoardPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Order</th>
                       <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Open</th>
@@ -183,14 +183,14 @@ export default function FulfilmentBoardPage() {
                           }`}
                         >
                           <td className="px-3 py-1.5 pl-3.5">
-                            <span className="font-mono text-[11.5px]">{l.orderRef ?? l.demandNo}</span>
-                            <div className="text-[11px] text-ink-subtle">{humanise(l.channel)}</div>
+                            <span className="font-mono text-[12px]">{l.orderRef ?? l.demandNo}</span>
+                            <div className="text-[12px] text-ink-subtle">{humanise(l.channel)}</div>
                           </td>
                           <td className="px-3 py-1.5">
-                            <span className="font-mono text-[11.5px]">{l.sku}</span>
+                            <span className="font-mono text-[12px]">{l.sku}</span>
                             {!l.isMapped ? <Badge tone="warn" className="ml-2">unmapped</Badge> : null}
                             {l.productName ? (
-                              <div className="text-[11px] text-ink-muted">
+                              <div className="text-[12px] text-ink-muted">
                                 {l.productName}
                                 {l.size ? <span className="ml-1.5 text-ink-subtle">{l.size}</span> : null}
                               </div>
@@ -201,9 +201,9 @@ export default function FulfilmentBoardPage() {
                             {fmtQty(l.homeAvailableQty, 0)}
                           </td>
                           {tab === 'SWITCH_FACILITY' ? (
-                            <td className="px-3 py-1.5 font-mono text-[11.5px]">{l.switchFromFacility ?? '—'}</td>
+                            <td className="px-3 py-1.5 font-mono text-[12px]">{l.switchFromFacility ?? '—'}</td>
                           ) : null}
-                          <td className="px-3 py-1.5 text-[11.5px] text-ink-muted">
+                          <td className="px-3 py-1.5 text-[12px] text-ink-muted">
                             {l.isRejectedForDispatch ? (
                               <span className="font-medium text-ink">Rejected: {l.rejectedReason}</span>
                             ) : l.reason}
@@ -247,7 +247,7 @@ export default function FulfilmentBoardPage() {
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => setRejecting(null)}>Cancel</Button>
                               </div>
-                              <p className="mt-1.5 text-[11px] text-ink-muted">
+                              <p className="mt-1.5 text-[12px] text-ink-muted">
                                 This overrides available stock and sends the line to production, so the
                                 reason is kept on the record.
                               </p>
@@ -263,7 +263,7 @@ export default function FulfilmentBoardPage() {
             )}
 
             {data.stockChecked ? (
-              <CardBody className="text-[11px] text-ink-subtle">
+              <CardBody className="text-[12px] text-ink-subtle">
                 Stock read from {data.facilitiesChecked.length} facilities in one call each — the
                 inventory API takes a list of SKUs, so the whole board costs about seventeen requests
                 however many lines it holds.

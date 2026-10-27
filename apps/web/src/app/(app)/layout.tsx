@@ -29,7 +29,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     // The floating shell: navigation and top bar are panes of glass held
     // off the edges, so the environment behind them frames the whole app.
-    <div className="flex h-dvh gap-3 overflow-hidden p-2.5 sm:p-3">
+    <div className="flex h-dvh gap-3 overflow-hidden p-2 sm:p-3">
       {/* Desktop navigation */}
       <div className="hidden lg:flex">
         <Sidebar />
@@ -58,7 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <Topbar onOpenNav={() => setNavOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-y-auto rounded-2xl px-1 pb-6 pt-2 sm:px-3 lg:px-4">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl px-0.5 pb-8 pt-1 sm:px-2 lg:px-3">{children}</main>
       </div>
 
       <Assistant />

@@ -38,7 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         theme={resolved === 'day' ? 'light' : 'dark'}
         toastOptions={{
           style: { fontSize: '13px', borderRadius: '14px' },
-          className: 'glass-elevated !text-ink',
+          className: 'glass-floating !text-ink',
         }}
       />
     </QueryClientProvider>

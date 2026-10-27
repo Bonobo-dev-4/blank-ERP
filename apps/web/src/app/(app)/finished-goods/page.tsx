@@ -95,7 +95,7 @@ export default function FinishedStockPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Location</th>
@@ -107,11 +107,11 @@ export default function FinishedStockPage() {
                   <tbody>
                     {data.rows.map((r) => (
                       <tr key={r.id} className="border-b border-line last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{r.sku}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{r.sku}</td>
                         <td className="px-3 py-1.5">
                           {r.productName ?? '—'}
                           {r.size || r.color ? (
-                            <span className="ml-2 text-[11px] text-ink-subtle">
+                            <span className="ml-2 text-[12px] text-ink-subtle">
                               {[r.color, r.size].filter(Boolean).join(' · ')}
                             </span>
                           ) : null}

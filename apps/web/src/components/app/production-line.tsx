@@ -10,6 +10,7 @@ import { ALL_NAV_ITEMS } from '@dnd/contracts';
 import { cn, fmtQty } from '@/lib/utils';
 import type { Accent } from '@/components/ui/primitives';
 import { InfoHint } from '@/components/ui/primitives';
+import { GlassTooltip } from '@/components/ui/tooltip';
 import { accentVar, stageAccent } from '@/components/ui/charts';
 import { useAuth } from './auth-context';
 
@@ -111,24 +112,24 @@ export function ProductionLine({
   };
 
   return (
-    <section aria-labelledby="flow-title" className="glass rounded-3xl p-4 sm:p-5">
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+    <section aria-labelledby="flow-title" className="glass-elevated rounded-3xl p-4 sm:p-5">
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 id="flow-title" className="text-[20px] font-semibold tracking-tight text-ink sm:text-[22px]">
+            <h2 id="flow-title" className="t-section-title text-ink">
               Production flow
             </h2>
             <InfoHint text="Each garment is counted once, at the stage it has reached, so stage figures do not sum across cards. Read live from the stage ledger." />
           </div>
-          <p className="mt-0.5 text-[13px] text-ink-muted">
+          <p className="text-[13px] text-ink-subtle">
             {shown.length === 0
               ? 'No production stages are configured yet.'
-              : `${shown.length} stages in route order · live from the stage ledger`}
+              : `${shown.length} stages in route order · garments, live from the stage ledger`}
           </p>
         </div>
 
         <dl className="flex flex-wrap items-stretch gap-2">
-          <Summary label="On the floor" value={pieces(wipTotal)} accent="stitching" note={`${activeStages} stages holding work`} />
+          <Summary label="On the floor" value={pieces(wipTotal)} accent="stitching" note={`at ${activeStages} stages`} />
           <Summary label="Rejected" value={pieces(rejected)} accent="rejected" alert={rejected > 0} />
           <Summary label="Out for rework" value={pieces(rework)} accent="rework" alert={rework > 0} />
         </dl>
@@ -141,7 +142,7 @@ export function ProductionLine({
       ) : (
         <ol
           className={cn(
-            'mt-5 flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-0',
+            'mt-4 flex flex-col gap-1.5 lg:flex-row lg:items-stretch lg:gap-0',
             shown.length > 5 && 'lg:overflow-x-auto lg:pb-2',
           )}
           aria-label="Production stages in order"
@@ -180,16 +181,16 @@ function Summary({
   alert?: boolean;
 }) {
   return (
-    <div className="glass-inset flex min-w-[118px] items-center gap-3 rounded-2xl px-3.5 py-2">
-      <span className="size-2.5 shrink-0 rounded-full" style={{ background: accentVar(accent) }} aria-hidden="true" />
+    <div className="glass-inset flex min-w-[112px] items-center gap-2.5 rounded-xl px-3 py-1.5">
+      <span className="size-2 shrink-0 rounded-full" style={{ background: accentVar(accent) }} aria-hidden="true" />
       <div>
-        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</dt>
+        <dt className="text-[12px] text-ink-subtle">{label}</dt>
         <dd
-          className={cn('num text-[20px] font-semibold leading-tight', alert ? '' : 'text-ink')}
+          className={cn('num text-[18px] font-semibold leading-tight tracking-[-0.02em]', alert ? '' : 'text-ink')}
           style={alert ? { color: accentVar(accent) } : undefined}
         >
           {value}
-          {note ? <span className="ml-1.5 text-[11.5px] font-normal text-ink-subtle">{note}</span> : null}
+          {note ? <span className="ml-1.5 text-[12px] font-normal tracking-normal text-ink-subtle">{note}</span> : null}
         </dd>
       </div>
     </div>
@@ -225,7 +226,7 @@ function StageCard({
       />
       <div className="flex items-center gap-2.5">
         <span
-          className="grid size-9 shrink-0 place-items-center rounded-full border"
+          className="grid size-8 shrink-0 place-items-center rounded-full border"
           style={{
             color: colour,
             background: `color-mix(in srgb, ${colour} 16%, transparent)`,
@@ -233,30 +234,30 @@ function StageCard({
           }}
           aria-hidden="true"
         >
-          <Icon className="size-[18px]" />
+          <Icon className="size-4" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">
-            Stage {index + 1}
-          </p>
-          <h3 className="truncate text-[14.5px] font-semibold leading-tight text-ink">{stage.name}</h3>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="t-micro text-ink-subtle">Stage {index + 1}</p>
+          <h3 className="t-card-title truncate text-ink">{stage.name}</h3>
         </div>
         {href ? <ArrowUpRight className="size-4 shrink-0 text-ink-subtle transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /> : null}
       </div>
 
-      <div className="mt-4 flex items-end justify-between gap-2">
+      <div className="mt-3.5 flex items-end justify-between gap-2">
         <div>
-          <p className="num line-figure text-[38px] font-semibold leading-none tracking-tight text-ink">{pieces(wip)}</p>
-          <p className="mt-1 text-[12px] text-ink-muted">at this stage now</p>
+          <p className="t-kpi line-figure text-[34px] text-ink">{pieces(wip)}</p>
+          <p className="mt-0.5 text-[12.5px] text-ink-muted">at this stage now</p>
         </div>
-        <div className="text-right">
-          <p className="num text-[15px] font-semibold text-ink">{pct}%</p>
-          <p className="text-[11.5px] text-ink-subtle">completed</p>
-        </div>
+        <GlassTooltip content={`${pieces(completed)} of ${pieces(received)} garments taken in at ${stage.name} have been completed here.`}>
+          <button type="button" className="rounded-md text-right" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <span className="num block text-[15px] font-semibold text-ink">{pct}%</span>
+            <span className="block text-[12px] text-ink-subtle">completed</span>
+          </button>
+        </GlassTooltip>
       </div>
 
       <div
-        className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-muted"
+        className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted"
         role="progressbar"
         aria-label={`${stage.name}: ${pct}% of work taken in is completed`}
         aria-valuenow={pct}
@@ -268,12 +269,12 @@ function StageCard({
           style={{
             width: `${pct}%`,
             background: `linear-gradient(90deg, color-mix(in srgb, ${colour} 70%, transparent), ${colour})`,
-            boxShadow: `0 0 12px color-mix(in srgb, ${colour} 55%, transparent)`,
+            boxShadow: `0 0 8px color-mix(in srgb, ${colour} 45%, transparent)`,
           }}
         />
       </div>
 
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-[12.5px]">
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
         <div>
           <dt className="text-ink-subtle">Taken in</dt>
           <dd className="num font-semibold text-ink">{pieces(received)}</dd>
@@ -284,25 +285,38 @@ function StageCard({
         </div>
       </dl>
 
-      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-line pt-3">
+      {/* Pinned to the card's foot so exception rows line up across stages. */}
+      <div className="mt-auto pt-3">
+      <div className="flex flex-wrap gap-1.5 border-t border-line pt-2.5">
         {rejected > 0 ? (
-          <Exception accent="rejected" icon={TriangleAlert} label={`${pieces(rejected)} rejected`} />
+          <Exception
+            accent="rejected"
+            icon={TriangleAlert}
+            label={`${pieces(rejected)} rejected`}
+            tip={`${pieces(rejected)} garments were rejected at ${stage.name} and left the line.`}
+          />
         ) : null}
         {rework > 0 ? (
-          <Exception accent="rework" icon={RefreshCw} label={`${pieces(rework)} in rework`} />
+          <Exception
+            accent="rework"
+            icon={RefreshCw}
+            label={`${pieces(rework)} in rework`}
+            tip={`${pieces(rework)} garments sent to rework from ${stage.name} have not come back yet.`}
+          />
         ) : null}
         {rejected === 0 && rework === 0 ? (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-subtle">
+          <span className="inline-flex h-6 items-center gap-1.5 text-[12.5px] text-ink-subtle">
             <CircleCheck className="size-3.5" style={{ color: accentVar('completed') }} />
             No losses at this stage
           </span>
         ) : null}
       </div>
+      </div>
     </>
   );
 
   const shell = cn(
-    'glass-inset group relative isolate flex h-full flex-col rounded-2xl p-4',
+    'glass-inset group relative isolate flex h-full flex-col gap-0 rounded-xl p-4',
     'shadow-[inset_0_1px_0_var(--glass-highlight)]',
   );
 
@@ -320,16 +334,19 @@ function StageCard({
 }
 
 function Exception({
-  accent, icon: Icon, label,
+  accent, icon: Icon, label, tip,
 }: {
   accent: Accent;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  tip: string;
 }) {
   const colour = accentVar(accent);
   return (
+    <GlassTooltip content={tip}>
     <span
-      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] font-semibold"
+      tabIndex={0}
+      className="inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[12px] font-semibold"
       style={{
         color: `var(--color-${accent === 'rejected' ? 'danger' : 'hold'})`,
         background: `color-mix(in srgb, ${colour} 14%, transparent)`,
@@ -339,6 +356,7 @@ function Exception({
       <Icon className="size-3.5" />
       {label}
     </span>
+    </GlassTooltip>
   );
 }
 
@@ -349,13 +367,13 @@ function Exception({
  */
 function Connector({ from, to, handedOn }: { from: Accent; to: Accent; handedOn: number }) {
   return (
-    <li aria-hidden="true" className="flex items-center justify-center lg:w-[74px] lg:shrink-0">
+    <li aria-hidden="true" className="flex items-center justify-center lg:w-[64px] lg:shrink-0">
       {/* desktop: horizontal */}
-      <div className="hidden w-full flex-col items-center gap-1 lg:flex">
-        <span className="num text-[12px] font-semibold text-ink">{pieces(handedOn)}</span>
+      <div className="hidden w-full flex-col items-center gap-1 px-1.5 lg:flex">
+        <span className="num text-[13px] font-semibold text-ink">{pieces(handedOn)}</span>
         <div className="relative flex w-full items-center">
           <span
-            className="h-[3px] flex-1 rounded-full"
+            className="h-[2px] flex-1 rounded-full"
             style={{
               background: `linear-gradient(90deg, ${accentVar(from)}, ${accentVar(to)})`,
               boxShadow: `0 0 10px color-mix(in srgb, ${accentVar(to)} 45%, transparent)`,
@@ -363,7 +381,7 @@ function Connector({ from, to, handedOn }: { from: Accent; to: Accent; handedOn:
           />
           <ArrowRight className="-ml-1.5 size-4 shrink-0" style={{ color: accentVar(to) }} />
         </div>
-        <span className="text-[11px] text-ink-subtle">handed on</span>
+        <span className="text-[12px] text-ink-subtle">handed on</span>
       </div>
       {/* phone and tablet: vertical */}
       <div className="flex items-center gap-2 py-0.5 lg:hidden">

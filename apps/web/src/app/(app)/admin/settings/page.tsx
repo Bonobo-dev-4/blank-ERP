@@ -67,7 +67,7 @@ export default function SettingsPage() {
                   {i.allowExternalWrites ? 'writes allowed' : 'read only'}
                 </Badge>
                 {i.apiVersion ? <Badge tone="outline">API {i.apiVersion}</Badge> : null}
-                <span className="ml-auto flex items-center gap-1.5 text-[11.5px] text-ink-muted">
+                <span className="ml-auto flex items-center gap-1.5 text-[12px] text-ink-muted">
                   {!i.isEnabled ? <CloudOff className="size-3.5" /> : null}
                   {humanise(i.healthStatus)}
                 </span>
@@ -81,7 +81,7 @@ export default function SettingsPage() {
                   {
                     label: 'Configuration',
                     value: (
-                      <code className="font-mono text-[11px] text-ink-muted">
+                      <code className="font-mono text-[12px] text-ink-muted">
                         {JSON.stringify(i.config)}
                       </code>
                     ),
@@ -109,7 +109,7 @@ export default function SettingsPage() {
         <div className="scroll-x">
           <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+              <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                 <th className="px-3 py-1.5 text-left font-semibold">Scope</th>
                 <th className="px-3 py-1.5 text-left font-semibold">Prefix</th>
                 <th className="px-3 py-1.5 text-right font-semibold">Padding</th>

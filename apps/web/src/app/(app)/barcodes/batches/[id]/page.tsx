@@ -121,7 +121,7 @@ export default function BatchDetailPage() {
         <CardBody className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-[12.5px]">
-              <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+              <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">#</th>
                   <th className="px-3 py-2 text-left font-medium">Stage</th>
@@ -208,13 +208,13 @@ export default function BatchDetailPage() {
                         {humanise(m.movementType)}
                         <span className="ml-1.5 num font-semibold">{fmtQty(m.qty, 0)}</span>
                       </p>
-                      <p className="text-[11.5px] text-ink-muted">
+                      <p className="text-[12px] text-ink-muted">
                         {m.fromStageTask?.productionStage.name ?? 'start'}
                         {m.toStageTask ? ` → ${m.toStageTask.productionStage.name}` : ''}
                       </p>
-                      {m.remarks ? <p className="text-[11px] text-ink-subtle">{m.remarks}</p> : null}
+                      {m.remarks ? <p className="text-[12px] text-ink-subtle">{m.remarks}</p> : null}
                     </div>
-                    <span className="shrink-0 text-[11px] text-ink-subtle">{fmtDateTime(m.occurredAt)}</span>
+                    <span className="shrink-0 text-[12px] text-ink-subtle">{fmtDateTime(m.occurredAt)}</span>
                   </li>
                 ))}
               </ol>

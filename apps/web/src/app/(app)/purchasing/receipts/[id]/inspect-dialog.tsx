@@ -201,7 +201,7 @@ export function InspectDialog({
             <Badge tone={totalRejected > 0 ? 'danger' : 'neutral'}>
               Rejecting {fmtQty(String(totalRejected))}
             </Badge>
-            <span className="text-[11.5px] text-ink-muted">
+            <span className="text-[12px] text-ink-muted">
               Accepted stock becomes issuable immediately. Rejected stock moves to the rejected area
               pending a supplier return decision.
             </span>
@@ -218,8 +218,8 @@ export function InspectDialog({
                   <div className="flex flex-wrap items-end gap-3">
                     <div className="min-w-0 flex-1">
                       <CodeCell>{line.materialCode}</CodeCell>
-                      <div className="text-[11.5px] text-ink-muted">{line.materialName}</div>
-                      <div className="num mt-0.5 text-[11.5px] text-ink-subtle">
+                      <div className="text-[12px] text-ink-muted">{line.materialName}</div>
+                      <div className="num mt-0.5 text-[12px] text-ink-subtle">
                         received {fmtQty(line.receivedBaseQty)} {uomShort(line.baseUom)}
                       </div>
                     </div>
@@ -251,7 +251,7 @@ export function InspectDialog({
                   {needsAllocation ? (
                     <div className="mt-2 rounded border border-dashed border-warn/50 bg-warn-soft px-2.5 py-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11.5px] font-medium text-ink">
+                        <span className="text-[12px] font-medium text-ink">
                           Which rolls is the rejected length coming off?
                         </span>
                         <Badge
@@ -277,7 +277,7 @@ export function InspectDialog({
                           </div>
                         ))}
                       </div>
-                      <p className="mt-1.5 text-[11px] text-ink-muted">
+                      <p className="mt-1.5 text-[12px] text-ink-muted">
                         A roll rejected in full moves to the rejected area. A roll rejected in part is
                         split: the bad length becomes its own barcoded roll.
                       </p>

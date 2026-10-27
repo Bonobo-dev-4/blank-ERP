@@ -33,7 +33,7 @@ export default function BulkPoPage() {
             <span>
               Unicommerce does not expose a purchase-order <strong>read</strong> endpoint to this
               service account. Six documented paths were probed against the live tenant and every one
-              returned <code className="font-mono text-[11.5px]">404</code>, while the create endpoint
+              returned <code className="font-mono text-[12px]">404</code>, while the create endpoint
               responded normally — so the capability is missing or not permitted, rather than the
               account simply having no bulk orders.
             </span>

@@ -26,7 +26,7 @@ export class DashboardService {
       supplierCount, locationCount, lotCount, rollCount,
       openPoCount, pendingApprovalPoCount, overduePoCount, pendingInspectionCount,
       movementsToday, alerts, rollLengths, inventoryValue, recentMovements, recentReceipts,
-      production, poByStatus,
+      production, poByStatus, quality,
     ] = await Promise.all([
       this.prisma.rawMaterial.count({ where: { organizationId } }),
       this.prisma.rawMaterial.count({ where: { organizationId, status: 'ACTIVE' } }),
@@ -80,6 +80,7 @@ export class DashboardService {
         where: { organizationId },
         _count: { _all: true },
       }),
+      this.qualitySummary(organizationId),
     ]);
 
     return {
@@ -116,6 +117,7 @@ export class DashboardService {
       },
 
       production,
+      quality,
 
       topAlerts: alerts.alerts.slice(0, 8),
       recentMovements,
@@ -233,6 +235,37 @@ export class DashboardService {
       unicommerce: {
         lastStatusSyncAt: unicommerce._max.externalStatusSyncedAt?.toISOString() ?? null,
       },
+    };
+  }
+
+  /**
+   * Production quality over the last 30 days, straight from the inspection
+   * records: what was inspected and how it came out. Quantities are garments,
+   * summed over inspections — a re-inspection is its own inspection, so the
+   * count of inspections is reported alongside.
+   */
+  private async qualitySummary(organizationId: string) {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const [agg, openRework] = await Promise.all([
+      this.prisma.qualityInspection.aggregate({
+        where: { organizationId, inspectedAt: { gte: since } },
+        _count: { _all: true },
+        _sum: { inspectedQty: true, passedQty: true, failedQty: true, reworkQty: true, holdQty: true },
+      }),
+      this.prisma.reworkOrder.count({
+        where: { organizationId, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+      }),
+    ]);
+    const q = (v: { toFixed(): string } | null) => (v ? dec(v.toFixed()) : dec(0)).toFixed();
+    return {
+      windowDays: 30,
+      inspections: agg._count._all,
+      inspectedQty: q(agg._sum.inspectedQty),
+      passedQty: q(agg._sum.passedQty),
+      failedQty: q(agg._sum.failedQty),
+      reworkQty: q(agg._sum.reworkQty),
+      holdQty: q(agg._sum.holdQty),
+      openReworkOrders: openRework,
     };
   }
 

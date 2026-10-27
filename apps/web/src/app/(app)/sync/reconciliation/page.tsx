@@ -102,7 +102,7 @@ export default function ReconciliationPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Here</th>
@@ -116,7 +116,7 @@ export default function ReconciliationPage() {
                       const v = VERDICT[r.recommendation] ?? VERDICT.UNREADABLE;
                       return (
                         <tr key={r.sku} className="border-b border-line last:border-0">
-                          <td className="px-3 py-1.5 font-mono text-[11.5px]">{r.sku}</td>
+                          <td className="px-3 py-1.5 font-mono text-[12px]">{r.sku}</td>
                           <td className="px-3 py-1.5">{r.productName ?? '—'}</td>
                           <td className="num px-3 py-1.5 text-right">{fmtQty(r.erpQty, 0)}</td>
                           <td className="num px-3 py-1.5 text-right">
@@ -140,7 +140,7 @@ export default function ReconciliationPage() {
               </div>
             )}
             {run.data.totals.unreadable > 0 ? (
-              <CardBody className="text-[11.5px] text-ink-muted">
+              <CardBody className="text-[12px] text-ink-muted">
                 {run.data.totals.unreadable} SKUs could not be read at that facility. They are reported
                 as unreadable rather than as zero — treating the two alike would invent a variance.
               </CardBody>

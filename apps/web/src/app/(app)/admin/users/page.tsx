@@ -177,7 +177,7 @@ function UserDialog({
                   />
                   <span className="min-w-0">
                     <span className="font-medium text-ink">{r.name}</span>
-                    <span className="block text-[11px] text-ink-muted">
+                    <span className="block text-[12px] text-ink-muted">
                       {r.permissions.length} permissions
                     </span>
                   </span>

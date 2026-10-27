@@ -125,7 +125,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
     <div
       role="radiogroup"
       aria-label="Colour theme"
-      className={cn('glass-raised inline-flex items-center gap-0.5 rounded-full p-0.5', className)}
+      className={cn('inline-flex h-8 items-center gap-0.5 rounded-lg border border-line bg-surface-muted p-0.5', className)}
     >
       {OPTIONS.map((o, i) => {
         const active = preference === o.value;
@@ -142,10 +142,10 @@ export function ThemeSwitcher({ className }: { className?: string }) {
             onClick={() => setPreference(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              'grid size-7 place-items-center rounded-full transition-colors duration-200',
+              'grid h-full w-7 place-items-center rounded-md transition-colors duration-200',
               active
-                ? 'bg-ink text-canvas shadow-sm'
-                : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
+                ? 'glass-raised text-ink'
+                : 'text-ink-subtle hover:text-ink',
             )}
           >
             <Icon className="size-3.5" />

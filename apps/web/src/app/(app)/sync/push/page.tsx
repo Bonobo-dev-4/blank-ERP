@@ -44,7 +44,7 @@ export default function PushPage() {
                   <li key={b.code} className="flex gap-2.5 text-[12.5px]">
                     <Lock className="mt-0.5 size-4 shrink-0 text-ink-subtle" />
                     <span>
-                      <span className="font-mono text-[11.5px] text-ink-muted">{b.code}</span>
+                      <span className="font-mono text-[12px] text-ink-muted">{b.code}</span>
                       <div className="text-ink">{b.detail}</div>
                     </span>
                   </li>
@@ -97,7 +97,7 @@ export default function PushPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Location</th>
@@ -109,7 +109,7 @@ export default function PushPage() {
                   <tbody>
                     {data.lines.map((l) => (
                       <tr key={l.id} className="border-b border-line last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{l.sku}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{l.sku}</td>
                         <td className="px-3 py-1.5">{l.productName ?? '—'}</td>
                         <td className="px-3 py-1.5 text-ink-muted">{l.location}</td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(l.onHandQty, 0)}</td>

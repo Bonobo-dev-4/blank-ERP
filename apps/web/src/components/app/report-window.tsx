@@ -57,14 +57,14 @@ export function ReportWindow({
 
       <div className="flex items-end gap-2">
         <div>
-          <Label htmlFor="rw-from" className="text-[11px]">From</Label>
+          <Label htmlFor="rw-from" className="text-[12px]">From</Label>
           <Input
             id="rw-from" type="date" value={draft.from} className="h-8 w-[140px]"
             onChange={(e) => setDraft({ ...draft, from: e.target.value })}
           />
         </div>
         <div>
-          <Label htmlFor="rw-to" className="text-[11px]">To</Label>
+          <Label htmlFor="rw-to" className="text-[12px]">To</Label>
           <Input
             id="rw-to" type="date" value={draft.to} className="h-8 w-[140px]"
             onChange={(e) => setDraft({ ...draft, to: e.target.value })}

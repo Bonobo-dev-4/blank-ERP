@@ -297,7 +297,7 @@ export function ReceiveDialog({
                     <div className="mt-2 rounded border border-dashed border-line-strong bg-surface-muted px-2.5 py-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <Scroll className="size-3.5 text-ink-subtle" />
-                        <span className="text-[11.5px] font-medium text-ink">
+                        <span className="text-[12px] font-medium text-ink">
                           Individual rolls {line.rolls.length > 0 ? `(${line.rolls.length})` : ''}
                         </span>
                         <Button variant="ghost" size="sm" onClick={() => addRoll(idx)}>
@@ -309,7 +309,7 @@ export function ReceiveDialog({
                             {fmtQty(String(rollTotal))} of {fmtQty(line.receivedQty)} {uomShort(line.uom)}
                           </Badge>
                         ) : (
-                          <span className="ml-auto text-[11px] text-ink-subtle">
+                          <span className="ml-auto text-[12px] text-ink-subtle">
                             Optional. Add rolls to get one barcode per roll.
                           </span>
                         )}
@@ -339,7 +339,7 @@ export function ReceiveDialog({
                       ) : null}
 
                       {mismatch ? (
-                        <p className="mt-1.5 text-[11.5px] text-danger">
+                        <p className="mt-1.5 text-[12px] text-danger">
                           Roll lengths must add up to exactly the received quantity. Off by{' '}
                           {fmtQty(String(Math.abs(rollTotal - Number(line.receivedQty || 0))))}{' '}
                           {uomShort(line.uom)}.

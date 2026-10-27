@@ -141,7 +141,7 @@ export default function DemandPage() {
                 <div className="scroll-x">
                   <table className="w-full text-[12.5px]">
                     <thead>
-                      <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                      <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                         <th className="px-3 py-1.5 text-left font-semibold">Demand</th>
                         <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                         <th className="px-3 py-1.5 text-left font-semibold">Channel</th>
@@ -156,11 +156,11 @@ export default function DemandPage() {
                     <tbody>
                       {data.data.map((d) => (
                         <tr key={d.id} className="border-b border-line last:border-0">
-                          <td className="px-3 py-1.5 font-mono text-[11.5px]">{d.demandNo}</td>
+                          <td className="px-3 py-1.5 font-mono text-[12px]">{d.demandNo}</td>
                           <td className="px-3 py-1.5">
-                            <span className="font-mono text-[11.5px]">{d.sku ?? '—'}</span>
+                            <span className="font-mono text-[12px]">{d.sku ?? '—'}</span>
                             {!d.isMapped ? <Badge tone="warn" className="ml-2">unmapped</Badge> : null}
-                            {d.productName ? <div className="text-[11px] text-ink-muted">{d.productName}</div> : null}
+                            {d.productName ? <div className="text-[12px] text-ink-muted">{d.productName}</div> : null}
                           </td>
                           <td className="px-3 py-1.5"><Badge tone="outline">{humanise(d.channel)}</Badge></td>
                           <td className="num px-3 py-1.5 text-right font-medium">{fmtQty(d.manufacturingQty, 0)}</td>
@@ -169,7 +169,7 @@ export default function DemandPage() {
                             {fmtQty(d.openQty, 0)}
                           </td>
                           <td className="px-3 py-1.5"><StatusBadge status={d.status} /></td>
-                          <td className="px-3 py-1.5 text-[11px] text-ink-muted">
+                          <td className="px-3 py-1.5 text-[12px] text-ink-muted">
                             {d.sources.map((s) => s.docNo ?? s.system).join(', ') || '—'}
                           </td>
                           <td className="px-3 py-1.5 text-ink-muted">

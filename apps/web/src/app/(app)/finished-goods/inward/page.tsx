@@ -168,7 +168,7 @@ export default function InwardPage() {
           <div className="scroll-x">
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                   <th className="px-3 py-1.5 text-left font-semibold">Order</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                   <th className="px-3 py-1.5 text-right font-semibold">Completed</th>
@@ -179,10 +179,10 @@ export default function InwardPage() {
               <tbody>
                 {pending.data.map((p) => (
                   <tr key={p.id} className="border-b border-line last:border-0">
-                    <td className="px-3 py-1.5 font-mono text-[11.5px]">{p.moNo}</td>
+                    <td className="px-3 py-1.5 font-mono text-[12px]">{p.moNo}</td>
                     <td className="px-3 py-1.5">
                       {p.productName ?? '—'}
-                      {p.sku ? <span className="ml-2 font-mono text-[11px] text-ink-subtle">{p.sku}</span> : null}
+                      {p.sku ? <span className="ml-2 font-mono text-[12px] text-ink-subtle">{p.sku}</span> : null}
                       {!p.productVariantId ? <Badge tone="outline" className="ml-2">multi-SKU</Badge> : null}
                     </td>
                     <td className="num px-3 py-1.5 text-right">{fmtQty(p.completedQty, 0)}</td>

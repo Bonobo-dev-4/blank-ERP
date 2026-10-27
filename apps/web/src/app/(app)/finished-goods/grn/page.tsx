@@ -73,7 +73,7 @@ export default function GrnPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Receipt</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Order</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Lines</th>
@@ -87,8 +87,8 @@ export default function GrnPage() {
                   <tbody>
                     {data.map((i) => (
                       <tr key={i.id} className="border-b border-line last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{i.inwardNo}</td>
-                        <td className="px-3 py-1.5 font-mono text-[11.5px] text-ink-muted">{i.moNo ?? '—'}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{i.inwardNo}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px] text-ink-muted">{i.moNo ?? '—'}</td>
                         <td className="num px-3 py-1.5 text-right">{i.lineCount}</td>
                         <td className="num px-3 py-1.5 text-right font-medium">{fmtQty(i.acceptedQty, 0)}</td>
                         <td className={`num px-3 py-1.5 text-right ${Number(i.rejectedQty) > 0 ? 'text-danger' : 'text-ink-subtle'}`}>
@@ -111,7 +111,7 @@ export default function GrnPage() {
             )}
           </Card>
 
-          <p className="text-[11.5px] text-ink-subtle">
+          <p className="text-[12px] text-ink-subtle">
             Everything posted here sits at <span className="font-mono">SYNC_PENDING</span> until the
             Unicommerce push runs. That push is not enabled yet, so the backlog is expected rather than
             a fault.

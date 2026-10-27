@@ -53,13 +53,13 @@ export function NotificationBell() {
         onClick={() => setOpen((o) => !o)}
         aria-label={total > 0 ? `${total} things need attention` : 'Nothing needs attention'}
         aria-expanded={open}
-        className="relative grid size-9 place-items-center rounded-xl text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
+        className="relative grid size-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
       >
         <Bell className="size-4" />
         {total > 0 ? (
           <span
             className={cn(
-              'num absolute -right-1 -top-1 grid min-w-[18px] place-items-center rounded-full px-1 text-[10px] font-bold leading-[18px]',
+              'num absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold leading-none ring-2 ring-[var(--color-canvas)]',
               critical ? 'bg-danger text-canvas' : 'bg-warn text-canvas',
             )}
           >
@@ -69,7 +69,7 @@ export function NotificationBell() {
       </button>
 
       {open ? (
-        <div className="glass-elevated absolute right-0 top-12 z-40 w-[340px] overflow-hidden rounded-2xl">
+        <div className="glass-floating absolute right-0 top-11 z-40 w-[340px] overflow-hidden rounded-xl">
           <p className="border-b border-line px-4 py-3 text-[13px] font-semibold text-ink">
             Needs attention
           </p>

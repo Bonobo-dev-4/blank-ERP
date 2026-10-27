@@ -246,7 +246,7 @@ function ReceiveDialog({ order, onClose }: { order: JobWorkRow; onClose: () => v
             <div key={l.productionBatchId} className="rounded border border-line p-2.5">
               <div className="mb-2 flex items-center justify-between">
                 <CodeCell>{l.batchNo}</CodeCell>
-                <span className="text-[11.5px] text-ink-muted">{fmtQty(l.outstanding, 0)} still out</span>
+                <span className="text-[12px] text-ink-muted">{fmtQty(l.outstanding, 0)} still out</span>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Field label="Good pieces">

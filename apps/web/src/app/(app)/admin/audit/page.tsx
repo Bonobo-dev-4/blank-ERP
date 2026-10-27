@@ -66,7 +66,7 @@ export default function AuditPage() {
           return (
             <div className="min-w-0">
               {elevated ? <Badge tone="warn" className="mr-1.5">elevated</Badge> : null}
-              <span className="text-[11.5px] text-ink-muted">
+              <span className="text-[12px] text-ink-muted">
                 {entries.slice(0, 4).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`).join(' · ')}
               </span>
             </div>
@@ -79,7 +79,7 @@ export default function AuditPage() {
           const diff = row.original.diff;
           if (!diff || Object.keys(diff).length === 0) return <span className="text-ink-subtle">-</span>;
           return (
-            <span className="font-mono text-[11px] text-ink-muted">
+            <span className="font-mono text-[12px] text-ink-muted">
               {Object.keys(diff).slice(0, 5).join(', ')}
               {Object.keys(diff).length > 5 ? ` +${Object.keys(diff).length - 5}` : ''}
             </span>

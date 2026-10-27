@@ -58,7 +58,7 @@ export default function MaterialLotsPage() {
           const held = row.original.balances.filter((b) => Number(b.onHandQty) !== 0);
           if (held.length === 0) return <span className="text-ink-subtle">-</span>;
           return (
-            <span className="text-[11.5px] text-ink-muted">
+            <span className="text-[12px] text-ink-muted">
               {held.map((b) => `${b.location.code} ${fmtQty(b.onHandQty, 1)}`).join(' · ')}
             </span>
           );

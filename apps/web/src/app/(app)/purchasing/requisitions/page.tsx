@@ -61,7 +61,7 @@ export default function RequisitionsPage() {
               </div>
             ))}
             {row.original.items.length > 3 ? (
-              <div className="text-[11px] text-ink-subtle">+{row.original.items.length - 3} more</div>
+              <div className="text-[12px] text-ink-subtle">+{row.original.items.length - 3} more</div>
             ) : null}
           </div>
         ),

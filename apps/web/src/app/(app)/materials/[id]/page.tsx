@@ -123,7 +123,7 @@ export default function MaterialDetailPage() {
             <div className="scroll-x">
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                  <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                     <th className="px-3 py-1.5 text-left font-semibold">Location</th>
                     <th className="px-3 py-1.5 text-left font-semibold">Lot</th>
                     <th className="px-3 py-1.5 text-left font-semibold">Shade</th>
@@ -202,7 +202,7 @@ export default function MaterialDetailPage() {
                     <span className="num">
                       1 {humanise(c.fromUom)} = {fmtQty(c.factor, 4)} {humanise(c.toUom)}
                     </span>
-                    {c.note ? <span className="truncate text-[11.5px] text-ink-subtle">{c.note}</span> : null}
+                    {c.note ? <span className="truncate text-[12px] text-ink-subtle">{c.note}</span> : null}
                   </li>
                 ))}
               </ul>
@@ -227,7 +227,7 @@ export default function MaterialDetailPage() {
           <div className="scroll-x">
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                   <th className="px-3 py-1.5 text-left font-semibold">Lot</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Shade</th>
                   <th className="px-3 py-1.5 text-right font-semibold">Width</th>

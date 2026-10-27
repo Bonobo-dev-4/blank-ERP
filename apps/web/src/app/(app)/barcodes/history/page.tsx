@@ -82,7 +82,7 @@ export default function ScanHistoryPage() {
       {
         id: 'device', header: 'Device', accessorKey: 'deviceId',
         cell: ({ row }) => (
-          <span className="font-mono text-[11.5px] text-ink-muted">{row.original.deviceId ?? '—'}</span>
+          <span className="font-mono text-[12px] text-ink-muted">{row.original.deviceId ?? '—'}</span>
         ),
       },
       {
@@ -93,7 +93,7 @@ export default function ScanHistoryPage() {
               {humanise(row.original.status)}
             </Badge>
             {row.original.validationMessage ? (
-              <p className="mt-0.5 max-w-[260px] truncate text-[11px] text-ink-muted">
+              <p className="mt-0.5 max-w-[260px] truncate text-[12px] text-ink-muted">
                 {row.original.validationMessage}
               </p>
             ) : null}

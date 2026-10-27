@@ -92,7 +92,7 @@ export default function ProductionReportPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Stage</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Taken in</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Completed</th>
@@ -134,7 +134,7 @@ export default function ProductionReportPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Order</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Status</th>
@@ -146,10 +146,10 @@ export default function ProductionReportPage() {
                   <tbody>
                     {data.orders.map((o) => (
                       <tr key={o.id} className="border-b border-line last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{o.orderNo}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{o.orderNo}</td>
                         <td className="px-3 py-1.5">
                           {o.productName ?? '—'}
-                          {o.sku ? <span className="ml-2 font-mono text-[11px] text-ink-subtle">{o.sku}</span> : null}
+                          {o.sku ? <span className="ml-2 font-mono text-[12px] text-ink-subtle">{o.sku}</span> : null}
                         </td>
                         <td className="px-3 py-1.5"><StatusBadge status={o.status} /></td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(o.orderedQty, 0)}</td>

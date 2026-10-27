@@ -46,7 +46,7 @@ export function DemandForecast({ title, description }: { title: string; descript
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-surface px-3 py-2.5">
         <div>
-          <Label htmlFor="lb" className="text-[11px]">Look back</Label>
+          <Label htmlFor="lb" className="text-[12px]">Look back</Label>
           <NativeSelect id="lb" value={lookback} onChange={(e) => setLookback(e.target.value)} className="h-8 w-[130px]">
             <option value="28">4 weeks</option>
             <option value="56">8 weeks</option>
@@ -55,7 +55,7 @@ export function DemandForecast({ title, description }: { title: string; descript
           </NativeSelect>
         </div>
         <div>
-          <Label htmlFor="hz" className="text-[11px]">Forecast ahead</Label>
+          <Label htmlFor="hz" className="text-[12px]">Forecast ahead</Label>
           <NativeSelect id="hz" value={horizon} onChange={(e) => setHorizon(e.target.value)} className="h-8 w-[130px]">
             <option value="14">14 days</option>
             <option value="30">30 days</option>
@@ -64,7 +64,7 @@ export function DemandForecast({ title, description }: { title: string; descript
           </NativeSelect>
         </div>
         <div>
-          <Label htmlFor="mt" className="text-[11px]">Method</Label>
+          <Label htmlFor="mt" className="text-[12px]">Method</Label>
           <NativeSelect id="mt" value={method} onChange={(e) => setMethod(e.target.value)} className="h-8 w-[190px]">
             <option value="WEIGHTED_VELOCITY">Weighted — recent weeks count more</option>
             <option value="MOVING_AVERAGE">Moving average — all weeks equal</option>
@@ -104,7 +104,7 @@ export function DemandForecast({ title, description }: { title: string; descript
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Product</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Sold</th>
@@ -119,11 +119,11 @@ export function DemandForecast({ title, description }: { title: string; descript
                       const short = Number(r.forecastQty) > Number(r.onHandQty);
                       return (
                         <tr key={r.productVariantId} className="border-b border-line last:border-0">
-                          <td className="px-3 py-1.5 font-mono text-[11.5px]">{r.sku ?? '—'}</td>
+                          <td className="px-3 py-1.5 font-mono text-[12px]">{r.sku ?? '—'}</td>
                           <td className="px-3 py-1.5">
                             {r.productName ?? '—'}
                             {r.size || r.color ? (
-                              <span className="ml-2 text-[11px] text-ink-subtle">
+                              <span className="ml-2 text-[12px] text-ink-subtle">
                                 {[r.color, r.size].filter(Boolean).join(' · ')}
                               </span>
                             ) : null}
@@ -148,7 +148,7 @@ export function DemandForecast({ title, description }: { title: string; descript
             )}
           </Card>
 
-          <p className="text-[11.5px] text-ink-subtle">
+          <p className="text-[12px] text-ink-subtle">
             On-hand figures come from finished goods balances, which Phase 5 populates. Until finished
             goods inward is live they will read zero — that is missing data, not a stockout.
           </p>

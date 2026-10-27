@@ -1,36 +1,34 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Mono, Inter, Plus_Jakarta_Sans } from 'next/font/google';
+import { Geist, Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/app/providers';
 import { AuthProvider } from '@/components/app/auth-context';
 import { ThemeProvider, THEME_BOOT_SCRIPT } from '@/components/theme/theme';
 
 /*
- * Three faces, three jobs.
+ * Three faces from two families, each with one job.
  *
- * Plus Jakarta Sans carries the interface and the headings: open counters and
- * a geometric calm that suits glass, and it holds a 40px figure without
- * looking inflated. Inter sets the numbers — its tabular figures are the most
- * reliable at small sizes, which matters in a column of quantities. Plex Mono
- * takes SKUs and barcodes, where every character must be unambiguous.
+ * Plus Jakarta Sans sets headings only — page titles, panel titles — where
+ * its open geometry gives the page a voice. Geist sets everything you read
+ * and operate: navigation, labels, body, and every number, with tabular
+ * figures so quantities line up down a column. Geist Mono sets SKUs, lot
+ * codes and barcodes, where each character must be unambiguous. All three
+ * are variable fonts, so weights like 650 are real, not synthesised.
  */
-const body = Plus_Jakarta_Sans({
+const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  variable: '--font-display-face',
+  display: 'swap',
+});
+
+const body = Geist({
+  subsets: ['latin'],
   variable: '--font-body-face',
   display: 'swap',
 });
 
-const numeric = Inter({
+const mono = Geist_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-numeric-face',
-  display: 'swap',
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
   variable: '--font-mono-face',
   display: 'swap',
 });
@@ -56,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en-IN"
       data-theme="night"
       suppressHydrationWarning
-      className={`${body.variable} ${numeric.variable} ${mono.variable}`}
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
     >
       <head>
         {/* Sets the theme before first paint, so the page never flashes. */}

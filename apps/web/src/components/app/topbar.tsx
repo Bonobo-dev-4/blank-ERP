@@ -49,13 +49,13 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
   const initials = user?.fullName.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <header className="glass flex h-16 shrink-0 items-center gap-2 rounded-2xl px-3 sm:px-4">
+    <header className="glass-subtle flex h-14 shrink-0 items-center gap-2 rounded-2xl px-2.5 sm:px-3.5">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenNav} aria-label="Open navigation">
         <Menu />
       </Button>
 
       <div className="min-w-0 flex-1">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[11.5px] text-ink-subtle">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[12px] leading-tight text-ink-subtle">
           {[group, ...crumbs.slice(0, -1)].filter(Boolean).map((c, i) => (
             <React.Fragment key={`${c}-${i}`}>
               {i > 0 ? <ChevronRight className="size-3 shrink-0" /> : null}
@@ -63,12 +63,12 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
             </React.Fragment>
           ))}
         </nav>
-        <p className="truncate text-[16px] font-semibold leading-tight tracking-tight text-ink" aria-current="page">
+        <p className="truncate font-display text-[15px] font-semibold leading-tight tracking-[-0.02em] text-ink" aria-current="page">
           {heading}
         </p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
         {can('demand.read') ? <SyncPulse /> : null}
 
         <GlassTooltip content="Refresh all data">
@@ -86,9 +86,9 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
             <DropdownMenu.Trigger asChild>
               <button
                 aria-label={`Account: ${user.fullName}`}
-                className="flex items-center gap-2 rounded-full p-0.5 pr-0.5 transition-colors hover:bg-surface-muted sm:pr-2.5"
+                className="ml-1 flex items-center gap-2 rounded-lg p-0.5 pr-0.5 transition-colors hover:bg-surface-muted md:pr-2"
               >
-                <span className="grid size-9 place-items-center rounded-full bg-brand-soft text-[12px] font-semibold text-brand">
+                <span className="grid size-7 place-items-center rounded-full bg-brand-soft text-[12px] font-semibold text-brand">
                   {initials}
                 </span>
                 <span className="hidden max-w-[140px] truncate text-[13px] font-medium text-ink md:inline">
@@ -100,12 +100,12 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
               <DropdownMenu.Content
                 align="end"
                 sideOffset={10}
-                className="glass-elevated z-50 w-[270px] rounded-2xl p-1.5 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+                className="glass-floating z-50 w-[264px] rounded-xl p-1.5 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
               >
                 <div className="px-3 pb-2.5 pt-2">
                   <p className="truncate text-[13.5px] font-semibold text-ink">{user.fullName}</p>
                   <p className="truncate text-[12px] text-ink-muted">{user.email}</p>
-                  <p className="mt-1 truncate text-[11.5px] capitalize text-ink-subtle">
+                  <p className="mt-1 truncate text-[12px] capitalize text-ink-subtle">
                     {user.roles.map((r) => r.replace(/_/g, ' ').toLowerCase()).join(', ')}
                   </p>
                 </div>
@@ -114,7 +114,7 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
                   <span className="text-[12.5px] text-ink-muted">Theme</span>
                   <ThemeSwitcher />
                 </div>
-                <p className="border-t border-line px-3 py-2.5 text-[11.5px] text-ink-subtle">{BUILD_LINE}</p>
+                <p className="border-t border-line px-3 py-2.5 text-[12px] text-ink-subtle">{BUILD_LINE}</p>
                 <DropdownMenu.Item
                   onSelect={() => signOut()}
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-muted"
@@ -154,10 +154,19 @@ function SyncPulse() {
   const newest = [shop, uc].filter(Boolean).sort().at(-1) ?? null;
   const ageH = newest ? (Date.now() - new Date(newest).getTime()) / 3_600_000 : Infinity;
 
-  const state = !data ? 'loading' : !newest ? 'none' : ageH <= 6 ? 'fresh' : 'stale';
-  const word = state === 'fresh' ? 'Synced' : state === 'stale' ? 'Stale' : state === 'none' ? 'No sync' : 'Sync';
+  // Fresh within two hours, stale within a day, out of date beyond that.
+  const state = !data ? 'loading' : !newest ? 'none' : ageH <= 2 ? 'fresh' : ageH <= 24 ? 'stale' : 'old';
+  const word =
+    state === 'fresh' ? 'Synced'
+    : state === 'stale' ? 'Stale'
+    : state === 'old' ? 'Out of date'
+    : state === 'none' ? 'Never synced'
+    : 'Checking';
   const dot =
-    state === 'fresh' ? 'bg-ok' : state === 'stale' ? 'bg-warn' : state === 'none' ? 'bg-danger' : 'bg-ink-subtle';
+    state === 'fresh' ? 'bg-ok'
+    : state === 'stale' ? 'bg-warn'
+    : state === 'old' || state === 'none' ? 'bg-danger'
+    : 'bg-ink-subtle';
 
   return (
     <GlassTooltip
@@ -175,9 +184,9 @@ function SyncPulse() {
     >
       <span
         tabIndex={0}
-        className="glass-raised hidden h-9 items-center gap-2 rounded-full px-3 text-[12.5px] font-medium text-ink md:inline-flex"
+        className="hidden h-8 items-center gap-2 rounded-lg border border-line px-2.5 text-[12.5px] font-medium text-ink transition-colors hover:bg-surface-muted md:inline-flex"
       >
-        <span className={cn('size-2 rounded-full', dot)} aria-hidden="true" />
+        <span className={cn('size-1.5 rounded-full', dot, state === 'fresh' && 'shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-ok)_22%,transparent)]')} aria-hidden="true" />
         {word}
         {newest ? <span className="font-normal text-ink-muted">{fmtRelative(newest)}</span> : null}
       </span>

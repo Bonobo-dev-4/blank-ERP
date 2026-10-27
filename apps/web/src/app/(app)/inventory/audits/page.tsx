@@ -119,7 +119,7 @@ function CountList({ onOpen }: { onOpen: (id: string) => void }) {
           <div className="scroll-x">
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                   <th className="px-3 py-1.5 text-left font-semibold">Count</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Location</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Status</th>
@@ -132,7 +132,7 @@ function CountList({ onOpen }: { onOpen: (id: string) => void }) {
               <tbody>
                 {counts.data.map((c) => (
                   <tr key={c.id} className="border-b border-line last:border-0">
-                    <td className="px-3 py-1.5 font-mono text-[11.5px]">{c.countNo}</td>
+                    <td className="px-3 py-1.5 font-mono text-[12px]">{c.countNo}</td>
                     <td className="px-3 py-1.5">{c.location.code} <span className="text-ink-muted">{c.location.name}</span></td>
                     <td className="px-3 py-1.5"><StatusBadge status={c.status} /></td>
                     <td className="num px-3 py-1.5 text-right">{c.lineCount}</td>
@@ -228,7 +228,7 @@ function CountSheet({ id, onBack }: { id: string; onBack: () => void }) {
         <div className="scroll-x">
           <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+              <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                 <th className="px-3 py-1.5 text-left font-semibold">Material</th>
                 <th className="px-3 py-1.5 text-left font-semibold">Lot</th>
                 <th className="px-3 py-1.5 text-right font-semibold">System</th>
@@ -243,10 +243,10 @@ function CountSheet({ id, onBack }: { id: string; onBack: () => void }) {
                 return (
                   <tr key={l.id} className="border-b border-line last:border-0">
                     <td className="px-3 py-1.5">
-                      <span className="font-mono text-[11.5px]">{l.materialCode}</span>
+                      <span className="font-mono text-[12px]">{l.materialCode}</span>
                       <span className="ml-2 text-ink-muted">{l.materialName}</span>
                     </td>
-                    <td className="px-3 py-1.5 font-mono text-[11px] text-ink-muted">{l.lotNo ?? '—'}</td>
+                    <td className="px-3 py-1.5 font-mono text-[12px] text-ink-muted">{l.lotNo ?? '—'}</td>
                     <td className="num px-3 py-1.5 text-right text-ink-muted">
                       {fmtQty(l.systemQty)} {uomShort(l.baseUom)}
                     </td>

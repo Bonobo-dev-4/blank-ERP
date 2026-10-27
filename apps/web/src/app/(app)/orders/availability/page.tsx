@@ -88,7 +88,7 @@ export default function AvailabilityPage() {
                 <PackageSearch /> {search.isPending ? 'Searching…' : 'Search facilities'}
               </Button>
             </form>
-            <p className="mt-2 text-[11.5px] text-ink-muted">
+            <p className="mt-2 text-[12px] text-ink-muted">
               This is the Unicommerce item SKU, which usually ends in the Shopify variant id.
             </p>
           </CardBody>
@@ -138,7 +138,7 @@ export default function AvailabilityPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Facility</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Sellable</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Committed</th>
@@ -149,7 +149,7 @@ export default function AvailabilityPage() {
                   <tbody>
                     {search.data.readings.map((r) => (
                       <tr key={r.facilityCode} className="border-b border-line last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{r.facilityCode}</td>
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{r.facilityCode}</td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(r.sellableQty, 0)}</td>
                         <td className="num px-3 py-1.5 text-right text-ink-muted">{fmtQty(r.committedQty, 0)}</td>
                         <td className={`num px-3 py-1.5 text-right ${Number(r.heldQty) > 0 ? 'text-warn' : 'text-ink-subtle'}`}>
@@ -162,8 +162,8 @@ export default function AvailabilityPage() {
                     ))}
                     {search.data.search.unchecked.map((f) => (
                       <tr key={f} className="border-b border-line last:border-0 opacity-55">
-                        <td className="px-3 py-1.5 font-mono text-[11.5px]">{f}</td>
-                        <td colSpan={4} className="px-3 py-1.5 text-right text-[11.5px] text-ink-subtle">
+                        <td className="px-3 py-1.5 font-mono text-[12px]">{f}</td>
+                        <td colSpan={4} className="px-3 py-1.5 text-right text-[12px] text-ink-subtle">
                           <Badge tone="outline">could not check</Badge>
                         </td>
                       </tr>

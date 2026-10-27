@@ -82,7 +82,7 @@ export default function MovementsPage() {
               {fmtQty(row.original.baseQty)} {uomShort(row.original.baseUom)}
             </span>
             {row.original.enteredUom !== row.original.baseUom ? (
-              <div className="text-[11px] text-ink-muted">
+              <div className="text-[12px] text-ink-muted">
                 entered {fmtQty(row.original.enteredQty)} {uomShort(row.original.enteredUom)}
               </div>
             ) : null}
@@ -107,7 +107,7 @@ export default function MovementsPage() {
       {
         id: 'reason', header: 'Reason', accessorKey: 'reason',
         cell: ({ row }) => (
-          <span className="block max-w-[260px] truncate text-[11.5px] text-ink-muted" title={row.original.reason ?? ''}>
+          <span className="block max-w-[260px] truncate text-[12px] text-ink-muted" title={row.original.reason ?? ''}>
             {row.original.reason ?? '-'}
           </span>
         ),

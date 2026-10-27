@@ -95,7 +95,7 @@ export default function RolesPage() {
                 >
                   <span className="min-w-0">
                     <span className="block truncate">{r.name}</span>
-                    <span className="block text-[11px] text-ink-muted">
+                    <span className="block text-[12px] text-ink-muted">
                       {r.permissions.length} permissions · {r.userCount} user{r.userCount === 1 ? '' : 's'}
                     </span>
                   </span>
@@ -131,7 +131,7 @@ export default function RolesPage() {
           <CardBody className="space-y-4">
             {(catalogue?.modules ?? []).map((mod) => (
               <div key={mod.module}>
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
+                <p className="mb-1.5 t-micro text-ink-subtle">
                   {humanise(mod.module)}
                 </p>
                 <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 xl:grid-cols-3">
@@ -161,8 +161,8 @@ export default function RolesPage() {
                           className="mt-0.5"
                         />
                         <span className="min-w-0">
-                          <span className="block font-mono text-[11px] text-ink">{p.code}</span>
-                          <span className="block text-[11px] text-ink-muted">{p.description}</span>
+                          <span className="block font-mono text-[12px] text-ink">{p.code}</span>
+                          <span className="block text-[12px] text-ink-muted">{p.description}</span>
                           {p.elevated ? <Badge tone="warn" className="mt-0.5">elevated</Badge> : null}
                         </span>
                       </label>

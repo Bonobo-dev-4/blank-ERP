@@ -36,19 +36,20 @@ const GROUP_ICON: Record<string, string> = {
 const COLLAPSE_KEY = 'dnd.navCollapsed';
 
 /**
- * The navigation panel — a floating pane of glass.
+ * The navigation panel — subtle glass, the quietest material in the shell.
  *
- * Sixty-odd destinations is too many for a flat list, so the panel keeps the
- * business's own grouping as category headings that fold, the section you are
- * in opens itself, and search cuts straight through when you know the name.
+ * Hierarchy without decoration: areas of the business are small labels that
+ * fold, screens inside them hang off a hairline guide, and exactly one item —
+ * the one you are on — carries a fill and an accent. Nothing else is boxed,
+ * because sixty outlined pills read as sixty buttons shouting at once.
  *
- * Collapsed, it becomes an icon rail: each area's icon carries a tooltip with
- * its name and opens a flyout of its screens, so nothing becomes unreachable
- * by narrowing the panel.
+ * Collapsed, it becomes an icon rail: each area's icon carries a tooltip and
+ * opens a keyboard-navigable flyout of its screens, so narrowing the panel
+ * never makes anything unreachable.
  *
- * Permissions are applied before anything renders — a screen you cannot open
- * is not shown — and planned screens stay visible but disabled, because a
- * link to an empty page is worse than an honest "not yet".
+ * Permissions are applied before anything renders, and planned screens stay
+ * visible but disabled — a link to an empty page is worse than an honest
+ * "not yet".
  */
 export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; forceOpen?: boolean }) {
   const pathname = usePathname();
@@ -120,25 +121,25 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
     <nav
       aria-label="Main navigation"
       className={cn(
-        'glass flex h-full shrink-0 flex-col rounded-3xl',
+        'glass-subtle flex h-full shrink-0 flex-col rounded-3xl',
         'transition-[width] duration-200 ease-out motion-reduce:transition-none',
-        collapsed ? 'w-[76px]' : 'w-[244px]',
+        collapsed ? 'w-[68px]' : 'w-[240px]',
       )}
     >
       {/* Brand */}
-      <div className={cn('flex items-center gap-3 px-4 pb-3 pt-4', collapsed && 'justify-center px-0')}>
+      <div className={cn('flex h-14 shrink-0 items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
         <Link
           href="/"
           onClick={onNavigate}
           aria-label="DASH AND DOT — dashboard"
-          className="grid size-10 shrink-0 place-items-center rounded-2xl bg-ink text-[12px] font-bold tracking-tighter text-canvas shadow-sm"
+          className="grid size-8 shrink-0 place-items-center rounded-lg bg-ink text-[11px] font-bold tracking-tighter text-canvas"
         >
           D·D
         </Link>
         {!collapsed ? (
-          <div className="min-w-0">
-            <p className="truncate text-[14px] font-bold leading-tight tracking-tight text-ink">DASH AND DOT</p>
-            <p className="truncate text-[11.5px] leading-tight text-ink-subtle">Manufacturing ERP</p>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate font-display text-[14px] font-semibold tracking-[-0.02em] text-ink">DASH AND DOT</p>
+            <p className="truncate text-[12px] text-ink-subtle">Manufacturing ERP</p>
           </div>
         ) : null}
       </div>
@@ -150,14 +151,14 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
             <button
               onClick={() => { setCollapsed(false); window.setTimeout(() => searchRef.current?.focus(), 220); }}
               aria-label="Search screens"
-              className="grid size-10 place-items-center rounded-xl text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
+              className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
             >
-              <Icons.Search className="size-[18px]" />
+              <Icons.Search className="size-4" />
             </button>
           </GlassTooltip>
         ) : (
           <div className="relative">
-            <Icons.Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
+            <Icons.Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
             <input
               ref={searchRef}
               value={query}
@@ -166,7 +167,7 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
               placeholder="Search screens"
               aria-label="Search screens"
               className={cn(
-                'h-9 w-full rounded-xl border border-line bg-surface-muted pl-9 pr-3',
+                'h-8 w-full rounded-lg border border-line bg-surface-muted pl-8 pr-2.5',
                 'text-[13px] text-ink placeholder:text-ink-subtle',
                 'transition-[border-color,box-shadow] duration-200',
                 'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
@@ -177,9 +178,9 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
       </div>
 
       {/* Destinations */}
-      <div className={cn('min-h-0 flex-1 overflow-y-auto pb-3', collapsed ? 'px-0' : 'px-3')}>
+      <div className={cn('min-h-0 flex-1 overflow-y-auto pb-3', collapsed ? 'px-0' : 'px-2.5')}>
         {collapsed ? (
-          <ul className="flex flex-col items-center gap-1 pt-1">
+          <ul className="flex flex-col items-center gap-0.5 pt-1">
             {groups.map((g) => (
               <li key={g.label || 'home'}>
                 <CollapsedGroup
@@ -196,20 +197,15 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
         ) : (
           <>
             {results && matchCount === 0 ? (
-              <p className="px-2 py-6 text-center text-[12.5px] text-ink-muted">
+              <p className="px-2 py-6 text-center text-[13px] text-ink-muted">
                 No screen matches &ldquo;{query}&rdquo;.
               </p>
             ) : null}
 
             {shown.map((g) => {
-              // While searching every section is open: hiding a match behind
-              // a folded heading would make the search look broken.
-              const isOpen = results ? true : (openGroups[g.label] ?? g.label === activeGroup);
-              const hasActive = g.label === activeGroup;
-
               if (!g.label) {
                 return (
-                  <ul key="home" className="mb-2 space-y-0.5">
+                  <ul key="home" className="mb-1.5 space-y-px">
                     {g.items.map((item) => (
                       <li key={item.href}>
                         <NavLink item={item} activeHref={activeHref} onNavigate={onNavigate} />
@@ -219,45 +215,46 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
                 );
               }
 
+              // While searching every section is open: hiding a match behind
+              // a folded heading would make the search look broken.
+              const isOpen = results ? true : (openGroups[g.label] ?? g.label === activeGroup);
+              const id = `nav-${g.label.replace(/\W+/g, '-').toLowerCase()}`;
+
               return (
-                <section key={g.label} className="mb-1">
+                <section key={g.label} className="mt-1">
                   <button
                     onClick={() => setOpenGroups((s) => ({ ...s, [g.label]: !isOpen }))}
                     aria-expanded={isOpen}
-                    className={cn(
-                      'group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors duration-150',
-                      'hover:bg-surface-muted',
-                    )}
+                    aria-controls={id}
+                    className="group flex h-7 w-full items-center gap-1.5 rounded-md px-2.5 text-left transition-colors hover:bg-surface-muted"
                   >
-                    <Icon
-                      name={GROUP_ICON[g.label] ?? 'Circle'}
-                      className={cn('size-4 shrink-0', hasActive ? 'text-brand' : 'text-ink-subtle group-hover:text-ink-muted')}
-                    />
                     <span
                       className={cn(
-                        'flex-1 truncate text-[11.5px] font-semibold uppercase tracking-[0.08em]',
-                        hasActive ? 'text-ink' : 'text-ink-subtle group-hover:text-ink-muted',
+                        't-micro flex-1 truncate transition-colors',
+                        g.label === activeGroup ? 'text-ink-muted' : 'text-ink-subtle group-hover:text-ink-muted',
                       )}
                     >
                       {g.label}
                     </span>
-                    <Icons.ChevronDown
+                    <Icons.ChevronRight
                       className={cn(
                         'size-3.5 shrink-0 text-ink-subtle transition-transform duration-200 motion-reduce:transition-none',
-                        !isOpen && '-rotate-90',
+                        isOpen && 'rotate-90',
                       )}
                     />
                   </button>
 
-                  {isOpen ? (
-                    <ul className="mb-1 mt-0.5 space-y-0.5">
-                      {g.items.map((item) => (
-                        <li key={item.href}>
-                          <NavLink item={item} activeHref={activeHref} onNavigate={onNavigate} nested />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  <div id={id} className="accordion" data-open={isOpen}>
+                    <div>
+                      <ul className="relative mb-1 ml-[15px] mt-0.5 space-y-px border-l border-line pl-1.5">
+                        {g.items.map((item) => (
+                          <li key={item.href}>
+                            <NavLink item={item} activeHref={activeHref} onNavigate={onNavigate} nested tabbable={isOpen} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </section>
               );
             })}
@@ -266,31 +263,29 @@ export function Sidebar({ onNavigate, forceOpen }: { onNavigate?: () => void; fo
       </div>
 
       {/* Footer: who is signed in, and the collapse control */}
-      <div className={cn('border-t border-line p-3', collapsed && 'flex flex-col items-center gap-2 px-0')}>
+      <div className={cn('border-t border-line px-3 py-2.5', collapsed && 'flex flex-col items-center gap-1.5 px-0')}>
         {user ? (
           collapsed ? (
             <GlassTooltip content={user.fullName} side="right">
               <span
                 tabIndex={0}
-                className="grid size-9 place-items-center rounded-full bg-brand-soft text-[12px] font-semibold text-brand"
+                className="grid size-8 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand"
               >
                 {initials}
               </span>
             </GlassTooltip>
           ) : (
-            <div className="flex items-center gap-2.5 px-1">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-soft text-[12px] font-semibold text-brand">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand">
                 {initials}
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-ink">{user.fullName}</p>
-                <p className="truncate text-[11.5px] text-ink-subtle">
+              <div className="min-w-0 flex-1 leading-tight">
+                <p className="truncate text-[13px] font-medium text-ink">{user.fullName}</p>
+                <p className="truncate text-[11.5px] capitalize text-ink-subtle">
                   {user.roles.map((r) => r.replace(/_/g, ' ').toLowerCase()).join(', ')}
                 </p>
               </div>
-              {!forceOpen ? (
-                <CollapseButton collapsed={false} onClick={() => setCollapsed(true)} />
-              ) : null}
+              {!forceOpen ? <CollapseButton collapsed={false} onClick={() => setCollapsed(true)} /> : null}
             </div>
           )
         ) : null}
@@ -307,7 +302,7 @@ function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: (
       <button
         onClick={onClick}
         aria-label={label}
-        className="grid size-8 shrink-0 place-items-center rounded-lg text-ink-subtle transition-colors hover:bg-surface-muted hover:text-ink"
+        className="grid size-7 shrink-0 place-items-center rounded-md text-ink-subtle transition-colors hover:bg-surface-muted hover:text-ink"
       >
         {collapsed ? <Icons.PanelLeftOpen className="size-4" /> : <Icons.PanelLeftClose className="size-4" />}
       </button>
@@ -330,13 +325,13 @@ function CollapsedGroup({
   onNavigate?: () => void;
 }) {
   const buttonClass = cn(
-    'relative grid size-10 place-items-center rounded-xl transition-colors duration-150',
+    'relative grid size-9 place-items-center rounded-lg transition-colors duration-150',
     active
-      ? 'border border-[var(--glass-border)] bg-[var(--glass-surface-elevated)] text-ink shadow-sm'
-      : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
+      ? 'bg-[var(--nav-active)] text-ink ring-1 ring-inset ring-[var(--nav-active-border)]'
+      : 'text-ink-subtle hover:bg-surface-muted hover:text-ink',
   );
   const indicator = active ? (
-    <span aria-hidden="true" className="absolute -left-[13px] top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand" />
+    <span aria-hidden="true" className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand" />
   ) : null;
 
   // A single-screen area (the dashboard) is just a link.
@@ -352,7 +347,7 @@ function CollapsedGroup({
           className={buttonClass}
         >
           {indicator}
-          <Icon name={icon} className="size-[18px]" />
+          <Icon name={icon} className="size-4" />
         </Link>
       </GlassTooltip>
     );
@@ -364,7 +359,7 @@ function CollapsedGroup({
         <DropdownMenu.Trigger asChild>
           <button aria-label={label} className={buttonClass}>
             {indicator}
-            <Icon name={icon} className="size-[18px]" />
+            <Icon name={icon} className="size-4" />
           </button>
         </DropdownMenu.Trigger>
       </GlassTooltip>
@@ -374,21 +369,19 @@ function CollapsedGroup({
           align="start"
           sideOffset={14}
           collisionPadding={12}
-          className="glass-elevated z-50 max-h-[70vh] w-[240px] overflow-y-auto rounded-2xl p-1.5 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          className="glass-floating z-50 max-h-[70vh] w-[232px] overflow-y-auto rounded-xl p-1.5 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
-          <DropdownMenu.Label className="px-2.5 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">
-            {label}
-          </DropdownMenu.Label>
+          <DropdownMenu.Label className="t-micro px-2.5 pb-1 pt-1.5 text-ink-subtle">{label}</DropdownMenu.Label>
           {items.map((item) =>
             item.status === 'PLANNED' ? (
               <DropdownMenu.Item
                 key={item.href}
                 disabled
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-ink-subtle opacity-60 outline-none"
+                className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] text-ink-subtle opacity-60 outline-none"
               >
                 <Icon name={item.icon} className="size-4" />
                 <span className="flex-1 truncate">{item.label}</span>
-                <span className="text-[10.5px]">P{item.phase}</span>
+                <span className="text-[11px]">P{item.phase}</span>
               </DropdownMenu.Item>
             ) : (
               <DropdownMenu.Item key={item.href} asChild>
@@ -397,12 +390,12 @@ function CollapsedGroup({
                   onClick={onNavigate}
                   aria-current={item.href === activeHref ? 'page' : undefined}
                   className={cn(
-                    'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] outline-none transition-colors',
+                    'flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium outline-none transition-colors',
                     'data-[highlighted]:bg-surface-muted',
-                    item.href === activeHref ? 'font-semibold text-ink' : 'text-ink-muted data-[highlighted]:text-ink',
+                    item.href === activeHref ? 'text-ink' : 'text-ink-muted data-[highlighted]:text-ink',
                   )}
                 >
-                  <Icon name={item.icon} className={cn('size-4', item.href === activeHref && 'text-brand')} />
+                  <Icon name={item.icon} className={cn('size-4', item.href === activeHref ? 'text-brand' : 'text-ink-subtle')} />
                   <span className="flex-1 truncate">{item.label}</span>
                 </Link>
               </DropdownMenu.Item>
@@ -415,12 +408,14 @@ function CollapsedGroup({
 }
 
 function NavLink({
-  item, activeHref, onNavigate, nested,
+  item, activeHref, onNavigate, nested, tabbable = true,
 }: {
   item: NavItem;
   activeHref: string | null;
   onNavigate?: () => void;
   nested?: boolean;
+  /** False while the section is folded, so hidden links are not tab stops. */
+  tabbable?: boolean;
 }) {
   const active = item.href === activeHref;
   const planned = item.status === 'PLANNED';
@@ -428,14 +423,22 @@ function NavLink({
   const body = (
     <>
       {active ? (
-        <span aria-hidden="true" className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-brand" />
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand',
+            // On a nested item the accent sits on the guide line itself.
+            nested ? '-left-[7.5px]' : 'left-0',
+          )}
+        />
       ) : null}
-      <Icon name={item.icon} className={cn('size-4 shrink-0', active ? 'text-brand' : 'text-ink-subtle')} />
+      <Icon
+        name={item.icon}
+        className={cn('size-4 shrink-0 transition-colors', active ? 'text-brand' : 'text-ink-subtle group-hover:text-ink-muted')}
+      />
       <span className="flex-1 truncate">{item.label}</span>
       {planned ? (
-        <span className="shrink-0 rounded-full border border-line px-1.5 py-px text-[10px] font-medium tabular-nums">
-          P{item.phase}
-        </span>
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">P{item.phase}</span>
       ) : null}
       {item.status === 'PARTIAL' ? (
         <span
@@ -446,17 +449,14 @@ function NavLink({
     </>
   );
 
-  const shared = cn(
-    'relative flex items-center gap-2.5 rounded-xl py-2 pr-2.5 text-[13px] transition-colors duration-150',
-    nested ? 'pl-4' : 'pl-2.5',
-  );
+  const shared = 'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors duration-150';
 
   if (planned) {
     return (
       <span
         aria-disabled="true"
         title={`${item.label} — not built yet, scheduled for phase ${item.phase}`}
-        className={cn(shared, 'cursor-not-allowed text-ink-subtle opacity-60')}
+        className={cn(shared, 'cursor-not-allowed text-ink-subtle opacity-55')}
       >
         {body}
       </span>
@@ -467,13 +467,14 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
+      tabIndex={tabbable ? undefined : -1}
       aria-current={active ? 'page' : undefined}
       title={item.description}
       className={cn(
         shared,
         active
-          ? 'border border-[var(--glass-border)] bg-[var(--glass-surface-elevated)] font-semibold text-ink shadow-sm'
-          : 'border border-transparent text-ink-muted hover:bg-surface-muted hover:text-ink',
+          ? 'bg-[var(--nav-active)] text-ink ring-1 ring-inset ring-[var(--nav-active-border)]'
+          : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
       )}
     >
       {body}

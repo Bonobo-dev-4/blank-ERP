@@ -135,7 +135,7 @@ export function OrderList({
                 <div className="scroll-x">
                   <table className="w-full text-[12.5px]">
                     <thead>
-                      <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                      <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                         <th className="px-3 py-1.5 text-left font-semibold">Order</th>
                         <th className="px-3 py-1.5 text-left font-semibold">Channel</th>
                         <th className="px-3 py-1.5 text-left font-semibold">Customer</th>
@@ -158,7 +158,7 @@ export function OrderList({
                             <Link
                               href={`/orders/${o.id}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="font-mono text-[11.5px] font-medium underline-offset-2 hover:underline"
+                              className="font-mono text-[12px] font-medium underline-offset-2 hover:underline"
                             >
                               {o.orderName ?? o.orderNumber}
                             </Link>
@@ -167,7 +167,7 @@ export function OrderList({
                           <td className="px-3 py-1.5">
                             <Badge tone="outline">{humanise(o.channel)}</Badge>
                             {o.posLocationName ? (
-                              <span className="ml-1.5 text-[11px] text-ink-muted">{o.posLocationName}</span>
+                              <span className="ml-1.5 text-[12px] text-ink-muted">{o.posLocationName}</span>
                             ) : null}
                           </td>
                           <td className="px-3 py-1.5 text-ink-muted">{o.customerRef ?? '—'}</td>
@@ -187,7 +187,7 @@ export function OrderList({
                           <td className="px-3 py-1.5">
                             {o.externalShipmentStatus
                               ? <Badge tone="outline">{humanise(o.externalShipmentStatus)}</Badge>
-                              : <span className="text-[11px] text-ink-subtle">not synced</span>}
+                              : <span className="text-[12px] text-ink-subtle">not synced</span>}
                           </td>
                           <td className="px-3 py-1.5 text-ink-muted">{fmtDateTime(o.orderedAt)}</td>
                         </tr>

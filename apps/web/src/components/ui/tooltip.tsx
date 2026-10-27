@@ -36,7 +36,7 @@ export function GlassTooltip({
           sideOffset={8}
           collisionPadding={12}
           className={cn(
-            'glass-elevated z-[60] max-w-[280px] rounded-xl px-3 py-2 text-[12.5px] leading-snug text-ink',
+            'glass-floating z-[60] max-w-[280px] rounded-lg px-3 py-2 text-[13px] leading-snug text-ink',
             'data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95',
             className,
           )}

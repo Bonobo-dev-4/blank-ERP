@@ -207,7 +207,7 @@ function RunMrpDialog({
                           setSelected((s) => (e.target.checked ? [...s, o.id] : s.filter((x) => x !== o.id)))
                         }
                       />
-                      <span className="font-mono text-[11.5px]">{o.moNo}</span>
+                      <span className="font-mono text-[12px]">{o.moNo}</span>
                       <span className="min-w-0 flex-1 truncate text-ink-muted">
                         {o.product?.styleCode ?? ''} · {o.rollup.orderedQty} pcs
                       </span>

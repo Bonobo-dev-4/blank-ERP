@@ -74,7 +74,7 @@ export default function ApprovalsPage() {
                     <button
                       key={k}
                       onClick={() => setKind(k)}
-                      className={`rounded px-2 py-1 text-[11.5px] font-medium transition-colors ${
+                      className={`rounded px-2 py-1 text-[12px] font-medium transition-colors ${
                         kind === k ? 'bg-brand text-canvas' : 'text-ink-muted hover:bg-surface-muted'
                       }`}
                     >
@@ -100,17 +100,17 @@ export default function ApprovalsPage() {
                       className="group flex flex-wrap items-center gap-x-4 gap-y-1 px-3.5 py-2.5 transition-colors hover:bg-surface-muted"
                     >
                       <Badge tone="outline">{KIND_LABEL[i.kind]}</Badge>
-                      <span className="font-mono text-[11.5px]">{i.reference}</span>
+                      <span className="font-mono text-[12px]">{i.reference}</span>
                       <span className="min-w-0 flex-1 truncate">
                         <span className="font-medium">{i.title}</span>
-                        {i.subtitle ? <span className="ml-2 text-[11.5px] text-ink-muted">{i.subtitle}</span> : null}
+                        {i.subtitle ? <span className="ml-2 text-[12px] text-ink-muted">{i.subtitle}</span> : null}
                       </span>
                       {i.amount ? <span className="num text-[12.5px]">{fmtMoneyCompact(i.amount)}</span> : null}
-                      <span className={`text-[11.5px] ${i.ageDays >= 7 ? 'font-medium text-danger' : 'text-ink-subtle'}`}>
+                      <span className={`text-[12px] ${i.ageDays >= 7 ? 'font-medium text-danger' : 'text-ink-subtle'}`}>
                         {i.ageDays === 0 ? 'today' : `${i.ageDays}d waiting`}
                       </span>
                       {i.dueAt ? (
-                        <span className="text-[11.5px] text-ink-subtle">needed {fmtDate(i.dueAt)}</span>
+                        <span className="text-[12px] text-ink-subtle">needed {fmtDate(i.dueAt)}</span>
                       ) : null}
                       <ArrowRight className="size-3.5 shrink-0 text-ink-subtle transition-transform group-hover:translate-x-0.5" />
                     </Link>
@@ -120,7 +120,7 @@ export default function ApprovalsPage() {
             )}
           </Card>
 
-          <p className="text-[11.5px] text-ink-subtle">
+          <p className="text-[12px] text-ink-subtle">
             The schema carries an <span className="font-mono">ApprovalRequest</span> table that nothing
             writes to. This queue reads the documents&rsquo; own statuses instead, so it shows what is
             actually blocked rather than what a workflow engine would have recorded.

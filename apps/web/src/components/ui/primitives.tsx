@@ -11,8 +11,8 @@ import { GlassTooltip } from './tooltip';
 /* ------------------------------------------------------------------ button */
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl font-medium ' +
-    'transition-[background-color,border-color,color,box-shadow,filter] duration-200 ease-out ' +
+  'press inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium ' +
+    'transition-[background-color,border-color,color,box-shadow,filter,transform] duration-200 ease-out ' +
     'disabled:pointer-events-none disabled:opacity-45 [&_svg]:shrink-0',
   {
     variants: {
@@ -34,10 +34,10 @@ const buttonVariants = cva(
           'border border-dashed border-line-strong bg-transparent text-ink hover:bg-surface-muted',
       },
       size: {
-        sm: 'h-8 px-3 text-[12.5px] [&_svg]:size-3.5',
+        sm: 'h-8 px-3 text-[13px] [&_svg]:size-3.5',
         md: 'h-9 px-3.5 text-[13.5px] [&_svg]:size-4',
-        lg: 'h-11 px-5 text-[14.5px] [&_svg]:size-4',
-        icon: 'h-9 w-9 [&_svg]:size-4',
+        lg: 'h-10 px-4 text-[14px] [&_svg]:size-4',
+        icon: 'h-8 w-8 [&_svg]:size-4',
       },
     },
     defaultVariants: { variant: 'default', size: 'md' },
@@ -77,7 +77,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       ref={ref}
       type={type}
       className={cn(
-        'h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13.5px] text-ink',
+        'h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[14px] text-ink',
         'transition-[border-color,box-shadow] duration-200',
         'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
         'placeholder:text-ink-subtle disabled:bg-surface-muted disabled:text-ink-subtle',
@@ -118,7 +118,7 @@ export const Textarea = React.forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[13.5px] text-ink',
+      'w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[14px] text-ink',
       'transition-[border-color,box-shadow] duration-200',
       'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
       'placeholder:text-ink-subtle aria-[invalid=true]:border-danger',
@@ -137,7 +137,7 @@ export const NativeSelect = React.forwardRef<
   <select
     ref={ref}
     className={cn(
-      'h-9 w-full rounded-lg border border-line-strong bg-surface px-2.5 text-[13.5px] text-ink',
+      'h-9 w-full rounded-lg border border-line-strong bg-surface px-2.5 text-[14px] text-ink',
       'transition-[border-color,box-shadow] duration-200 [&>option]:bg-canvas [&>option]:text-ink',
       'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft',
       'disabled:bg-surface-muted disabled:text-ink-subtle aria-[invalid=true]:border-danger',
@@ -160,7 +160,7 @@ export function Label({
   ...props
 }: React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean; hint?: string }) {
   return (
-    <label className={cn('block text-[12.5px] font-medium text-ink-muted', className)} {...props}>
+    <label className={cn('block text-[13px] font-medium text-ink-muted', className)} {...props}>
       {children}
       {required ? <span className="ml-0.5 text-danger">*</span> : null}
       {hint ? <span className="ml-1.5 font-normal text-ink-subtle">{hint}</span> : null}
@@ -199,9 +199,16 @@ export function Field({
 
 /* -------------------------------------------------------------------- card */
 
-export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+/**
+ * A panel of glass. `material` picks the elevation: standard for ordinary
+ * panels, elevated for the major analytical ones, dense for tables and forms.
+ */
+export function Card({
+  className, children, material = 'standard', ...props
+}: React.HTMLAttributes<HTMLDivElement> & { material?: 'standard' | 'elevated' | 'dense' }) {
+  const cls = material === 'elevated' ? 'glass-elevated' : material === 'dense' ? 'glass-dense' : 'glass';
   return (
-    <div className={cn('glass rounded-2xl', className)} {...props}>
+    <div className={cn(cls, 'rounded-3xl', className)} {...props}>
       {children}
     </div>
   );
@@ -219,10 +226,10 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 border-b border-line px-5 py-4', className)}>
+    <div className={cn('flex items-start justify-between gap-3 border-b border-line px-5 py-3.5', className)}>
       <div className="min-w-0">
-        <h2 className="truncate text-[15.5px] font-semibold tracking-tight text-ink">{title}</h2>
-        {description ? <p className="mt-0.5 text-[12.5px] text-ink-muted">{description}</p> : null}
+        <h2 className="t-card-title truncate text-ink">{title}</h2>
+        {description ? <p className="mt-0.5 text-[13px] text-ink-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </div>
@@ -236,7 +243,7 @@ export function CardBody({ className, children }: { className?: string; children
 /* ------------------------------------------------------------------- badge */
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] font-medium leading-tight whitespace-nowrap',
+  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] font-medium leading-tight whitespace-nowrap',
   {
     /*
      * One colour per business meaning, the same on every screen:
@@ -403,11 +410,11 @@ export function ErrorPanel({
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-ink">{e?.message ?? 'Something went wrong'}</p>
           {e?.code ? (
-            <p className="mt-0.5 font-mono text-[11px] text-ink-muted">{e.code}</p>
+            <p className="mt-0.5 font-mono text-[12px] text-ink-muted">{e.code}</p>
           ) : null}
 
           {details && Object.keys(details).length > 0 ? (
-            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11.5px]">
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[12px]">
               {Object.entries(details).map(([k, v]) => (
                 <React.Fragment key={k}>
                   <dt className="text-ink-muted">{humaniseKey(k)}</dt>
@@ -426,7 +433,7 @@ export function ErrorPanel({
               </Button>
             ) : null}
             {e?.requestId ? (
-              <span className="font-mono text-[10.5px] text-ink-subtle">ref {e.requestId}</span>
+              <span className="font-mono text-[11px] text-ink-subtle">ref {e.requestId}</span>
             ) : null}
           </div>
         </div>
@@ -460,8 +467,8 @@ export function PageHeader({
     <div className="mb-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-ink lg:text-[34px]">{title}</h1>
-          {description ? <p className="mt-1 max-w-3xl text-[13.5px] text-ink-muted">{description}</p> : null}
+          <h1 className="t-page-title text-ink">{title}</h1>
+          {description ? <p className="mt-1 max-w-3xl text-[14px] text-ink-muted">{description}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
@@ -527,14 +534,14 @@ export function Stat({
 
   const inner = (
     <>
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <p className="truncate text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</p>
+          <p className="truncate text-[13px] font-medium text-ink-muted">{label}</p>
           {info ? <InfoHint text={info} /> : null}
         </div>
         {Icon ? (
           <span
-            className="grid size-10 shrink-0 place-items-center rounded-full border shadow-[inset_0_1px_0_var(--glass-highlight)]"
+            className="grid size-8 shrink-0 place-items-center rounded-full border shadow-[inset_0_1px_0_var(--glass-highlight)]"
             style={{
               color: chipColour,
               background: `color-mix(in srgb, ${chipColour} 16%, transparent)`,
@@ -542,15 +549,15 @@ export function Stat({
             }}
             aria-hidden="true"
           >
-            <Icon className="size-[18px]" />
+            <Icon className="size-4" />
           </span>
         ) : null}
       </div>
-      <div className="mt-1 flex items-end justify-between gap-3">
-        <p className={cn('num text-[32px] font-semibold leading-none tracking-tight', toneClass)}>{value}</p>
+      <div className="mt-2.5 flex items-end justify-between gap-3">
+        <p className={cn('t-kpi', toneClass)}>{value}</p>
         {showSpark ? <Sparkline values={sparkline!} colour={chipColour} /> : null}
       </div>
-      {hint ? <p className="mt-2 text-[12.5px] leading-snug text-ink-muted">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 text-[13px] leading-snug text-ink-subtle">{hint}</p> : null}
       {footer ? <div className="mt-2">{footer}</div> : null}
     </>
   );
@@ -559,8 +566,8 @@ export function Stat({
   // its colour, so it survives a bad panel and a colour-blind reader alike.
   const flagged = tone === 'danger' || tone === 'warn';
   const shell = cn(
-    'glass block rounded-2xl px-4 pb-4 pt-3.5',
-    flagged && (tone === 'danger' ? 'shadow-[inset_3px_0_0_0_var(--color-danger)]' : 'shadow-[inset_3px_0_0_0_var(--color-warn)]'),
+    'glass flex h-full flex-col rounded-2xl px-[18px] py-4',
+    flagged && (tone === 'danger' ? 'ring-1 ring-inset ring-danger/35' : 'ring-1 ring-inset ring-warn/35'),
     className,
   );
 
@@ -582,7 +589,7 @@ export function InfoHint({ text }: { text: string }) {
         type="button"
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
         aria-label={text}
-        className="grid size-4 shrink-0 place-items-center rounded-full text-ink-subtle hover:text-ink"
+        className="grid size-4 shrink-0 place-items-center rounded-full text-ink-subtle transition-colors hover:text-ink"
       >
         <Info className="size-3.5" />
       </button>
@@ -644,8 +651,8 @@ export function DescList({
     <dl className={cn('grid grid-cols-1 gap-x-6 gap-y-2.5', cols, className)}>
       {items.map((it) => (
         <div key={it.label} className="min-w-0">
-          <dt className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{it.label}</dt>
-          <dd className="mt-0.5 truncate text-[13.5px] text-ink">{it.value ?? '-'}</dd>
+          <dt className="text-[12.5px] font-medium text-ink-subtle">{it.label}</dt>
+          <dd className="mt-0.5 truncate text-[14px] text-ink">{it.value ?? '-'}</dd>
         </div>
       ))}
     </dl>

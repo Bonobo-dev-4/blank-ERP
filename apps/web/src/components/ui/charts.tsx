@@ -40,7 +40,7 @@ const fmt = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 2 
 
 const axis = {
   stroke: 'var(--chart-grid)',
-  tick: { fill: 'var(--chart-axis)', fontSize: 12 },
+  tick: { fill: 'var(--chart-axis)', fontSize: 12, fontFamily: 'var(--font-numeric)' },
   tickLine: false,
   axisLine: false,
 } as const;
@@ -61,7 +61,7 @@ export function ChartTooltip({
   if (!active || !payload?.length) return null;
   const heading = label !== undefined ? (labelFormatter ? labelFormatter(String(label)) : String(label)) : null;
   return (
-    <div className="glass-elevated min-w-[140px] rounded-xl px-3 py-2 text-[12.5px]">
+    <div className="glass-floating min-w-[150px] rounded-lg px-3 py-2 text-[12.5px]">
       {heading ? <p className="mb-1 font-semibold text-ink">{heading}</p> : null}
       <ul className="space-y-0.5">
         {payload.map((p) => {
@@ -139,7 +139,7 @@ export function CategoryBars({
           {horizontal ? (
             <>
               <XAxis type="number" {...axis} allowDecimals={false} />
-              <YAxis type="category" dataKey="label" {...axis} width={128} />
+              <YAxis type="category" dataKey="label" {...axis} width={118} />
             </>
           ) : (
             <>
@@ -154,8 +154,8 @@ export function CategoryBars({
           <Bar
             dataKey="value"
             name={unit ? unit.replace(/^./, (c) => c.toUpperCase()) : 'Value'}
-            radius={horizontal ? [0, 8, 8, 0] : [10, 10, 4, 4]}
-            maxBarSize={horizontal ? 22 : 56}
+            radius={horizontal ? [0, 6, 6, 0] : [8, 8, 3, 3]}
+            maxBarSize={horizontal ? 18 : 48}
             onClick={onSelect ? (_: unknown, i: number) => onSelect(data[i]!) : undefined}
             style={onSelect ? { cursor: 'pointer' } : undefined}
             isAnimationActive={false}
@@ -209,8 +209,8 @@ export function TrendChart({
                 aria-pressed={!off}
                 onClick={() => toggle(s.key)}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors',
-                  off ? 'border-line text-ink-subtle' : 'border-line bg-surface-muted text-ink',
+                  'inline-flex h-7 items-center gap-2 rounded-md px-2.5 text-[12.5px] font-medium transition-colors',
+                  off ? 'text-ink-subtle line-through decoration-1 hover:text-ink-muted' : 'bg-surface-muted text-ink hover:bg-[var(--glass-surface-hover)]',
                 )}
               >
                 <span
@@ -254,7 +254,7 @@ export function TrendChart({
                   dataKey={s.key}
                   name={s.label}
                   stroke={accentVar(s.accent)}
-                  strokeWidth={2.25}
+                  strokeWidth={2}
                   fill={`url(#${uid}-${s.key})`}
                   dot={false}
                   activeDot={{ r: 4.5, fill: accentVar(s.accent), stroke: 'var(--color-canvas)', strokeWidth: 2 }}
@@ -303,10 +303,10 @@ export function Donut({
               data={shown.length ? shown : [{ label: 'None', value: 1, accent: 'neutral' as Accent }]}
               dataKey="value"
               nameKey="label"
-              innerRadius="68%"
+              innerRadius="76%"
               outerRadius="100%"
-              paddingAngle={shown.length > 1 ? 2.5 : 0}
-              cornerRadius={6}
+              paddingAngle={shown.length > 1 ? 2 : 0}
+              cornerRadius={4}
               stroke="none"
               isAnimationActive={false}
             >
@@ -317,8 +317,8 @@ export function Donut({
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="num text-[28px] font-semibold leading-none text-ink">{fmt(total)}</span>
-          <span className="mt-1 text-[11.5px] font-medium uppercase tracking-[0.06em] text-ink-subtle">{centerLabel}</span>
+          <span className="t-kpi text-ink">{fmt(total)}</span>
+          <span className="mt-0.5 text-[12.5px] text-ink-subtle">{centerLabel}</span>
         </div>
       </div>
       <Legend segments={segments} total={total} className="w-full sm:flex-1" />
@@ -377,7 +377,7 @@ export function SegmentBar({
   }
   return (
     <div className={className}>
-      <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-surface-muted">
+      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-surface-muted">
         {segments.map((s) =>
           s.value > 0 ? (
             <div
@@ -414,6 +414,52 @@ export function SegmentBar({
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ radial progress */
+
+/**
+ * A single ratio as a ring — used where the number that matters is a rate,
+ * such as first-pass yield. The value is drawn in the ring's own colour and
+ * also printed in the centre, so the ring is never the only signal.
+ */
+export function RadialProgress({
+  value, accent, label, size = 112, stroke = 9,
+}: {
+  /** 0–100 */
+  value: number;
+  accent: Accent;
+  label: string;
+  size?: number;
+  stroke?: number;
+}) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={`${label}: ${pct.toFixed(1)}%`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--chart-grid)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={accentVar(accent)}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${(pct / 100) * c} ${c}`}
+          style={{ filter: `drop-shadow(0 0 6px color-mix(in srgb, ${accentVar(accent)} 45%, transparent))` }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="num text-[22px] font-semibold leading-none tracking-[-0.03em] text-ink">
+          {pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1)}%
+        </span>
+        <span className="mt-1 text-[11.5px] text-ink-subtle">{label}</span>
+      </div>
     </div>
   );
 }

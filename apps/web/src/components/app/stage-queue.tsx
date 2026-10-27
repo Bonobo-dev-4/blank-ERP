@@ -236,7 +236,7 @@ function QueueSection({
       <div className="mb-1.5 flex items-baseline gap-2">
         <h2 className="text-[13.5px] font-semibold text-ink">{heading}</h2>
         <span className="num text-[12px] text-ink-muted">{rows.length}</span>
-        <span className="text-[11.5px] text-ink-subtle">{hint}</span>
+        <span className="text-[12px] text-ink-subtle">{hint}</span>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => (
@@ -250,7 +250,7 @@ function QueueSection({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <CodeCell>{r.productionBatch.batchNo}</CodeCell>
-                <p className="truncate text-[11.5px] text-ink-muted">
+                <p className="truncate text-[12px] text-ink-muted">
                   {r.productionBatch.manufacturingOrder.moNo} ·{' '}
                   {r.productionBatch.manufacturingOrderItem.productVariant.sku} ·{' '}
                   {r.productionBatch.manufacturingOrderItem.size ?? '—'}
@@ -266,7 +266,7 @@ function QueueSection({
                 <p className="num text-[24px] font-semibold leading-none text-ink">
                   {fmtQty(quantityOf(r), 0)}
                 </p>
-                <p className="text-[11px] text-ink-subtle">
+                <p className="text-[12px] text-ink-subtle">
                   of {fmtQty(r.productionBatch.plannedQty, 0)} in the batch
                 </p>
               </div>
@@ -278,7 +278,7 @@ function QueueSection({
             </div>
 
             {r.productionBatch.manufacturingOrder.dueDate ? (
-              <p className="mt-1.5 text-[11px] text-ink-subtle">
+              <p className="mt-1.5 text-[12px] text-ink-subtle">
                 due {fmtDate(r.productionBatch.manufacturingOrder.dueDate)}
               </p>
             ) : null}

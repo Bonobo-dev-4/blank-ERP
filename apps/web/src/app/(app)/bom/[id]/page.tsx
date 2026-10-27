@@ -297,7 +297,7 @@ export default function BomDetailPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-[12.5px]">
-                <thead className="border-b border-line text-[11px] uppercase tracking-wide text-ink-subtle">
+                <thead className="border-b border-line text-[12px] font-medium text-ink-subtle">
                   <tr>
                     <th className="px-2 py-1.5 text-left font-medium">#</th>
                     <th className="px-2 py-1.5 text-left font-medium">Material</th>
@@ -322,9 +322,9 @@ export default function BomDetailPage() {
                             </span>
                           ) : null}
                         </div>
-                        <div className="text-[11.5px] text-ink-muted">{i.rawMaterial.name}</div>
+                        <div className="text-[12px] text-ink-muted">{i.rawMaterial.name}</div>
                         {i.sizeOverrides.length > 0 ? (
-                          <div className="mt-0.5 text-[11px] text-ink-muted">
+                          <div className="mt-0.5 text-[12px] text-ink-muted">
                             {i.sizeOverrides.map((s) => `${s.size} ${fmtQty(s.consumptionQty, 4)}`).join('  ·  ')}
                           </div>
                         ) : null}
@@ -376,7 +376,7 @@ export default function BomDetailPage() {
             ) : explosion.data ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-[12.5px]">
-                  <thead className="border-b border-line text-[11px] uppercase tracking-wide text-ink-subtle">
+                  <thead className="border-b border-line text-[12px] font-medium text-ink-subtle">
                     <tr>
                       <th className="px-1 py-1.5 text-left font-medium">Material</th>
                       <th className="px-1 py-1.5 text-right font-medium">Net</th>
@@ -465,7 +465,7 @@ export default function BomDetailPage() {
                     >
                       <div className="min-w-0">
                         <CodeCell>{l.materialCode ?? l.rawMaterialId.slice(0, 8)}</CodeCell>
-                        <div className="truncate text-[11.5px] text-ink-muted">{l.materialName}</div>
+                        <div className="truncate text-[12px] text-ink-muted">{l.materialName}</div>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <span className="num text-ink-muted">

@@ -43,7 +43,7 @@ export default function ReplenishmentPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-surface px-3 py-2.5">
         <div>
-          <Label htmlFor="lookback" className="text-[11px]">Look back</Label>
+          <Label htmlFor="lookback" className="text-[12px]">Look back</Label>
           <NativeSelect id="lookback" value={lookback} onChange={(e) => setLookback(e.target.value)} className="h-8 w-[130px]">
             <option value="28">4 weeks</option>
             <option value="56">8 weeks</option>
@@ -52,7 +52,7 @@ export default function ReplenishmentPage() {
           </NativeSelect>
         </div>
         <div>
-          <Label htmlFor="safety" className="text-[11px]">Safety stock</Label>
+          <Label htmlFor="safety" className="text-[12px]">Safety stock</Label>
           <NativeSelect id="safety" value={safety} onChange={(e) => setSafety(e.target.value)} className="h-8 w-[130px]">
             <option value="0">None</option>
             <option value="7">7 days</option>
@@ -98,7 +98,7 @@ export default function ReplenishmentPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Material</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Supplier</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Per week</th>
@@ -113,14 +113,14 @@ export default function ReplenishmentPage() {
                     {data.rows.map((r) => (
                       <tr key={r.rawMaterialId} className="border-b border-line last:border-0 align-top">
                         <td className="px-3 py-1.5">
-                          <span className="font-mono text-[11.5px]">{r.materialCode}</span>
+                          <span className="font-mono text-[12px]">{r.materialCode}</span>
                           <span className="ml-2 text-ink-muted">{r.name}</span>
                           {!r.hasLeadTime ? (
-                            <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-danger">
+                            <span className="ml-2 inline-flex items-center gap-1 text-[12px] text-danger">
                               <TriangleAlert className="size-3" /> no lead time
                             </span>
                           ) : null}
-                          <div className="mt-0.5 text-[11px] text-ink-subtle">{r.rationale}</div>
+                          <div className="mt-0.5 text-[12px] text-ink-subtle">{r.rationale}</div>
                         </td>
                         <td className="px-3 py-1.5 text-ink-muted">{r.supplier ?? '—'}</td>
                         <td className="num px-3 py-1.5 text-right">{fmtQty(r.consumptionVelocity)}</td>

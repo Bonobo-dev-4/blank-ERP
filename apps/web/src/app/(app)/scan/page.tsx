@@ -163,7 +163,7 @@ export default function ScanStationPage() {
           <span className="glass-inset grid size-10 place-items-center rounded-full">
             <ScanLine className="size-5 text-brand" />
           </span>
-          <h1 className="text-[26px] font-semibold tracking-tight text-ink lg:text-[30px]">Scan Station</h1>
+          <h1 className="t-page-title text-ink">Scan Station</h1>
           <NativeSelect
             value={stageId}
             onChange={(e) => setStageId(e.target.value)}
@@ -233,7 +233,7 @@ export default function ScanStationPage() {
                 ['Rejected', resolution.batch.progress.rejectedQty],
               ].map(([label, value]) => (
                 <div key={label} className="glass-inset rounded-2xl px-4 py-3">
-                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</p>
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-subtle">{label}</p>
                   <p className="num text-[28px] font-semibold leading-tight text-ink">{fmtQty(value, 0)}</p>
                 </div>
               ))}
@@ -312,7 +312,7 @@ export default function ScanStationPage() {
                       >
                         Record scan
                       </Button>
-                      <p className="mt-1.5 text-center text-[11.5px] text-ink-muted">
+                      <p className="mt-1.5 text-center text-[12px] text-ink-muted">
                         Queued on this device and sent as soon as the server is reachable. It is only
                         counted once confirmed.
                       </p>
@@ -405,11 +405,11 @@ function RouteStrip({
                     : 'border-line bg-surface')
             }
           >
-            <p className="truncate text-[10.5px] font-medium uppercase tracking-wide text-ink-subtle">
+            <p className="truncate text-[12px] font-medium text-ink-subtle">
               {s.stageCode ?? `#${s.sequence}`}
             </p>
             <p className="num text-[15px] font-semibold text-ink">{fmtQty(wip > 0 ? s.wipQty : s.completedQty, 0)}</p>
-            <p className="text-[10px] text-ink-muted">{wip > 0 ? 'in hand' : 'done'}</p>
+            <p className="text-[12px] text-ink-muted">{wip > 0 ? 'in hand' : 'done'}</p>
           </div>
         );
       })}
@@ -446,7 +446,7 @@ function ScanQueuePanel({ scans }: { scans: QueuedScan[] }) {
               <p className="font-medium text-ink">{s.label}</p>
               {/* The server's own words, so the operator can act on them. */}
               <p className="text-ink-muted">{s.error}</p>
-              <p className="text-[11px] text-ink-subtle">{fmtRelative(s.scannedAt)}</p>
+              <p className="text-[12px] text-ink-subtle">{fmtRelative(s.scannedAt)}</p>
             </div>
             <div className="flex shrink-0 gap-1">
               <Button onClick={() => scanQueue.retry(s.idempotencyKey)} aria-label="Retry">
@@ -467,7 +467,7 @@ function ScanQueuePanel({ scans }: { scans: QueuedScan[] }) {
             <Loader2 className="size-4 shrink-0 animate-spin text-ink-muted" />
             <span className="min-w-0 flex-1 truncate text-ink">{s.label}</span>
             <Badge tone="warn">waiting</Badge>
-            <span className="text-[11px] text-ink-subtle">{fmtRelative(s.scannedAt)}</span>
+            <span className="text-[12px] text-ink-subtle">{fmtRelative(s.scannedAt)}</span>
           </div>
         ))}
 
@@ -479,7 +479,7 @@ function ScanQueuePanel({ scans }: { scans: QueuedScan[] }) {
             <CheckCircle2 className="size-4 shrink-0 text-ok" />
             <span className="min-w-0 flex-1 truncate text-ink-muted">{s.label}</span>
             <Badge tone="ok">confirmed</Badge>
-            <span className="text-[11px] text-ink-subtle">{fmtRelative(s.scannedAt)}</span>
+            <span className="text-[12px] text-ink-subtle">{fmtRelative(s.scannedAt)}</span>
           </div>
         ))}
       </CardBody>

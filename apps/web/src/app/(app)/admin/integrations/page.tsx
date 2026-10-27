@@ -102,7 +102,7 @@ function ShopifyPanel() {
             </div>
 
             {!since ? (
-              <p className="text-[11.5px] text-ink-muted">
+              <p className="text-[12px] text-ink-muted">
                 With no date, the importer walks forward from the oldest order — correct for a backfill,
                 but it returns history rather than current demand. Set a date to pull recent orders.
               </p>
@@ -207,7 +207,7 @@ function ConnectionBadge({ configured, enabled }: { configured?: boolean; enable
 function Missing({ missing }: { missing: string[] }) {
   return (
     <div className="rounded-lg border border-warn/30 bg-warn-soft px-3.5 py-2.5 text-[12.5px]">
-      Set {missing.map((m) => <code key={m} className="mx-0.5 font-mono text-[11.5px]">{m}</code>)} in the
+      Set {missing.map((m) => <code key={m} className="mx-0.5 font-mono text-[12px]">{m}</code>)} in the
       environment, then restart the API. Secrets are never shown here or sent to the browser.
     </div>
   );
@@ -236,7 +236,7 @@ function Facilities({ facilities }: { facilities: Facility[] }) {
   const hidden = facilities.filter((f) => !f.isVisible);
   return (
     <div className="rounded-lg border border-line">
-      <div className="border-b border-line bg-surface-muted px-3.5 py-2 text-[11px] uppercase tracking-wide text-ink-muted">
+      <div className="border-b border-line bg-surface-muted px-3.5 py-2 text-[12px] font-medium text-ink-muted">
         Facilities — {visible.length} visible of {facilities.length}
       </div>
       <div className="scroll-x">
@@ -244,7 +244,7 @@ function Facilities({ facilities }: { facilities: Facility[] }) {
           <tbody>
             {visible.map((f) => (
               <tr key={f.code} className="border-b border-line last:border-0">
-                <td className="px-3 py-1.5 font-mono text-[11.5px]">{f.code}</td>
+                <td className="px-3 py-1.5 font-mono text-[12px]">{f.code}</td>
                 <td className="px-3 py-1.5">{f.displayName}</td>
                 <td className="px-3 py-1.5"><Badge tone="outline">{f.kind}</Badge></td>
               </tr>
@@ -253,7 +253,7 @@ function Facilities({ facilities }: { facilities: Facility[] }) {
         </table>
       </div>
       {hidden.length > 0 ? (
-        <p className="border-t border-line px-3.5 py-2 text-[11.5px] text-ink-muted">
+        <p className="border-t border-line px-3.5 py-2 text-[12px] text-ink-muted">
           <span className="font-medium text-ink">{hidden.length} facilities are real but invisible</span> to
           this service account: {hidden.map((f) => f.code).join(', ')}. Any &ldquo;available
           elsewhere?&rdquo; search is partial until it can see them.

@@ -112,7 +112,7 @@ export default function ProductDetailPage() {
           <div className="scroll-x">
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                   <th className="px-3 py-1.5 text-left font-semibold">Size</th>
                   <th className="px-3 py-1.5 text-left font-semibold">SKU</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Colour</th>
@@ -125,9 +125,9 @@ export default function ProductDetailPage() {
                 {variants.map((v) => (
                   <tr key={v.id} className={`border-b border-line last:border-0 ${v.externalMappings.length === 0 ? 'row-flag' : ''}`}>
                     <td className="px-3 py-1.5 font-display text-[13px] font-semibold">{v.size ?? '—'}</td>
-                    <td className="px-3 py-1.5 font-mono text-[11.5px]">{v.sku}</td>
+                    <td className="px-3 py-1.5 font-mono text-[12px]">{v.sku}</td>
                     <td className="px-3 py-1.5 text-ink-muted">{v.color ?? '—'}</td>
-                    <td className="px-3 py-1.5 font-mono text-[11px] text-ink-muted">{v.barcode ?? '—'}</td>
+                    <td className="px-3 py-1.5 font-mono text-[12px] text-ink-muted">{v.barcode ?? '—'}</td>
                     <td className="px-3 py-1.5">
                       {v.externalMappings.length === 0 ? (
                         <Badge tone="warn">not linked</Badge>
@@ -178,7 +178,7 @@ export default function ProductDetailPage() {
                 <span className="flex-1 text-[12.5px] font-medium">{b.name ?? 'Unnamed BOM'}</span>
                 {b.versions.map((v) => (
                   <Link key={v.id} href={`/bom/${v.id}`} className="inline-flex items-center gap-1.5 hover:underline">
-                    <span className="font-mono text-[11.5px]">v{v.version}</span>
+                    <span className="font-mono text-[12px]">v{v.version}</span>
                     <StatusBadge status={v.status} />
                   </Link>
                 ))}

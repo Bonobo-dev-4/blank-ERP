@@ -65,7 +65,7 @@ export default function ShortagesPage() {
           Number(row.original.openPurchaseQty) > 0 ? (
             <span>
               {fmtQty(row.original.openPurchaseQty, 4)}
-              <span className="ml-1 text-[11px] text-ink-subtle">
+              <span className="ml-1 text-[12px] text-ink-subtle">
                 {fmtDate(row.original.expectedArrivalDate)}
               </span>
             </span>

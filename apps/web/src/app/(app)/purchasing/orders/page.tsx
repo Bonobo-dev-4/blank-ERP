@@ -53,7 +53,7 @@ export default function PurchaseOrdersPage() {
       { id: 'materials', header: 'Materials',
         accessorFn: (r) => r.items.map((i) => i.rawMaterial.materialCode).join(' '),
         cell: ({ row }) => (
-          <span className="block max-w-[240px] truncate font-mono text-[11.5px] text-ink-muted">
+          <span className="block max-w-[240px] truncate font-mono text-[12px] text-ink-muted">
             {row.original.items.map((i) => i.rawMaterial.materialCode).join(', ')}
           </span>
         ),

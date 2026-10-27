@@ -121,7 +121,7 @@ export function BomLineEditor({
     <div className="space-y-2">
       <div className="overflow-x-auto rounded border border-line">
         <table className="w-full min-w-[1000px] text-[12.5px]">
-          <thead className="bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+          <thead className="bg-surface-muted text-[12px] font-medium text-ink-subtle">
             <tr>
               <th className="w-8 px-2 py-2 text-left font-medium">#</th>
               <th className="px-2 py-2 text-left font-medium">Material</th>
@@ -159,7 +159,7 @@ export function BomLineEditor({
                       ))}
                     </NativeSelect>
                     {line.sizeOverrides.length > 0 ? (
-                      <div className="mt-1 text-[11px] text-ink-muted">
+                      <div className="mt-1 text-[12px] text-ink-muted">
                         {line.sizeOverrides.map((s) => `${s.size}: ${s.consumptionQty}`).join('  ·  ')}
                       </div>
                     ) : null}

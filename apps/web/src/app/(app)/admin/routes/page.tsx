@@ -103,7 +103,7 @@ export default function RoutesAdminPage() {
                       <CodeCell>{step.productionStage.code}</CodeCell>
                       {step.isOptional ? <Badge tone="neutral">optional</Badge> : null}
                       {step.standardMinutes ? (
-                        <span className="text-[11px] text-ink-subtle">{step.standardMinutes} min/pc</span>
+                        <span className="text-[12px] text-ink-subtle">{step.standardMinutes} min/pc</span>
                       ) : null}
                       {i < route.steps.length - 1 ? (
                         <ArrowDown className="size-3 shrink-0 text-ink-subtle" />
@@ -143,7 +143,7 @@ export default function RoutesAdminPage() {
                   {s.requiresQc ? <Badge tone="warn">QC</Badge> : null}
                 </div>
                 {s.defaultLocation ? (
-                  <p className="mt-0.5 text-[11px] text-ink-subtle">{s.defaultLocation.name}</p>
+                  <p className="mt-0.5 text-[12px] text-ink-subtle">{s.defaultLocation.name}</p>
                 ) : null}
               </div>
             ))}
@@ -285,7 +285,7 @@ function RouteEditor({
                     <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">
                       {stage?.name ?? 'Unknown stage'}
                     </span>
-                    <label className="flex items-center gap-1 whitespace-nowrap text-[11.5px] text-ink-muted">
+                    <label className="flex items-center gap-1 whitespace-nowrap text-[12px] text-ink-muted">
                       <input
                         type="checkbox"
                         checked={s.isOptional}

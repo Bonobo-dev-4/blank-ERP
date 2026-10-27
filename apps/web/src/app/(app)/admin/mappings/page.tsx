@@ -91,7 +91,7 @@ export default function MappingsPage() {
           return (
             <div className="space-y-0.5">
               {maps.map((m) => (
-                <div key={`${m.identifierKind}-${m.externalId}`} className="text-[11px]">
+                <div key={`${m.identifierKind}-${m.externalId}`} className="text-[12px]">
                   <span className="font-medium text-ink-muted">{m.identifierKind}</span>{' '}
                   <span className="font-mono text-ink">{truncate(m.externalId)}</span>
                   {m.isPrimary ? <Badge tone="brand" className="ml-1">primary</Badge> : null}
@@ -274,7 +274,7 @@ function MappingDialog({
             <input type="checkbox" checked={isPrimary} onChange={(e) => setIsPrimary(e.target.checked)} className="mt-0.5" />
             <span>
               <span className="font-medium text-ink">Primary identifier for this provider</span>
-              <span className="block text-[11.5px] text-ink-muted">
+              <span className="block text-[12px] text-ink-muted">
                 Used by order imports and inventory pushes. Only one per provider.
               </span>
             </span>

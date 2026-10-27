@@ -2,233 +2,238 @@
 @import 'tw-animate-css';
 
 /*
- * DASH AND DOT Manufacturing ERP — Aurora Liquid Glass.
+ * DASH AND DOT — GlassOS.
  *
- * Two themes over one material.
+ * Two themes over one material system.
  *
- *   night  "Graphite Aurora"     graphite and midnight navy, cool steel,
- *                                restrained blue and violet aurora
- *   day    "Champagne Titanium"  platinum, silver and a neutral champagne
- *                                ground under strong graphite type
+ *   night  Graphite Aurora      deep graphite and midnight navy, a restrained
+ *                               blue aurora high right, a faint violet low
+ *   day    Champagne Titanium   pearl, platinum and titanium with a restrained
+ *                               champagne-neutral warmth and graphite type
  *
- * The material is the same in both: crystal glass — a translucent pane that
- * lets the ground show through, blurs only what is BEHIND it, carries a fine
- * lit rim and a soft reflection, and never tints its content. Type is never
- * blurred and never translucent.
+ * The material: crystal glass that lets the environment show through, blurs
+ * only what is BEHIND it, carries a fine lit rim and a soft reflection drawn
+ * under its content, and never tints or blurs type.
  *
- * The theme is an attribute on <html> (`data-theme="day" | "night"`), set by
- * an inline script before first paint so there is no flash. Tailwind's colour
- * utilities all read `var(--color-*)`, so overriding the variables under the
- * attribute re-themes every screen without touching a component.
- *
- * Night is the base declaration; day overrides it.
+ * The theme is `data-theme` on <html>, set by an inline script before first
+ * paint. Tailwind's colour utilities all read `var(--color-*)`, so overriding
+ * the variables under the attribute re-themes every screen at once. Night is
+ * the base declaration; day overrides it.
  */
 @theme {
-  --font-sans: var(--font-body-face), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: var(--font-body-face), ui-sans-serif, system-ui, sans-serif;
-  --font-numeric: var(--font-numeric-face), var(--font-body-face), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-mono-face), ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  --font-sans: var(--font-body-face), Inter, Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-body-face), Inter, Arial, sans-serif;
+  --font-numeric: var(--font-body-face), Inter, Arial, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* --- Graphite Aurora (night) — the base -------------------------------- */
-  --color-canvas: #10151E;
-  --color-surface: rgb(255 255 255 / 0.08);
-  /* Hover fills, table headers and chips that sit ON glass. */
-  --color-surface-muted: rgb(255 255 255 / 0.06);
-  --color-line: rgb(255 255 255 / 0.12);
-  /* Strong enough for a 3:1 control boundary over the darkest pane. */
-  --color-line-strong: rgb(255 255 255 / 0.42);
+  /* --- Graphite Aurora (night) ------------------------------------------- */
+  --color-canvas: #101621;
+  --color-surface: rgb(255 255 255 / 0.075);
+  /* Hover fills and chips that sit ON glass. */
+  --color-surface-muted: rgb(255 255 255 / 0.055);
+  --color-line: rgb(255 255 255 / 0.1);
+  /* A 3:1 control boundary over the darkest pane. */
+  --color-line-strong: rgb(255 255 255 / 0.4);
 
-  --color-ink: #F7F9FC;
-  /* Muted steps sit a touch above the spec's #C0CBD9 / #A4B1C3: measured on
-     the COMPOSITED pane over the brightest aurora, those dip under 4.5:1. */
-  --color-ink-muted: #CAD4E1;
-  --color-ink-subtle: #B3BFCF;
+  --color-ink: #F5F7FB;
+  --color-ink-muted: #C4CDDB;
+  /* A shade above the spec's #A4B1C3: measured on the composited pane under
+     the blue aurora, that value dips below 4.5:1. */
+  --color-ink-subtle: #ADB9CA;
 
-  /* Kept for screens that still name the old rail; the rail is glass now. */
-  --color-rail: rgb(16 21 30 / 0.55);
-  --color-rail-hover: rgb(255 255 255 / 0.1);
-  --color-rail-active: rgb(255 255 255 / 0.14);
-  --color-rail-ink: #DFE7F2;
-  --color-rail-ink-muted: #A4B1C3;
+  --color-rail: rgb(255 255 255 / 0.06);
+  --color-rail-hover: rgb(255 255 255 / 0.06);
+  --color-rail-active: rgb(120 160 255 / 0.14);
+  --color-rail-ink: #DCE3EE;
+  --color-rail-ink-muted: #ADB9CA;
 
-  /*
-   * The accent is light steel-blue on night — light enough to read as text
-   * on the darkest glass (≥ 6:1), and it carries DARK text when used as a
-   * fill (`text-canvas`), which is how every filled chip is written.
-   */
-  --color-brand: #8AB0FF;
-  --color-brand-strong: #A9C4FF;
-  --color-brand-soft: rgb(108 154 255 / 0.18);
+  /* The one interface accent: refined steel blue. As text it clears 6:1 on
+     night glass; as a fill it carries `text-canvas`. */
+  --color-brand: #8EAEFF;
+  --color-brand-strong: #ABC3FF;
+  --color-brand-soft: rgb(120 160 255 / 0.16);
 
-  /* Semantic text-and-fill colours. Text variants clear 4.5:1 on glass. */
-  --color-ok: #4BDBA0;
-  --color-ok-soft: rgb(75 219 160 / 0.14);
-  --color-warn: #F3BD58;
-  --color-warn-soft: rgb(243 189 88 / 0.15);
-  --color-danger: #FF728A;
-  --color-danger-soft: rgb(255 114 138 / 0.15);
-  --color-info: #7FB0FF;
-  --color-info-soft: rgb(127 176 255 / 0.15);
-  --color-hold: #FFAA61;
-  --color-hold-soft: rgb(255 170 97 / 0.15);
-  --color-violet: #B9A8FF;
-  --color-violet-soft: rgb(161 139 255 / 0.17);
-  --color-neutral-soft: rgb(255 255 255 / 0.08);
+  --color-ok: #43D6A0;
+  --color-ok-soft: rgb(67 214 160 / 0.13);
+  --color-warn: #F0BE62;
+  --color-warn-soft: rgb(240 190 98 / 0.14);
+  --color-danger: #FF718A;
+  --color-danger-soft: rgb(255 113 138 / 0.14);
+  --color-info: #8EAEFF;
+  --color-info-soft: rgb(120 160 255 / 0.14);
+  --color-hold: #FFA96E;
+  --color-hold-soft: rgb(255 169 110 / 0.14);
+  --color-violet: #B6A6FF;
+  --color-violet-soft: rgb(169 149 255 / 0.16);
+  --color-neutral-soft: rgb(255 255 255 / 0.07);
 
-  /* Legacy production-strip names, mapped onto the glass system. */
-  --color-vat: rgb(255 255 255 / 0.08);
+  /* Legacy names kept so older screens still resolve. */
+  --color-vat: rgb(255 255 255 / 0.075);
   --color-vat-deep: rgb(255 255 255 / 0.04);
-  --color-vat-line: rgb(255 255 255 / 0.2);
-  --color-chalk: #F7F9FC;
-  --color-chalk-muted: #C0CBD9;
-  --color-zari: #8AB0FF;
-  --color-madder: #FF728A;
+  --color-vat-line: rgb(255 255 255 / 0.18);
+  --color-chalk: #F5F7FB;
+  --color-chalk-muted: #C4CDDB;
+  --color-zari: #8EAEFF;
+  --color-madder: #FF718A;
 
   /*
-   * Radii. Glass reads as a physical pane, and physical panes have soft
-   * corners: cards 24, large panels 28, buttons 14, inputs 12, pills round.
+   * Radii: main panels and modals 20, metric tiles 16, stage cards 15,
+   * inputs and buttons 10, pills round. Precise, not toy-like.
    */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius: 10px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 14px;
-  --radius-2xl: 24px;
-  --radius-3xl: 28px;
-  --radius-4xl: 32px;
+  --radius: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 15px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
 }
 
-/*
- * Glass and chart variables. Not Tailwind colours, so they live outside
- * @theme — components reference them directly.
- */
+/* Glass, table and chart variables — referenced directly by components. */
 :root {
   color-scheme: dark;
 
-  --glass-surface: rgb(255 255 255 / 0.08);
-  --glass-surface-hover: rgb(255 255 255 / 0.12);
-  --glass-surface-elevated: rgb(255 255 255 / 0.14);
-  /* Dense data: a touch more body behind the numbers. */
-  --glass-surface-dense: rgb(255 255 255 / 0.07);
-  --glass-border: rgb(255 255 255 / 0.2);
-  --glass-highlight: rgb(255 255 255 / 0.42);
-  --glass-shadow: rgb(0 0 0 / 0.24);
-  --glass-reflection: rgb(255 255 255 / 0.18);
-  --glass-solid: #1B2432;
-  --glass-inset: rgb(255 255 255 / 0.05);
-  --glass-inset-border: rgb(255 255 255 / 0.1);
-  /* Modals and drawers: translucent, but with enough body to read a form on. */
-  --glass-modal: rgb(27 36 50 / 0.8);
-  --glass-scrim: rgb(5 8 14 / 0.5);
+  /* The four materials, by elevation. */
+  --glass-subtle: rgb(255 255 255 / 0.055);
+  --glass-surface: rgb(255 255 255 / 0.075);
+  --glass-surface-elevated: rgb(255 255 255 / 0.09);
+  --glass-floating: rgb(30 41 60 / 0.82);
+  --glass-surface-hover: rgb(255 255 255 / 0.11);
+  --glass-surface-dense: rgb(255 255 255 / 0.065);
+  --glass-border: rgb(255 255 255 / 0.15);
+  --glass-highlight: rgb(255 255 255 / 0.32);
+  --glass-shadow: rgb(0 0 0 / 0.28);
+  --glass-reflection: rgb(255 255 255 / 0.13);
+  --glass-solid: #18212F;
+  --glass-inset: rgb(255 255 255 / 0.045);
+  --glass-inset-border: rgb(255 255 255 / 0.09);
+  --glass-modal: rgb(24 33 48 / 0.84);
+  --glass-scrim: rgb(5 8 14 / 0.52);
+
+  /* Sticky table headers need enough body that rows never read through. */
+  --table-header: rgb(27 37 54 / 0.94);
+
+  /* Navigation */
+  --nav-active: rgb(120 160 255 / 0.13);
+  --nav-active-border: rgb(142 174 255 / 0.22);
 
   /* Semantic chart palette — one meaning per colour, in every module. */
-  --chart-release: #6C9AFF;
-  --chart-issue: #48C7E8;
-  --chart-cutting: #3DD6C4;
-  --chart-stitching: #A18BFF;
-  --chart-finishing: #59D99B;
-  --chart-qc: #F3BD58;
-  --chart-rework: #FFAA61;
-  --chart-rejected: #FF728A;
-  --chart-completed: #4BDBA0;
-  --chart-inventory: #999CFF;
-  --chart-purchasing: #72C5FF;
-  --chart-delayed: #FF637B;
-  --chart-hold: #EAC266;
-  --chart-neutral: #8B98AD;
-  --chart-grid: rgb(255 255 255 / 0.1);
-  --chart-axis: #A4B1C3;
-  --chart-cursor: rgb(255 255 255 / 0.06);
+  --chart-release: #78A0FF;
+  --chart-issue: #52C6EA;
+  --chart-cutting: #43D5C2;
+  --chart-stitching: #A995FF;
+  --chart-finishing: #61D99C;
+  --chart-qc: #F0BE62;
+  --chart-rework: #FFA96E;
+  --chart-rejected: #FF718A;
+  --chart-completed: #43D6A0;
+  --chart-inventory: #A59BFF;
+  --chart-purchasing: #79BFFF;
+  --chart-delayed: #FF718A;
+  --chart-hold: #E5BE66;
+  --chart-neutral: #8C99AE;
+  --chart-grid: rgb(255 255 255 / 0.08);
+  --chart-axis: #ADB9CA;
+  --chart-cursor: rgb(255 255 255 / 0.05);
 }
 
 /* --- Champagne Titanium (day) --------------------------------------------- */
 :root[data-theme='day'] {
   color-scheme: light;
 
-  --color-canvas: #F3F1EE;
-  --color-surface: rgb(255 255 255 / 0.34);
-  --color-surface-muted: rgb(30 45 65 / 0.05);
-  --color-line: rgb(36 48 64 / 0.14);
-  --color-line-strong: rgb(36 48 64 / 0.5);
+  --color-canvas: #F4F3F1;
+  --color-surface: rgb(255 255 255 / 0.36);
+  --color-surface-muted: rgb(39 54 72 / 0.045);
+  --color-line: rgb(39 54 72 / 0.14);
+  --color-line-strong: rgb(39 54 72 / 0.48);
 
-  --color-ink: #17212F;
-  --color-ink-muted: #3F4B5E;
-  --color-ink-subtle: #505C70;
+  --color-ink: #182231;
+  --color-ink-muted: #435166;
+  /* A shade under the spec's #58677A so it clears 4.5:1 on the composited
+     pane over the darker titanium region. */
+  --color-ink-subtle: #536175;
 
-  --color-rail: rgb(255 255 255 / 0.34);
-  --color-rail-hover: rgb(30 45 65 / 0.06);
-  --color-rail-active: rgb(255 255 255 / 0.6);
-  --color-rail-ink: #344459;
-  --color-rail-ink-muted: #596579;
+  --color-rail: rgb(255 255 255 / 0.3);
+  --color-rail-hover: rgb(39 54 72 / 0.05);
+  --color-rail-active: rgb(255 255 255 / 0.72);
+  --color-rail-ink: #2E3B4E;
+  --color-rail-ink-muted: #536175;
 
-  --color-brand: #3A66C4;
-  --color-brand-strong: #2D55AA;
-  --color-brand-soft: rgb(71 119 217 / 0.13);
+  --color-brand: #3D69CC;
+  --color-brand-strong: #2F58B3;
+  --color-brand-soft: rgb(71 118 220 / 0.12);
 
-  /* Day text variants are DARKER than the chart hues so labels stay ≥ 4.5:1. */
-  --color-ok: #13744E;
-  --color-ok-soft: rgb(22 134 93 / 0.12);
-  --color-warn: #835409;
-  --color-warn-soft: rgb(175 117 22 / 0.13);
-  --color-danger: #B32F46;
-  --color-danger-soft: rgb(203 64 87 / 0.11);
-  --color-info: #2F5DB8;
-  --color-info-soft: rgb(71 119 217 / 0.12);
-  --color-hold: #9A4F14;
-  --color-hold-soft: rgb(196 107 40 / 0.12);
-  --color-violet: #5B3FB5;
-  --color-violet-soft: rgb(117 86 207 / 0.12);
-  --color-neutral-soft: rgb(30 45 65 / 0.06);
+  /* Day text variants run DARKER than the chart hues so labels stay ≥ 4.5:1. */
+  --color-ok: #12704F;
+  --color-ok-soft: rgb(22 139 99 / 0.11);
+  --color-warn: #7F5A10;
+  --color-warn-soft: rgb(184 131 37 / 0.13);
+  --color-danger: #B0304A;
+  --color-danger-soft: rgb(204 64 90 / 0.1);
+  --color-info: #2F5CB8;
+  --color-info-soft: rgb(71 118 220 / 0.11);
+  --color-hold: #95501E;
+  --color-hold-soft: rgb(195 109 49 / 0.11);
+  --color-violet: #5A3FB0;
+  --color-violet-soft: rgb(119 85 204 / 0.11);
+  --color-neutral-soft: rgb(39 54 72 / 0.06);
 
-  --color-vat: rgb(255 255 255 / 0.34);
+  --color-vat: rgb(255 255 255 / 0.36);
   --color-vat-deep: rgb(255 255 255 / 0.2);
-  --color-vat-line: rgb(36 48 64 / 0.2);
-  --color-chalk: #17212F;
-  --color-chalk-muted: #455164;
-  --color-zari: #3A66C4;
-  --color-madder: #B32F46;
+  --color-vat-line: rgb(39 54 72 / 0.18);
+  --color-chalk: #182231;
+  --color-chalk-muted: #435166;
+  --color-zari: #3D69CC;
+  --color-madder: #B0304A;
 
-  --glass-surface: rgb(255 255 255 / 0.32);
-  --glass-surface-hover: rgb(255 255 255 / 0.44);
-  --glass-surface-elevated: rgb(255 255 255 / 0.56);
+  --glass-subtle: rgb(255 255 255 / 0.3);
+  --glass-surface: rgb(255 255 255 / 0.36);
+  --glass-surface-elevated: rgb(255 255 255 / 0.42);
+  --glass-floating: rgb(250 251 252 / 0.86);
+  --glass-surface-hover: rgb(255 255 255 / 0.46);
   --glass-surface-dense: rgb(255 255 255 / 0.5);
-  --glass-border: rgb(255 255 255 / 0.8);
-  --glass-highlight: rgb(255 255 255 / 0.95);
-  --glass-shadow: rgb(37 47 62 / 0.14);
-  --glass-reflection: rgb(255 255 255 / 0.75);
-  --glass-solid: #F2F3F5;
-  --glass-inset: rgb(255 255 255 / 0.36);
-  --glass-inset-border: rgb(255 255 255 / 0.7);
-  --glass-modal: rgb(250 250 249 / 0.8);
-  --glass-scrim: rgb(23 33 47 / 0.22);
+  --glass-border: rgb(255 255 255 / 0.78);
+  --glass-highlight: rgb(255 255 255 / 0.96);
+  --glass-shadow: rgb(43 57 76 / 0.11);
+  --glass-reflection: rgb(255 255 255 / 0.6);
+  --glass-solid: #F3F4F6;
+  --glass-inset: rgb(255 255 255 / 0.34);
+  --glass-inset-border: rgb(255 255 255 / 0.68);
+  --glass-modal: rgb(248 249 251 / 0.84);
+  --glass-scrim: rgb(24 34 49 / 0.2);
 
-  --chart-release: #4777D9;
-  --chart-issue: #008FB5;
-  --chart-cutting: #189C94;
-  --chart-stitching: #7556CF;
-  --chart-finishing: #289A69;
-  --chart-qc: #AF7516;
-  --chart-rework: #C46B28;
-  --chart-rejected: #CB4057;
-  --chart-completed: #16865D;
-  --chart-inventory: #5555BA;
-  --chart-purchasing: #337FBA;
-  --chart-delayed: #B83349;
-  --chart-hold: #A77524;
-  --chart-neutral: #7A8597;
-  --chart-grid: rgb(30 45 65 / 0.1);
-  --chart-axis: #596579;
-  --chart-cursor: rgb(30 45 65 / 0.05);
+  --table-header: rgb(246 247 249 / 0.94);
+
+  --nav-active: rgb(255 255 255 / 0.72);
+  --nav-active-border: rgb(255 255 255 / 0.95);
+
+  --chart-release: #4776DC;
+  --chart-issue: #1697C1;
+  --chart-cutting: #14998D;
+  --chart-stitching: #7755CC;
+  --chart-finishing: #309C69;
+  --chart-qc: #B88325;
+  --chart-rework: #C36D31;
+  --chart-rejected: #CC405A;
+  --chart-completed: #168B63;
+  --chart-inventory: #6359C9;
+  --chart-purchasing: #347EB7;
+  --chart-delayed: #CC405A;
+  --chart-hold: #B27E25;
+  --chart-neutral: #7A8698;
+  --chart-grid: rgb(39 54 72 / 0.09);
+  --chart-axis: #536175;
+  --chart-cursor: rgb(39 54 72 / 0.045);
 }
 
 * { border-color: var(--color-line); }
 
 /*
- * The canvas colour lives on <html> ONLY. If <body> also had an opaque
- * background it would paint over the fixed environment layer below (a
- * negative z-index sits under in-flow backgrounds), and every theme would
- * collapse to a flat sheet — which is exactly what happened before.
+ * The canvas colour lives on <html> ONLY. An opaque <body> background would
+ * paint over the fixed environment layer below (a negative z-index sits under
+ * in-flow backgrounds) and collapse every theme to a flat sheet.
  */
 html { background: var(--color-canvas); }
 body { background: transparent; }
@@ -236,19 +241,22 @@ body { background: transparent; }
 html, body {
   color: var(--color-ink);
   font-family: var(--font-sans);
-  /* 14px base: the floor for text read for eight hours. */
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
+/* Headings take the display face; everything you operate takes Geist. */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
 /*
- * The environment behind the glass.
- *
- * Fixed, so it does not scroll with the content — the panes move over it,
- * which is what makes them read as panes. Without variation behind it, glass
- * has nothing to show through and the blur is pure cost.
+ * The environment behind the glass. Fixed, so the panes move over it — which
+ * is what makes them read as panes.
  */
 body::before {
   content: '';
@@ -257,76 +265,179 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    /* steel aurora, high left */
-    radial-gradient(1100px 760px at 4% -14%, rgb(70 86 116 / 0.62), transparent 62%),
-    /* restrained blue aurora, high right */
-    radial-gradient(900px 620px at 92% 4%, rgb(76 112 196 / 0.24), transparent 60%),
-    /* restrained violet aurora, low right */
-    radial-gradient(1000px 760px at 88% 104%, rgb(118 96 186 / 0.2), transparent 62%),
-    /* cool depth, low left */
-    radial-gradient(820px 640px at 4% 100%, rgb(38 51 70 / 0.9), transparent 60%),
-    linear-gradient(160deg, #10151E 0%, #202B3B 46%, #192230 72%, #181D2C 100%);
+    /* blue aurora, upper right */
+    radial-gradient(1000px 720px at 92% -10%, rgb(52 77 117 / 0.85), transparent 62%),
+    /* steel-grey illumination behind the main panels */
+    radial-gradient(1200px 820px at 46% 34%, rgb(35 49 73 / 0.7), transparent 66%),
+    /* faint violet reflection near the lower panels */
+    radial-gradient(1000px 640px at 70% 112%, rgb(52 52 87 / 0.75), transparent 62%),
+    /* depth, low left */
+    radial-gradient(900px 700px at -4% 104%, rgb(12 17 27 / 0.9), transparent 60%),
+    linear-gradient(162deg, #101621 0%, #172233 46%, #141C2B 74%, #0C111B 100%);
 }
 
 :root[data-theme='day'] body::before {
   /*
-   * Champagne Titanium. A real environment, not an off-white page: platinum
-   * light from the top left, cool titanium steel across the right, a pearl
-   * centre, deeper titanium low right, and a restrained champagne neutral in
-   * the low left — grey enough that it can never read as peach. The panes
-   * are lighter than this ground, which is what lets them read as frosted
-   * glass with colour showing through, instead of white cards.
+   * Champagne Titanium: pearl light high left, a subtle titanium-blue
+   * reflection high right, platinum through the middle, a restrained
+   * champagne-neutral warmth low left, and a cool silver shadow low right.
+   * The panes are lighter than this ground, which is what separates them.
    */
   background:
-    radial-gradient(900px 640px at 6% -8%, rgb(255 255 255 / 0.95), transparent 58%),
-    radial-gradient(1100px 780px at 98% -6%, rgb(160 179 205 / 0.78), transparent 60%),
-    radial-gradient(1000px 720px at 52% 44%, rgb(222 227 234 / 0.6), transparent 66%),
-    radial-gradient(1000px 820px at 94% 104%, rgb(140 157 181 / 0.72), transparent 62%),
-    radial-gradient(860px 680px at 0% 102%, rgb(222 215 203 / 0.9), transparent 60%),
-    radial-gradient(720px 520px at 38% 112%, rgb(170 168 192 / 0.38), transparent 62%),
-    linear-gradient(155deg, #EEF0F3 0%, #DCE1E8 36%, #C8D0DB 70%, #DEDAD4 100%);
+    radial-gradient(900px 640px at 4% -10%, rgb(255 255 255 / 0.95), transparent 58%),
+    radial-gradient(1100px 760px at 98% -8%, rgb(186 200 219 / 0.85), transparent 60%),
+    radial-gradient(1100px 760px at 50% 40%, rgb(221 228 236 / 0.75), transparent 66%),
+    radial-gradient(900px 700px at 0% 104%, rgb(235 230 224 / 0.95), transparent 60%),
+    radial-gradient(1000px 760px at 96% 106%, rgb(176 189 206 / 0.7), transparent 62%),
+    linear-gradient(158deg, #F4F3F1 0%, #E8EAED 34%, #DCE1E7 66%, #E7E5E1 100%);
 }
 
-/* A brief, global colour transition while the theme changes — and only then. */
+/* A brief colour transition while the theme changes — and only then. */
 html.theme-transition,
 html.theme-transition *,
 html.theme-transition *::before {
   transition:
-    background-color 250ms ease, color 250ms ease, border-color 250ms ease,
-    fill 250ms ease, stroke 250ms ease, box-shadow 250ms ease !important;
+    background-color 220ms ease, color 220ms ease, border-color 220ms ease,
+    fill 220ms ease, stroke 220ms ease, box-shadow 220ms ease !important;
 }
 
 /* ---------------------------------------------------------------------------
- * Crystal Liquid Glass
+ * Type scale
+ * ------------------------------------------------------------------------ */
+
+@layer components {
+  .t-page-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 650;
+    line-height: 1.18;
+    letter-spacing: -0.035em;
+  }
+  @media (min-width: 1024px) {
+    .t-page-title { font-size: 36px; }
+  }
+  .t-section-title {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.025em;
+  }
+  .t-card-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+  .t-kpi {
+    font-family: var(--font-numeric);
+    font-size: 30px;
+    font-weight: 650;
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+  }
+  .t-micro {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * GlassOS materials
  *
- * In the components layer so a utility on the element (rounded-none, sticky,
- * a different padding) always wins — unlayered CSS would silently beat every
- * Tailwind utility.
+ * In the components layer so a utility on the element always wins; unlayered
+ * CSS would silently beat every Tailwind utility.
  * ------------------------------------------------------------------------ */
 
 @layer components {
   .glass,
+  .glass-subtle,
   .glass-elevated,
   .glass-dense,
-  .glass-solid {
+  .glass-solid,
+  .glass-floating,
+  .glass-modal {
     position: relative;
     isolation: isolate;
-    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
     -webkit-backdrop-filter: blur(28px) saturate(150%);
     backdrop-filter: blur(28px) saturate(150%);
-    border: 1px solid var(--glass-border);
+  }
+
+  /* Standard — metric tiles and ordinary panels. */
+  .glass {
+    background: var(--glass-surface);
     box-shadow:
-      0 14px 40px var(--glass-shadow),
-      0 2px 6px color-mix(in srgb, var(--glass-shadow) 50%, transparent),
+      0 1px 2px color-mix(in srgb, var(--glass-shadow) 60%, transparent),
+      0 12px 32px -8px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-highlight),
+      inset 0 -1px 0 color-mix(in srgb, var(--glass-highlight) 18%, transparent);
+  }
+
+  /* Subtle — navigation and low-emphasis chrome. */
+  .glass-subtle {
+    background: var(--glass-subtle);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    backdrop-filter: blur(24px) saturate(140%);
+    box-shadow:
+      0 12px 32px -12px var(--glass-shadow),
+      inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent);
+  }
+
+  /* Elevated — the major analytical panels. */
+  .glass-elevated {
+    background: var(--glass-surface-elevated);
+    -webkit-backdrop-filter: blur(32px) saturate(155%);
+    backdrop-filter: blur(32px) saturate(155%);
+    box-shadow:
+      0 1px 2px color-mix(in srgb, var(--glass-shadow) 60%, transparent),
+      0 18px 44px -12px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-highlight),
+      inset 0 -1px 0 color-mix(in srgb, var(--glass-highlight) 18%, transparent);
+  }
+
+  /* Dense — tables and operational forms: more body behind the numbers. */
+  .glass-dense,
+  .glass-solid {
+    background: var(--glass-surface-dense);
+    box-shadow:
+      0 12px 32px -10px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+
+  /* Floating — dropdowns, popovers, tooltips. */
+  .glass-floating {
+    background: var(--glass-floating);
+    -webkit-backdrop-filter: blur(32px) saturate(160%);
+    backdrop-filter: blur(32px) saturate(160%);
+    box-shadow:
+      0 24px 60px -12px var(--glass-shadow),
+      0 4px 12px color-mix(in srgb, var(--glass-shadow) 70%, transparent),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+
+  /* Modals and drawers. */
+  .glass-modal {
+    background: var(--glass-modal);
+    -webkit-backdrop-filter: blur(32px) saturate(150%);
+    backdrop-filter: blur(32px) saturate(150%);
+    box-shadow:
+      0 32px 80px -16px var(--glass-shadow),
+      0 4px 14px var(--glass-shadow),
       inset 0 1px 0 var(--glass-highlight);
   }
 
   /*
-   * The reflection: a wash of light across the pane from the top-left. Sits
-   * at z-index -1 inside an isolated pane, so it is drawn OVER the pane's own
-   * fill but UNDER its content — it never washes across type.
+   * The reflection: a soft top-edge light and a diagonal wash, drawn OVER the
+   * pane's fill but UNDER its content (z-index -1 inside an isolated pane),
+   * so it never washes across type and never intercepts a click.
    */
   .glass::before,
+  .glass-subtle::before,
   .glass-elevated::before,
   .glass-dense::before,
   .glass-solid::before {
@@ -336,103 +447,87 @@ html.theme-transition *::before {
     z-index: -1;
     pointer-events: none;
     border-radius: inherit;
-    background: linear-gradient(
-      135deg,
-      var(--glass-reflection),
-      transparent 38%,
-      transparent 72%,
-      color-mix(in srgb, var(--glass-reflection) 25%, transparent)
-    );
-    opacity: 0.55;
-  }
-
-  /* Popovers, menus, tooltips: the pane nearest the eye. */
-  .glass-elevated {
-    background: var(--glass-surface-elevated);
-    -webkit-backdrop-filter: blur(32px) saturate(150%);
-    backdrop-filter: blur(32px) saturate(150%);
-  }
-
-  /*
-   * Dense data — tables, scan results, forms. More body behind the numbers,
-   * a quieter reflection, because a quantity someone is about to act on has
-   * to be sharp rather than atmospheric.
-   */
-  .glass-dense,
-  .glass-solid {
-    background: var(--glass-surface-dense);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--glass-reflection) 60%, transparent), transparent 22%),
+      linear-gradient(128deg, var(--glass-reflection), transparent 34%, transparent 74%,
+        color-mix(in srgb, var(--glass-reflection) 30%, transparent));
+    opacity: 0.6;
   }
   .glass-dense::before,
   .glass-solid::before { opacity: 0.3; }
 
-  /* Modal and drawer panes. */
-  .glass-modal {
-    position: relative;
-    isolation: isolate;
-    background: var(--glass-modal);
-    -webkit-backdrop-filter: blur(32px) saturate(150%);
-    backdrop-filter: blur(32px) saturate(150%);
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 30px 80px var(--glass-shadow), 0 4px 14px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-highlight);
-  }
-
-  /* Controls that sit on glass and must not dissolve into it. No blur of
-     their own: the pane under them is already blurred. */
+  /* Controls that sit on glass. No blur of their own: the pane under them
+     is already blurred, and nested blur buys nothing but GPU time. */
   .glass-raised {
     background: var(--glass-surface-hover);
     border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 var(--glass-highlight), 0 1px 3px var(--glass-shadow);
+    box-shadow: inset 0 1px 0 var(--glass-highlight), 0 1px 2px var(--glass-shadow);
   }
 
-  /* A tile INSIDE a glass panel: tinted, never blurred again. Nested blur
-     costs a GPU pass per layer and buys nothing the outer pane did not. */
+  /* A tile inside a panel: tinted, never blurred again. */
   .glass-inset {
     background: var(--glass-inset);
     border: 1px solid var(--glass-inset-border);
   }
 
-  /* Interactive panes lift slightly and brighten their rim. */
+  /* Interactive panes lift slightly and brighten. */
   .glass-interactive {
-    transition: background-color 220ms ease, box-shadow 220ms ease, transform 220ms ease,
-      border-color 220ms ease;
+    transition: background-color 200ms ease, box-shadow 200ms ease, transform 200ms ease,
+      border-color 200ms ease;
   }
   .glass-interactive:hover {
     background-color: var(--glass-surface-hover);
-    transform: translateY(-2px);
-    box-shadow:
-      0 18px 46px var(--glass-shadow),
-      0 2px 6px color-mix(in srgb, var(--glass-shadow) 50%, transparent),
-      inset 0 1px 0 var(--glass-highlight);
+    transform: translateY(-1px);
   }
+  .glass-interactive:active { transform: translateY(0); }
 }
 
 /*
- * Fallbacks. Where blur is unavailable, or the reader has asked for less
- * transparency, panes go SOLID in the current theme — translucency without
- * blur is just text over noise.
+ * Fallbacks. Where blur is unavailable, or less transparency is asked for,
+ * panes go SOLID in the current theme — translucency without blur is just
+ * text over noise.
  */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .glass-elevated, .glass-dense, .glass-solid, .glass-modal {
+  .glass, .glass-subtle, .glass-elevated, .glass-dense, .glass-solid, .glass-floating, .glass-modal {
     background: var(--glass-solid);
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .glass-elevated, .glass-dense, .glass-solid, .glass-raised, .glass-modal {
+  .glass, .glass-subtle, .glass-elevated, .glass-dense, .glass-solid, .glass-floating,
+  .glass-modal, .glass-raised {
     background: var(--glass-solid);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  .glass::before, .glass-elevated::before, .glass-dense::before, .glass-solid::before { display: none; }
+  .glass::before, .glass-subtle::before, .glass-elevated::before, .glass-dense::before,
+  .glass-solid::before { display: none; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables
+ *
+ * The scroll box owns both axes so the header can stick inside it; the
+ * header gets enough body that rows never read through it.
+ * ------------------------------------------------------------------------ */
+
+.table-scroll {
+  overflow: auto;
+  max-height: min(68vh, 760px);
+  overscroll-behavior: contain;
+}
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--table-header);
+  box-shadow: inset 0 -1px 0 var(--color-line);
 }
 
 /* ---------------------------------------------------------------------------
  * Numbers, scrolling, focus
  * ------------------------------------------------------------------------ */
 
-/* Tabular figures everywhere a quantity appears, so decimal points line up
-   down a column and a wrong number looks wrong. */
 .num, td.num, th.num, input[type='number'] {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
@@ -441,21 +536,21 @@ html.theme-transition *::before {
 
 .font-display { font-family: var(--font-display); }
 
-/* Wide content scrolls inside its own container; the page never does. */
 .scroll-x { overflow-x: auto; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-ink) 22%, transparent);
+  background: color-mix(in srgb, var(--color-ink) 20%, transparent);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-ink) 36%, transparent);
+  background: color-mix(in srgb, var(--color-ink) 34%, transparent);
   background-clip: content-box;
 }
 ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
 
 :focus-visible {
   outline: 2px solid var(--color-brand);
@@ -477,16 +572,15 @@ html.theme-transition *::before {
   }
   body { background: white; color: black; font-size: 11px; }
   body::before { display: none; }
-  .glass, .glass-elevated, .glass-dense, .glass-solid, .glass-raised {
+  .glass, .glass-subtle, .glass-elevated, .glass-dense, .glass-solid, .glass-raised,
+  .glass-floating, .glass-modal {
     background: white; backdrop-filter: none; box-shadow: none; border-color: #ddd;
   }
+  .table-scroll { max-height: none; overflow: visible; }
 }
 
 /* ---------------------------------------------------------------------------
- * Severity — always FILL plus a WORD
- *
- * Hue reinforces; it is never the only signal. A filled chip demands action,
- * an outlined one waits, a quiet one is normal, and every one carries a label.
+ * Severity — always a WORD, plus fill or outline
  * ------------------------------------------------------------------------ */
 
 .sev-critical {
@@ -510,9 +604,8 @@ html.theme-transition *::before {
 }
 
 /* A row or tile that needs attention earns an edge rule, not just a tint. */
-.row-flag { box-shadow: inset 3px 0 0 0 var(--color-danger); }
+.row-flag { box-shadow: inset 2px 0 0 0 var(--color-danger); }
 
-/* Quantity lost. Struck, as well as coloured. */
 .struck {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
@@ -520,7 +613,7 @@ html.theme-transition *::before {
 }
 
 /* ---------------------------------------------------------------------------
- * The pipeline — stage progress on the dashboard
+ * Motion
  * ------------------------------------------------------------------------ */
 
 @keyframes stitch-run {
@@ -528,11 +621,11 @@ html.theme-transition *::before {
   to   { stroke-dashoffset: 0; }
 }
 @keyframes node-land {
-  from { opacity: 0; transform: translateY(6px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes figure-rise {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes bar-grow {
@@ -544,21 +637,23 @@ html.theme-transition *::before {
   stroke-dasharray: 7 5;
   animation: stitch-run 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+/* `backwards`, never an `opacity: 0` base: content that never animates is
+   simply there. */
+.line-node { animation: node-land 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.line-figure { animation: figure-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.bar-grow { transform-origin: left; animation: bar-grow 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 
-/*
- * `backwards`, not `forwards`, and no `opacity: 0` base: the resting state is
- * visible, so content that never animates is simply there.
- */
-.line-node { animation: node-land 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.line-figure { animation: figure-rise 500ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.bar-grow { transform-origin: left; animation: bar-grow 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+/* Accordion: rows animate from 0fr to 1fr, so height is never measured. */
+.accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.accordion[data-open='true'] { grid-template-rows: 1fr; }
+.accordion > * { overflow: hidden; min-height: 0; }
 
-/* ---------------------------------------------------------------------------
- * The sliding slab — tab strips
- * ------------------------------------------------------------------------ */
-
+/* The sliding slab under tab strips. */
 .slab-track { position: relative; }
-
 .slab {
   position: absolute;
   background: var(--color-brand);
@@ -568,7 +663,6 @@ html.theme-transition *::before {
               height 220ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
-
 .slab-invert { background: var(--color-surface); }
 
 .ruled-baseline {
@@ -578,6 +672,10 @@ html.theme-transition *::before {
   background-size: 100% 1px;
 }
 
+/* A soft press response on buttons. */
+.press { transition: transform 160ms ease; }
+.press:active { transform: scale(0.98); }
+
 @media (prefers-reduced-motion: reduce) {
   .stitch, .line-node, .line-figure, .bar-grow {
     animation: none !important;
@@ -586,6 +684,6 @@ html.theme-transition *::before {
     transform: none !important;
   }
   .stitch { stroke-dasharray: none !important; }
-  .slab, .glass-interactive { transition: none !important; }
-  .glass-interactive:hover { transform: none; }
+  .slab, .glass-interactive, .accordion, .press { transition: none !important; }
+  .glass-interactive:hover, .press:active { transform: none; }
 }

@@ -96,7 +96,7 @@ export default function CuttingPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-[12.5px]">
-                <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+                <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Order</th>
                     <th className="px-3 py-2 text-left font-medium">Batch</th>
@@ -121,7 +121,7 @@ export default function CuttingPage() {
                       <td className="px-3 py-2"><CodeCell>{o.cuttingOrderNo}</CodeCell></td>
                       <td className="px-3 py-2">
                         <div className="text-ink">{o.productionBatch?.batchNo ?? '—'}</div>
-                        <div className="text-[11.5px] text-ink-muted">{o.manufacturingOrder.moNo}</div>
+                        <div className="text-[12px] text-ink-muted">{o.manufacturingOrder.moNo}</div>
                       </td>
                       <td className="px-2 py-2 text-right num">{fmtQty(o.plannedPieces, 0)}</td>
                       <td className="px-2 py-2 text-right num font-medium">
@@ -138,7 +138,7 @@ export default function CuttingPage() {
                         {Number(o.fabricWastageBaseQty) > 0 ? (
                           <span>
                             {fmtQty(o.fabricWastageBaseQty, 2)}
-                            <span className="ml-1 text-[11px] text-ink-subtle">{o.wastagePct}%</span>
+                            <span className="ml-1 text-[12px] text-ink-subtle">{o.wastagePct}%</span>
                           </span>
                         ) : (
                           <span className="text-ink-subtle">—</span>

@@ -59,7 +59,7 @@ export default function ProductsPage() {
         meta: { align: 'right', numeric: true },
         cell: ({ row }) => (row.original._count.boms > 0 ? row.original._count.boms : <span className="text-ink-subtle">-</span>) },
       { id: 'sizeSet', header: 'Size set', accessorKey: 'sizeSet',
-        cell: ({ row }) => <span className="text-[11.5px] text-ink-muted">{row.original.sizeSet ?? '-'}</span> },
+        cell: ({ row }) => <span className="text-[12px] text-ink-muted">{row.original.sizeSet ?? '-'}</span> },
       { id: 'productionType', header: 'Production', accessorKey: 'productionType',
         cell: ({ row }) => <Badge tone="outline">{humanise(row.original.productionType)}</Badge> },
       { id: 'route', header: 'Route', accessorFn: (r) => r.defaultRoute?.code ?? '',
@@ -304,11 +304,11 @@ function MatrixDialog({
             <Input value={pattern} onChange={(e) => setPattern(e.target.value)} className="font-mono" />
           </Field>
           <div className="rounded border border-line bg-surface-muted px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">Preview</p>
+            <p className="t-micro text-ink-subtle">Preview</p>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {preview.map((sku) => <CodeCell key={sku}>{sku}</CodeCell>)}
               {colorList.length * sizeList.length > preview.length ? (
-                <span className="text-[11px] text-ink-subtle">
+                <span className="text-[12px] text-ink-subtle">
                   +{colorList.length * sizeList.length - preview.length} more
                 </span>
               ) : null}

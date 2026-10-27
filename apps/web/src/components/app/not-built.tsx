@@ -34,12 +34,12 @@ export function NotBuiltYet({ href }: { href: string }) {
           intentionally empty rather than showing placeholder figures.
         </p>
         <div className="mt-1 w-full max-w-lg rounded border border-line bg-surface-muted px-3 py-2 text-left">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
+          <p className="t-micro text-ink-subtle">
             Phase {phase} scope
           </p>
           <p className="mt-1 text-[12.5px] text-ink">{PHASE_SCOPE[phase]}</p>
         </div>
-        <p className="text-[11.5px] text-ink-subtle">
+        <p className="text-[12px] text-ink-subtle">
           The database schema, API contracts and business invariants for this module already exist -
           see <code className="font-mono">/docs/implementation-roadmap.md</code>.
         </p>

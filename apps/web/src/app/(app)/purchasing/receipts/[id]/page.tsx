@@ -132,7 +132,7 @@ export default function ReceiptDetailPage() {
           <div className="scroll-x">
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                   <th className="px-3 py-1.5 text-left font-semibold">#</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Material</th>
                   <th className="px-3 py-1.5 text-left font-semibold">Lot</th>
@@ -151,7 +151,7 @@ export default function ReceiptDetailPage() {
                     <td className="px-3 py-1.5">
                       <Link href={`/materials/${l.rawMaterial.id}`} className="hover:underline">
                         <CodeCell>{l.rawMaterial.materialCode}</CodeCell>
-                        <div className="text-[11.5px] text-ink-muted">{l.rawMaterial.name}</div>
+                        <div className="text-[12px] text-ink-muted">{l.rawMaterial.name}</div>
                       </Link>
                     </td>
                     <td className="px-3 py-1.5">

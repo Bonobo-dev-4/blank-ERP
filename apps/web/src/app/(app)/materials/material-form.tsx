@@ -263,7 +263,7 @@ export function MaterialFormDialog({
               />
               <span>
                 <span className="font-medium text-ink">Track by lot</span>
-                <span className="block text-[11.5px] text-ink-muted">
+                <span className="block text-[12px] text-ink-muted">
                   Each delivery gets its own lot. Leave off for trims nobody tracks by batch.
                 </span>
               </span>
@@ -277,7 +277,7 @@ export function MaterialFormDialog({
               />
               <span>
                 <span className="font-medium text-ink">Track shade</span>
-                <span className="block text-[11.5px] text-ink-muted">
+                <span className="block text-[12px] text-ink-muted">
                   Mixing shades in one batch then needs an approved exception.
                 </span>
               </span>

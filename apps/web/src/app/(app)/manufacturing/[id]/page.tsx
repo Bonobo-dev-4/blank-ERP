@@ -284,7 +284,7 @@ export default function ManufacturingOrderDetailPage() {
           <CardBody className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
-                <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+                <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Batch</th>
                     <th className="px-3 py-2 text-right font-medium">Planned</th>
@@ -346,7 +346,7 @@ export default function ManufacturingOrderDetailPage() {
         <CardBody className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-[12.5px]">
-              <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+              <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">SKU</th>
                   <th className="px-3 py-2 text-left font-medium">Size</th>
@@ -410,7 +410,7 @@ export default function ManufacturingOrderDetailPage() {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px] text-[12.5px]">
-                    <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+                    <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                       <tr>
                         <th className="px-3 py-2 text-left font-medium">Material</th>
                         <th className="px-2 py-2 text-right font-medium">Required</th>
@@ -429,7 +429,7 @@ export default function ManufacturingOrderDetailPage() {
                               <CodeCell>{l.materialCode}</CodeCell>
                               {!l.isCritical ? <Badge tone="neutral">non-critical</Badge> : null}
                             </div>
-                            <div className="text-[11.5px] text-ink-muted">{l.materialName}</div>
+                            <div className="text-[12px] text-ink-muted">{l.materialName}</div>
                           </td>
                           <td className="px-2 py-2 text-right num font-medium">
                             {fmtQty(l.grossRequiredQty, 4)} {uomShort(l.uom)}
@@ -451,7 +451,7 @@ export default function ManufacturingOrderDetailPage() {
                             {Number(l.openPurchaseQty) > 0 ? (
                               <span>
                                 {fmtQty(l.openPurchaseQty, 4)}
-                                <span className="ml-1 text-[11px] text-ink-subtle">
+                                <span className="ml-1 text-[12px] text-ink-subtle">
                                   {fmtDate(l.expectedArrivalDate)}
                                 </span>
                               </span>
@@ -496,7 +496,7 @@ export default function ManufacturingOrderDetailPage() {
           <CardBody className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-[12.5px]">
-                <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+                <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">#</th>
                     <th className="px-3 py-2 text-left font-medium">Material</th>
@@ -514,7 +514,7 @@ export default function ManufacturingOrderDetailPage() {
                       <td className="px-3 py-1.5 text-ink-subtle">{l.lineNo}</td>
                       <td className="px-3 py-1.5">
                         <CodeCell>{l.materialCode}</CodeCell>
-                        <div className="text-[11.5px] text-ink-muted">{l.materialName}</div>
+                        <div className="text-[12px] text-ink-muted">{l.materialName}</div>
                       </td>
                       <td className="px-2 py-1.5 text-right num text-ink-muted">{fmtQty(l.consumptionQtyPerUnit, 4)}</td>
                       <td className="px-2 py-1.5 text-right num text-ink-muted">{fmtQty(l.wastageQtyPerUnit, 4)}</td>
@@ -543,7 +543,7 @@ export default function ManufacturingOrderDetailPage() {
           <CardBody className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
-                <thead className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-subtle">
+                <thead className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Material</th>
                     <th className="px-3 py-2 text-left font-medium">Lot</th>
@@ -558,12 +558,12 @@ export default function ManufacturingOrderDetailPage() {
                     <tr key={r.id} className="border-b border-line last:border-0">
                       <td className="px-3 py-1.5">
                         <CodeCell>{r.rawMaterial.materialCode}</CodeCell>
-                        <div className="text-[11.5px] text-ink-muted">{r.rawMaterial.name}</div>
+                        <div className="text-[12px] text-ink-muted">{r.rawMaterial.name}</div>
                       </td>
                       <td className="px-3 py-1.5">
-                        <span className="font-mono text-[11.5px]">{r.materialLot.lotCode}</span>
+                        <span className="font-mono text-[12px]">{r.materialLot.lotCode}</span>
                         {r.materialLot.shade ? (
-                          <span className="ml-1 text-[11px] text-ink-muted">{r.materialLot.shade}</span>
+                          <span className="ml-1 text-[12px] text-ink-muted">{r.materialLot.shade}</span>
                         ) : null}
                       </td>
                       <td className="px-3 py-1.5 text-ink-muted">{r.location.code}</td>

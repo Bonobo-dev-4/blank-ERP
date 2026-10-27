@@ -93,7 +93,7 @@ export default function JobWorkerReportPage() {
               <div className="scroll-x">
                 <table className="w-full text-[12.5px]">
                   <thead>
-                    <tr className="border-b border-line bg-surface-muted text-[11px] uppercase tracking-wide text-ink-muted">
+                    <tr className="border-b border-line bg-surface-muted text-[12px] font-medium text-ink-muted">
                       <th className="px-3 py-1.5 text-left font-semibold">Worker</th>
                       <th className="px-3 py-1.5 text-left font-semibold">Kind</th>
                       <th className="px-3 py-1.5 text-right font-semibold">Tasks</th>
@@ -108,7 +108,7 @@ export default function JobWorkerReportPage() {
                     {rows.map((x) => (
                       <tr key={x.id} className={`border-b border-line last:border-0 ${x.hasActivity ? '' : 'opacity-55'}`}>
                         <td className="px-3 py-1.5">
-                          <span className="font-mono text-[11.5px]">{x.code}</span>
+                          <span className="font-mono text-[12px]">{x.code}</span>
                           <span className="ml-2 font-medium">{x.name}</span>
                         </td>
                         <td className="px-3 py-1.5">

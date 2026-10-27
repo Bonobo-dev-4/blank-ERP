@@ -181,7 +181,7 @@ export default function NewPurchaseOrderPage() {
               <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             </Field>
           </div>
-          <p className="mt-2 text-[11.5px] text-ink-muted">
+          <p className="mt-2 text-[12px] text-ink-muted">
             Tolerances decide how much over the ordered quantity a delivery may be, and how much under
             still counts as fully delivered. An order short by more than the under tolerance stays open
             until someone closes it explicitly.
@@ -233,7 +233,7 @@ export default function NewPurchaseOrderPage() {
                     {fmtMoney(String(Number(item.orderedQty || 0) * Number(item.rate || 0)))}
                   </div>
                   {m ? (
-                    <div className="text-[11px] text-ink-muted">
+                    <div className="text-[12px] text-ink-muted">
                       have {m.stock.availableQty} {uomShort(m.baseUom)}
                     </div>
                   ) : null}

@@ -45,7 +45,7 @@ export default function StockPage() {
           <div>
             <CodeCell>{row.original.materialLot.lotCode}</CodeCell>
             {row.original.materialLot.shade ? (
-              <div className="text-[11px] text-ink-muted">shade {row.original.materialLot.shade}</div>
+              <div className="text-[12px] text-ink-muted">shade {row.original.materialLot.shade}</div>
             ) : null}
           </div>
         ),
@@ -56,7 +56,7 @@ export default function StockPage() {
           <div className="flex items-center gap-1.5">
             <div>
               <CodeCell>{row.original.location.code}</CodeCell>
-              <div className="text-[11px] text-ink-muted">{row.original.location.name}</div>
+              <div className="text-[12px] text-ink-muted">{row.original.location.name}</div>
             </div>
             <StatusBadge status={row.original.location.kind} />
           </div>

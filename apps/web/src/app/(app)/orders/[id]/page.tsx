@@ -130,7 +130,7 @@ function LineRow({ line: l }: { line: Line }) {
             className="size-14 shrink-0 rounded-lg border border-line object-cover"
           />
         ) : (
-          <div className="grid size-14 shrink-0 place-items-center rounded-lg border border-line bg-surface-muted text-[9px] uppercase tracking-wide text-ink-subtle">
+          <div className="grid size-14 shrink-0 place-items-center rounded-lg border border-line bg-surface-muted text-[12px] font-medium text-ink-subtle">
             no image
           </div>
         )}
@@ -141,7 +141,7 @@ function LineRow({ line: l }: { line: Line }) {
             {l.demand?.isRejectedForDispatch ? <Badge tone="danger">sent to production</Badge> : null}
           </div>
           <p className="mt-0.5 text-[13px] font-medium text-ink">{l.productName ?? l.title ?? 'Unnamed'}</p>
-          <p className="text-[11.5px] text-ink-muted">
+          <p className="text-[12px] text-ink-muted">
             {[l.color, l.size].filter(Boolean).join(' · ') || '—'}
             {l.productId ? (
               <Link href={`/admin/products/${l.productId}`} className="ml-2 inline-flex items-center gap-0.5 font-medium text-ink hover:underline">
@@ -160,7 +160,7 @@ function LineRow({ line: l }: { line: Line }) {
       </div>
 
       {l.demand ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-muted">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-muted">
           <span className="font-mono">{l.demand.demandNo}</span>
           <StatusBadge status={l.demand.status} />
           {l.manufacturingOrder ? (
@@ -171,7 +171,7 @@ function LineRow({ line: l }: { line: Line }) {
           {l.demand.rejectedReason ? <span>Reason: {l.demand.rejectedReason}</span> : null}
         </div>
       ) : (
-        <p className="mt-2.5 text-[11.5px] text-ink-subtle">
+        <p className="mt-2.5 text-[12px] text-ink-subtle">
           {owed > 0
             ? 'Not promoted to demand yet — nothing is being made for this line.'
             : 'Nothing owed, so no demand was raised.'}
@@ -188,7 +188,7 @@ function Figure({
 }: { label: string; value: string; muted?: boolean; strong?: boolean; struck?: boolean }) {
   return (
     <div>
-      <dt className="text-[10.5px] uppercase tracking-wide text-ink-subtle">{label}</dt>
+      <dt className="text-[12px] font-medium text-ink-subtle">{label}</dt>
       <dd
         className={`num font-display text-[17px] leading-none ${
           struck ? 'struck text-ink-muted'
@@ -214,7 +214,7 @@ function StageTrack({ stages }: { stages: Stage[] }) {
   const peak = Math.max(1, ...stages.map((s) => Number(s.receivedQty)));
   return (
     <div className="mt-3 rounded border border-line bg-surface-muted px-3 py-2.5">
-      <p className="mb-2 text-[10.5px] uppercase tracking-wide text-ink-subtle">Production</p>
+      <p className="mb-2 text-[12px] font-medium text-ink-subtle">Production</p>
       <div className="scroll-x">
         <div
           className="grid min-w-[420px] gap-x-3"
@@ -226,7 +226,7 @@ function StageTrack({ stages }: { stages: Stage[] }) {
             const pct = Math.min(100, Math.round((received / peak) * 100));
             return (
               <div key={s.code}>
-                <div className="truncate text-[11px] font-medium text-ink-muted" title={s.name}>
+                <div className="truncate text-[12px] font-medium text-ink-muted" title={s.name}>
                   {s.name}
                 </div>
                 <div className="num font-display mt-0.5 text-[15px] font-semibold leading-none text-ink">
@@ -238,7 +238,7 @@ function StageTrack({ stages }: { stages: Stage[] }) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div className="mt-1 text-[10.5px] text-ink-subtle">
+                <div className="mt-1 text-[12px] text-ink-subtle">
                   {fmtQty(s.receivedQty, 0)} in
                   {Number(s.rejectedQty) > 0 ? (
                     <span className="struck ml-1.5">{fmtQty(s.rejectedQty, 0)} rejected</span>
