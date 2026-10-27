@@ -63,7 +63,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <Topbar onOpenNav={() => setNavOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl px-0.5 pb-8 pt-1 sm:px-2 lg:px-3">{children}</main>
+        {/* Bottom padding clears the floating assistant capsule, so the last
+            row and any pagination can always scroll fully into view. */}
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl px-0.5 pb-24 pt-1 sm:px-2 lg:px-3">{children}</main>
       </div>
 
       <Assistant />

@@ -963,3 +963,202 @@ html.theme-transition *::before {
   .login-btn, .login-field { transition: none !important; }
   .login-btn:hover:not(:disabled), .login-btn:active:not(:disabled) { transform: none; }
 }
+
+/* ===========================================================================
+ * AI assistant — the floating capsule and the right-side drawer
+ * ======================================================================== */
+
+:root {
+  --ai-pill-bg: rgb(35 49 73 / 0.72);
+  --ai-pill-border: rgb(255 255 255 / 0.24);
+  --ai-pill-text: #F5F7FB;
+  --ai-pill-icon: #A5B9FF;
+  --ai-pill-shadow: rgb(0 0 0 / 0.35);
+  --ai-accent: #78A0FF;
+  --ai-on-accent: #101621;
+
+  --ai-panel-bg: rgb(23 34 51 / 0.92);
+  --ai-panel-border: rgb(255 255 255 / 0.16);
+  --ai-text: #F5F7FB;
+  --ai-text-2: #C4CDDB;
+  --ai-input-bg: rgb(255 255 255 / 0.09);
+  --ai-user-bg: rgb(120 160 255 / 0.12);
+  --ai-bot-bg: rgb(255 255 255 / 0.06);
+  --ai-panel-shadow: rgb(0 0 0 / 0.32);
+  --ai-scrim: rgb(5 8 14 / 0.4);
+}
+:root[data-theme='day'] {
+  --ai-pill-bg: rgb(255 255 255 / 0.62);
+  --ai-pill-border: rgb(255 255 255 / 0.85);
+  --ai-pill-text: #182231;
+  --ai-pill-icon: #4776DC;
+  --ai-pill-shadow: rgb(43 49 61 / 0.16);
+  --ai-accent: #5576C0;
+  --ai-on-accent: #FFFFFF;
+
+  --ai-panel-bg: rgb(248 247 244 / 0.88);
+  --ai-panel-border: rgb(255 255 255 / 0.78);
+  --ai-text: #182231;
+  --ai-text-2: #435166;
+  --ai-input-bg: rgb(255 255 255 / 0.58);
+  --ai-user-bg: rgb(71 118 220 / 0.09);
+  --ai-bot-bg: rgb(255 255 255 / 0.42);
+  --ai-panel-shadow: rgb(43 49 61 / 0.18);
+  --ai-scrim: rgb(24 34 49 / 0.14);
+}
+
+/* --- the capsule ---------------------------------------------------------- */
+.ai-pill {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  /* Centring uses `translate`, so `transform` stays free for motion. */
+  translate: -50% 0;
+  z-index: 30;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  width: max-content;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--ai-pill-border);
+  background: var(--ai-pill-bg);
+  color: var(--ai-pill-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow:
+    0 1px 2px var(--ai-pill-shadow),
+    0 10px 28px -10px var(--ai-pill-shadow),
+    0 22px 48px -24px var(--ai-pill-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.32);
+  transition:
+    transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease,
+    opacity 200ms ease, visibility 200ms;
+  /* `backwards`: the start frame holds only until it plays, so hover's
+     transform is never overridden by a finished entrance. */
+  animation: ai-pill-in 500ms ease-out backwards;
+}
+:root[data-theme='day'] .ai-pill { box-shadow:
+    0 1px 2px var(--ai-pill-shadow),
+    0 10px 28px -10px var(--ai-pill-shadow),
+    0 22px 48px -24px var(--ai-pill-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.95); }
+@keyframes ai-pill-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.95); }
+  to   { opacity: 1; transform: none; }
+}
+/* A thin reflected light crossing the capsule every few seconds. */
+.ai-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.16), transparent);
+  transform: translateX(-140%) skewX(-16deg);
+  animation: ai-sheen 8s ease-in-out 1.2s infinite;
+}
+@keyframes ai-sheen {
+  0% { transform: translateX(-140%) skewX(-16deg); }
+  22%, 100% { transform: translateX(320%) skewX(-16deg); }
+}
+.ai-pill:hover {
+  transform: scale(1.035);
+  background: color-mix(in srgb, var(--ai-pill-bg) 82%, white 18%);
+  box-shadow:
+    0 2px 4px var(--ai-pill-shadow),
+    0 16px 36px -12px var(--ai-pill-shadow),
+    0 28px 56px -26px var(--ai-pill-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.4);
+}
+.ai-pill:active { transform: scale(0.97); transition-duration: 100ms; }
+.ai-pill:focus-visible { outline: 2px solid var(--ai-accent); outline-offset: 3px; }
+.ai-pill[data-hidden='true'] { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.ai-pill-icon { color: var(--ai-pill-icon); display: inline-grid; transition: transform 220ms ease; }
+.ai-pill:hover .ai-pill-icon { transform: rotate(14deg); }
+.ai-pill-arrow { opacity: 0.7; transition: transform 180ms ease, opacity 180ms ease; }
+.ai-pill:hover .ai-pill-arrow { transform: translate(2px, -2px); opacity: 1; }
+/* The sparkle twinkles once every ~6.5 s — a glint, not a pulse. */
+.ai-twinkle { animation: ai-twinkle 6.5s ease-in-out 2s infinite; transform-origin: center; }
+@keyframes ai-twinkle {
+  0%, 86%, 100% { transform: none; }
+  90% { transform: rotate(20deg) scale(1.18); }
+  94% { transform: rotate(-6deg) scale(0.94); }
+}
+
+@media (max-width: 639px) {
+  .ai-pill {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    min-height: 44px;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+}
+
+/* --- the drawer ------------------------------------------------------------ */
+.ai-scrim { position: fixed; inset: 0; z-index: 50; background: var(--ai-scrim); }
+.ai-scrim[data-state='open'] { animation: ai-fade-in 340ms ease-out; }
+.ai-scrim[data-state='closed'] { animation: ai-fade-out 260ms ease-in-out forwards; }
+@keyframes ai-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ai-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+.ai-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 51;
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  flex-direction: column;
+  background: var(--ai-panel-bg);
+  color: var(--ai-text);
+  border-left: 1px solid var(--ai-panel-border);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+  box-shadow: -24px 0 64px -24px var(--ai-panel-shadow), inset 1px 0 0 rgb(255 255 255 / 0.06);
+  outline: none;
+}
+@media (min-width: 640px) {
+  .ai-drawer {
+    width: 420px;
+    border-radius: 24px 0 0 24px;
+    border-top: 1px solid var(--ai-panel-border);
+    border-bottom: 1px solid var(--ai-panel-border);
+  }
+}
+@media (min-width: 1024px) { .ai-drawer { width: 460px; } }
+@media (min-width: 1440px) { .ai-drawer { width: 480px; } }
+.ai-drawer[data-state='open'] { animation: ai-slide-in 340ms cubic-bezier(0.22, 1, 0.36, 1); }
+.ai-drawer[data-state='closed'] { animation: ai-slide-out 260ms ease-in-out forwards; }
+@keyframes ai-slide-in {
+  from { transform: translateX(100%); opacity: 0.8; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes ai-slide-out {
+  from { transform: none; opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0.8; }
+}
+
+/* Thinking: three dots, nothing more. */
+@keyframes ai-dot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+.ai-dot { animation: ai-dot 1.1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-pill, .ai-pill::after, .ai-twinkle, .ai-dot { animation: none !important; }
+  .ai-pill::after { display: none; }
+  .ai-pill:hover, .ai-pill:active, .ai-pill:hover .ai-pill-icon, .ai-pill:hover .ai-pill-arrow { transform: none; }
+  .ai-drawer[data-state='open'], .ai-drawer[data-state='closed'] { animation-duration: 1ms; }
+  .ai-scrim[data-state='open'], .ai-scrim[data-state='closed'] { animation-duration: 1ms; }
+}
