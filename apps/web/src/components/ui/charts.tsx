@@ -20,15 +20,15 @@ import { cn } from '@/lib/utils';
  * frame; a grid competing with the bars is a grid drawn for its own sake.
  */
 
-// Graphite reads the series you are meant to look at; a wash reads the rest.
-// Two fills, not six — see the note above about monochrome's honest limit.
-const JADE = 'oklch(0.24 0 0)';
-const MUTED = 'oklch(0.32 0 0 / 0.42)';
-const FAINT = 'oklch(0.32 0 0 / 0.13)';
+// Amber reads the series you are meant to look at — the reference's orange —
+// and a warm grey wash reads the rest. Still two fills, not six.
+const JADE = 'oklch(0.63 0.14 55)';
+const MUTED = 'oklch(0.4 0.03 60 / 0.4)';
+const FAINT = 'oklch(0.35 0.03 60 / 0.14)';
 
 const axis = {
   stroke: 'transparent',
-  tick: { fill: 'oklch(0.46 0 0)', fontSize: 11 },
+  tick: { fill: 'oklch(0.5 0.025 278)', fontSize: 11 },
   tickLine: false,
   axisLine: false,
 } as const;
@@ -85,7 +85,7 @@ export function BarSeries({
           <XAxis dataKey="label" {...axis} interval="preserveStartEnd" />
           <YAxis {...axis} width={44} />
           <Tooltip
-            cursor={{ fill: 'oklch(0.32 0 0 / 0.06)' }}
+            cursor={{ fill: 'oklch(0.35 0.03 60 / 0.07)' }}
             content={<ChartTooltip unit={unit} />}
           />
           <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={34}>
@@ -167,8 +167,8 @@ export function ShareBar({
               style={{
                 width: `${(s.value / total) * 100}%`,
                 background: i === 0
-                  ? 'oklch(0.24 0 0)'
-                  : `oklch(0.34 0 0 / ${Math.max(0.16, 0.5 - (i - 1) * 0.16)})`,
+                  ? 'oklch(0.63 0.14 55)'
+                  : `oklch(0.38 0.03 60 / ${Math.max(0.16, 0.5 - (i - 1) * 0.16)})`,
               }}
               title={`${s.label}: ${s.value}`}
             />
@@ -182,8 +182,8 @@ export function ShareBar({
               className="size-2 shrink-0 rounded-sm"
               style={{
                 background: i === 0
-                  ? 'oklch(0.24 0 0)'
-                  : `oklch(0.34 0 0 / ${Math.max(0.16, 0.5 - (i - 1) * 0.16)})`,
+                  ? 'oklch(0.63 0.14 55)'
+                  : `oklch(0.38 0.03 60 / ${Math.max(0.16, 0.5 - (i - 1) * 0.16)})`,
               }}
             />
             <span className="text-ink-muted">{s.label}</span>

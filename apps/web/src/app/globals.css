@@ -34,7 +34,7 @@
    * depth AND contrast at the same time, which is what the brief asks for in
    * the same breath.
    */
-  --color-canvas: oklch(0.9 0 0);
+  --color-canvas: oklch(0.92 0.014 65);
 
   /*
    * Frosted panes, calibrated the third time and now from the right end.
@@ -47,30 +47,30 @@
   --color-surface: oklch(1 0 0 / 0.72);
   --color-surface-muted: oklch(1 0 0 / 0.45);
 
-  --color-line: oklch(0.3 0 0 / 0.1);
-  --color-line-strong: oklch(0.3 0 0 / 0.26);
+  --color-line: oklch(0.35 0.03 60 / 0.12);
+  --color-line-strong: oklch(0.35 0.03 60 / 0.28);
 
   /* Type. Near-black on bright glass: contrast is a requirement here. */
-  /* Darker across the scale than before: readability was the complaint. */
-  --color-ink: oklch(0.17 0 0);
-  --color-ink-muted: oklch(0.4 0 0);
-  --color-ink-subtle: oklch(0.52 0 0);
+  /* Deep navy rather than black — the reference's text colour. */
+  --color-ink: oklch(0.25 0.04 278);
+  --color-ink-muted: oklch(0.45 0.028 278);
+  --color-ink-subtle: oklch(0.56 0.02 278);
 
   /* The rail: graphite, so the page reads as lit and it does not. */
-  --color-rail: oklch(0.26 0 0);
+  --color-rail: oklch(0.25 0.02 50);
   --color-rail-hover: oklch(1 0 0 / 0.1);
   --color-rail-active: oklch(1 0 0);
   --color-rail-ink: oklch(0.92 0 0);
   --color-rail-ink-muted: oklch(0.65 0 0);
 
   /*
-   * No accent colour. The strongest mark available is graphite, so that is
-   * what "brand" means — solid fills, active states, the emphasised series on
-   * a chart.
+   * Amber, the reference's orange. One accent: active states, the emphasised
+   * series on a chart, the figure that is doing well. Deep enough to carry
+   * white text, which the reference's lighter orange could not.
    */
-  --color-brand: oklch(0.24 0 0);
-  --color-brand-strong: oklch(0.16 0 0);
-  --color-brand-soft: oklch(0.32 0 0 / 0.1);
+  --color-brand: oklch(0.63 0.14 55);
+  --color-brand-strong: oklch(0.55 0.14 50);
+  --color-brand-soft: oklch(0.63 0.14 55 / 0.14);
 
   /*
    * Semantics, in greys. Severity is carried by FILL and by a WORD — a solid
@@ -78,24 +78,25 @@
    * normal. That rule has survived three repaints now and is the reason
    * losing hue costs nothing in legibility.
    */
-  --color-ok: oklch(0.44 0 0);
-  --color-ok-soft: oklch(1 0 0 / 0.55);
-  --color-warn: oklch(0.2 0 0);
-  --color-warn-soft: oklch(0.32 0 0 / 0.1);
-  --color-danger: oklch(0.2 0 0);
-  --color-danger-soft: oklch(0.32 0 0 / 0.16);
-  --color-info: oklch(0.44 0 0);
+  --color-ok: oklch(0.55 0.1 155);
+  --color-ok-soft: oklch(0.55 0.1 155 / 0.12);
+  --color-warn: oklch(0.58 0.13 70);
+  --color-warn-soft: oklch(0.58 0.13 70 / 0.14);
+  --color-danger: oklch(0.54 0.16 32);
+  --color-danger-soft: oklch(0.54 0.16 32 / 0.12);
+  --color-info: oklch(0.45 0.028 278);
   --color-info-soft: oklch(1 0 0 / 0.55);
   --color-neutral-soft: oklch(1 0 0 / 0.55);
 
   /* The production strip: solid graphite, the one surface that is not glass. */
-  --color-vat: oklch(0.22 0 0);
-  --color-vat-deep: oklch(0.14 0 0);
+  --color-vat: oklch(0.24 0.025 50);
+  --color-vat-deep: oklch(0.16 0.02 50);
   --color-vat-line: oklch(1 0 0 / 0.3);
-  --color-chalk: oklch(0.985 0 0);
-  --color-chalk-muted: oklch(0.72 0 0);
-  --color-zari: oklch(1 0 0);
-  --color-madder: oklch(0.78 0 0);
+  --color-chalk: oklch(0.985 0.005 75);
+  --color-chalk-muted: oklch(0.74 0.03 60);
+  /* The live stage marker is the accent — the reference's orange-on-dark. */
+  --color-zari: oklch(0.75 0.14 60);
+  --color-madder: oklch(0.78 0.06 45);
 
   /*
    * A whisper of rounding. Fully square proved too severe in use, so every
@@ -143,10 +144,10 @@ body::before {
   pointer-events: none;
   background:
     radial-gradient(1100px 760px at 12% -10%, oklch(1 0 0 / 0.9), transparent 55%),
-    radial-gradient(1000px 720px at 92% 2%, oklch(0.97 0 0 / 0.7), transparent 52%),
-    radial-gradient(900px 860px at 82% 108%, oklch(0.62 0 0 / 0.5), transparent 60%),
-    radial-gradient(760px 620px at 10% 106%, oklch(0.75 0 0 / 0.55), transparent 55%),
-    linear-gradient(158deg, oklch(0.94 0 0) 0%, oklch(0.84 0 0) 55%, oklch(0.78 0 0) 100%);
+    radial-gradient(1000px 720px at 90% 0%, oklch(0.93 0.03 55 / 0.8), transparent 54%),
+    radial-gradient(900px 860px at 84% 108%, oklch(0.72 0.06 40 / 0.5), transparent 60%),
+    radial-gradient(760px 620px at 8% 104%, oklch(0.85 0.045 70 / 0.6), transparent 55%),
+    linear-gradient(158deg, oklch(0.95 0.012 75) 0%, oklch(0.89 0.028 60) 55%, oklch(0.84 0.04 50) 100%);
 }
 
 /* ---------------------------------------------------------------------------
@@ -206,19 +207,20 @@ body::before {
  * replaced the gradient, leaving white text on a transparent card.
  */
 .solid-accent {
-  background-color: oklch(0.22 0 0);
+  background-color: oklch(0.24 0.025 50);
   background-image:
     repeating-linear-gradient(45deg, oklch(1 0 0 / 0.045) 0 1px, transparent 1px 3px),
     repeating-linear-gradient(-45deg, oklch(1 0 0 / 0.035) 0 1px, transparent 1px 3px),
-    linear-gradient(152deg, oklch(0.28 0 0) 0%, oklch(0.16 0 0) 100%);
-  color: oklch(0.985 0 0);
-  border: 1px solid oklch(0.36 0 0);
+    radial-gradient(500px 300px at 92% 110%, oklch(0.63 0.14 55 / 0.3), transparent 65%),
+    linear-gradient(152deg, oklch(0.3 0.03 50) 0%, oklch(0.17 0.02 45) 100%);
+  color: oklch(0.985 0.005 75);
+  border: 1px solid oklch(0.38 0.035 50);
   box-shadow:
     inset 0 1px 0 0 oklch(1 0 0 / 0.14),
-    0 20px 44px -18px oklch(0.2 0 0 / 0.55);
+    0 20px 44px -18px oklch(0.25 0.04 50 / 0.5);
 }
 .solid-accent .text-ink-muted,
-.solid-accent .text-ink-subtle { color: oklch(0.74 0 0) !important; }
+.solid-accent .text-ink-subtle { color: oklch(0.74 0.03 60) !important; }
 
 /*
  * Fallbacks. Where blur is unavailable the panes go opaque rather than
@@ -267,7 +269,7 @@ body::before {
 ::-webkit-scrollbar-track { background: transparent; }
 
 :focus-visible {
-  outline: 2px solid var(--color-ink);
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -294,9 +296,9 @@ body::before {
 
 /* Needs action now. The strongest mark here is solid graphite. */
 .sev-critical {
-  background: var(--color-ink);
+  background: var(--color-danger);
   color: oklch(0.99 0 0);
-  border-color: var(--color-ink);
+  border-color: var(--color-danger);
 }
 
 /* Waiting on someone. Present, not shouting. */
@@ -316,7 +318,7 @@ body::before {
 }
 
 /* A row that needs attention earns a rule, not a tint. */
-.row-flag { box-shadow: inset 2px 0 0 0 var(--color-ink); }
+.row-flag { box-shadow: inset 2px 0 0 0 var(--color-danger); }
 
 /* Quantity lost. Struck, because the palette has no red to spend. */
 .struck {
@@ -378,7 +380,7 @@ body::before {
 
 .slab {
   position: absolute;
-  background: var(--color-ink);
+  background: var(--color-brand);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
               width 260ms cubic-bezier(0.22, 1, 0.36, 1),
               height 260ms cubic-bezier(0.22, 1, 0.36, 1);

@@ -242,10 +242,10 @@ const badgeVariants = cva(
     variants: {
       tone: {
         neutral: 'bg-surface-muted text-ink-muted',
-        brand: 'bg-ink text-canvas',
-        ok: 'bg-surface-muted text-ink-muted',
-        warn: 'border-[1.5px] border-ink bg-transparent font-semibold text-ink',
-        danger: 'bg-ink font-semibold text-canvas',
+        brand: 'bg-brand font-medium text-white',
+        ok: 'bg-ok-soft font-medium text-ok',
+        warn: 'border-[1.5px] border-warn bg-transparent font-semibold text-ink',
+        danger: 'bg-danger font-semibold text-white',
         info: 'bg-surface-muted text-ink-muted',
         outline: 'border border-line-strong bg-surface text-ink-muted',
       },
@@ -462,9 +462,9 @@ export function Stat({
   // A figure that needs attention gets WEIGHT, not colour. 'ok' is
   // deliberately the quietest of the three: most numbers are fine.
   const toneClass =
-    tone === 'ok' ? 'text-ink-muted'
-    : tone === 'warn' ? 'text-ink'
-    : tone === 'danger' ? 'text-ink'
+    tone === 'ok' ? 'text-ok'
+    : tone === 'warn' ? 'text-warn'
+    : tone === 'danger' ? 'text-danger'
     : tone === 'info' ? 'text-ink-muted'
     : 'text-ink';
 
