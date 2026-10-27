@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/app/sidebar';
 import { Topbar } from '@/components/app/topbar';
+import { Assistant } from '@/components/app/assistant';
 import { useAuth } from '@/components/app/auth-context';
 import { LoadingBlock } from '@/components/ui/primitives';
 
@@ -51,6 +52,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Topbar onOpenNav={() => setNavOpen(true)} />
         <main className="min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-6">{children}</main>
       </div>
+
+      <Assistant />
     </div>
   );
 }

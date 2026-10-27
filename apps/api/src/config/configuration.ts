@@ -44,6 +44,12 @@ const envSchema = z.object({
   SHOPIFY_ADMIN_ACCESS_TOKEN: z.string().optional(),
   SHOPIFY_WEBHOOK_SECRET: z.string().optional(),
 
+  ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().optional(),
+  ASSISTANT_PROVIDER: z.enum(['anthropic', 'openai']).optional(),
+
   UNICOMMERCE_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   UNICOMMERCE_BASE_URL: z.string().optional(),
   UNICOMMERCE_CLIENT_ID: z.string().optional(),
