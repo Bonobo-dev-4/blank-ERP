@@ -5,8 +5,9 @@ import {
   type ExternalOrderStatus as DbExternalOrderStatus,
 } from '@prisma/client';
 import {
-  Decimal, classifyShopifyOrder, dec, isStaleOrderVersion, shopifyLineDetails,
-  shopifyLineQuantities, shopifyOrderDetails, qty,
+  Decimal, classifyShopifyOrder, dec, detectShopifyDispatchDate, dispatchState, dispatchWindow,
+  isDispatchSettled, isStaleOrderVersion, istToday, planShopifyCrmSync, shopifyLineDetails,
+  shopifyLineQuantities, shopifyOrderDetails, shopifyPriority, qty, type DispatchPreset,
 } from '@dnd/domain';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/services/audit.service';
@@ -80,6 +81,7 @@ const ORDER_FIELDS = `
     paymentGatewayNames
     discountCodes
     retailLocation { id name }
+    __CRM_FIELDS__
     customer { id legacyResourceId displayName firstName lastName email phone numberOfOrders }
     shippingAddress { ...Address }
     billingAddress { ...Address }
@@ -159,6 +161,38 @@ export interface OrderViewer {
   readonly canSeeCustomer: boolean;
 }
 
+/**
+ * The dispatch-date part of an order filter, in Asia/Kolkata. Overdue means a
+ * past promise on an order that has neither left nor been cancelled — an
+ * order Unicommerce reports COMPLETE has been dispatched, whatever Shopify says.
+ */
+export function dispatchFilter(
+  q: { dispatch?: string; dispatchFrom?: string; dispatchTo?: string },
+  now: Date,
+): Prisma.ShopifyOrderWhereInput {
+  if (!q.dispatch) return {};
+  const w = dispatchWindow(q.dispatch as DispatchPreset, now, { from: q.dispatchFrom, to: q.dispatchTo });
+  if (w.kind === 'NONE') return { expectedDispatchDate: null };
+  if (w.kind === 'OVERDUE') {
+    return {
+      expectedDispatchDate: { lt: dateOf(w.before)! },
+      AND: [
+        { status: { in: ['OPEN', 'PARTIALLY_FULFILLED'] } },
+        { OR: [{ externalShipmentStatus: null }, { externalShipmentStatus: { notIn: ['COMPLETE', 'CANCELLED'] } }] },
+      ],
+    };
+  }
+  return {
+    expectedDispatchDate: w.from || w.to
+      ? { ...(w.from ? { gte: dateOf(w.from)! } : {}), ...(w.to ? { lte: dateOf(w.to)! } : {}) }
+      : { not: null },
+  };
+}
+
+/** A DATE column as YYYY-MM-DD; DATE values arrive as UTC midnight. */
+export const ymdOf = (d: Date | null | undefined): string | null => (d ? d.toISOString().slice(0, 10) : null);
+export const dateOf = (ymd: string | null): Date | null => (ymd ? new Date(`${ymd}T00:00:00Z`) : null);
+
 const decimalOrNull = (v: string | null): Prisma.Decimal | null => {
   if (v === null) return null;
   try {
@@ -177,6 +211,9 @@ interface ShopNode {
 
 interface OrderNode {
   id: string; name: string; createdAt: string; updatedAt: string;
+  /** Present only when an approved metafield is configured. */
+  crmDispatch?: { value: string | null } | null;
+  crmPriority?: { value: string | null } | null;
   cancelledAt: string | null; processedAt: string | null;
   sourceName: string | null; note: string | null; tags: string[];
   displayFinancialStatus: string | null; displayFulfillmentStatus: string | null;
@@ -454,7 +491,7 @@ export class ShopifyService {
       const data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null };
         edges: { node: OrderNode }[] } } =
         await this.client.query(
-          ORDERS_QUERY,
+          this.withCrmFields(ORDERS_QUERY),
           { first: pageSize, after: cursor, query: filter },
           // Measured: 50 orders with their lines, addresses and prices ask
           // for ~620 points against a 1,000-point ceiling per query.
@@ -507,7 +544,7 @@ export class ShopifyService {
    * that window; a refresh touches exactly the orders named and nothing else.
    * An order deleted in Shopify comes back null and is counted, not removed.
    */
-  async refreshOrders(organizationId: string, actorUserId: string, externalIds: readonly string[]) {
+  async refreshOrders(organizationId: string, actorUserId: string | null, externalIds: readonly string[]) {
     const ids = [...new Set(externalIds)].filter((id) => /^gid:\/\/shopify\/Order\/\d+$/.test(id));
     const unmappedSkus = new Set<string>();
     let refreshed = 0;
@@ -517,7 +554,7 @@ export class ShopifyService {
     for (let i = 0; i < ids.length; i += REFRESH_BATCH) {
       const batch = ids.slice(i, i + REFRESH_BATCH);
       const data: { nodes: (OrderNode | null)[] } = await this.client.query(
-        ORDERS_BY_ID_QUERY,
+        this.withCrmFields(ORDERS_BY_ID_QUERY),
         { ids: batch },
         { estimatedCost: batch.length * 13 },
       );
@@ -567,7 +604,11 @@ export class ShopifyService {
 
     const existing = await this.prisma.shopifyOrder.findUnique({
       where: { organizationId_externalId: { organizationId, externalId: node.id } },
-      select: { id: true, externalUpdatedAt: true },
+      select: {
+        id: true, externalUpdatedAt: true,
+        expectedDispatchDate: true, dispatchDateSource: true, dispatchDateLocked: true,
+        orderPriority: true, prioritySource: true,
+      },
     });
 
     if (existing && isStaleOrderVersion(incomingUpdatedAt, existing.externalUpdatedAt)) {
@@ -592,6 +633,53 @@ export class ShopifyService {
 
     const details = shopifyOrderDetails(node);
     const ship = details.shippingAddress;
+
+    // CRM fields Shopify can inform: a dispatch date from the note or an
+    // approved field, and a priority from approved tags. Never over the CRM.
+    const crmSources = this.client.crmConfig();
+    const crm = planShopifyCrmSync(
+      existing
+        ? {
+            expectedDispatchDate: ymdOf(existing.expectedDispatchDate),
+            dispatchDateSource: existing.dispatchDateSource,
+            dispatchDateLocked: existing.dispatchDateLocked,
+            orderPriority: existing.orderPriority,
+            prioritySource: existing.prioritySource,
+          }
+        : null,
+      detectShopifyDispatchDate({
+        note: node.note,
+        attributes: details.attributes,
+        metafieldValue: node.crmDispatch?.value ?? null,
+        orderedAt: new Date(node.processedAt ?? node.createdAt),
+      }),
+      shopifyPriority({ tags: node.tags, tagMap: crmSources.priorityTagMap, metafieldValue: node.crmPriority?.value ?? null }),
+    );
+    const now = new Date();
+    const crmData = {
+      shopifyDispatchDate: dateOf(crm.shopify.date),
+      shopifyDispatchSource: crm.shopify.source,
+      shopifyDispatchText: crm.shopify.text,
+      shopifyDispatchIssue: crm.shopify.issue,
+      ...(crm.dispatch
+        ? {
+            expectedDispatchDate: dateOf(crm.dispatch.date),
+            dispatchDateSource: crm.dispatch.source,
+            dispatchDateUpdatedAt: now,
+            dispatchDateUpdatedById: null,
+            dispatchDateChangeReason: null,
+          }
+        : {}),
+      ...(crm.priority
+        ? {
+            orderPriority: crm.priority.value,
+            prioritySource: crm.priority.source,
+            priorityUpdatedAt: now,
+            priorityUpdatedById: null,
+            priorityReason: null,
+          }
+        : {}),
+    };
 
     return this.prisma.inTransaction<'IMPORTED' | 'STALE'>(async (tx) => {
       const header = {
@@ -640,10 +728,19 @@ export class ShopifyService {
 
       const order = await tx.shopifyOrder.upsert({
         where: { organizationId_externalId: { organizationId, externalId: node.id } },
-        create: header,
-        update: header,
+        create: { ...header, ...crmData },
+        update: { ...header, ...crmData },
         select: { id: true },
       });
+      if (crm.changes.length > 0) {
+        await tx.orderCrmChange.createMany({
+          data: crm.changes.map((c) => ({
+            organizationId, shopifyOrderId: order.id, field: c.field,
+            previousValue: c.previousValue, newValue: c.newValue, source: c.source,
+            reason: c.field === 'EXPECTED_DISPATCH_DATE' ? crm.dispatch?.text ?? null : null,
+          })),
+        });
+      }
 
       for (const { node: line } of node.lineItems.edges) {
         const sku = line.sku ?? line.variant?.sku ?? null;
@@ -737,8 +834,10 @@ export class ShopifyService {
       page: number; pageSize: number; sortDir: 'asc' | 'desc'; sortBy?: string; search?: string;
       channel?: string; status?: string; shipmentStatus?: string; location?: string;
       from?: string; to?: string; customised?: boolean; unmapped?: boolean;
+      priority?: string; dispatch?: string; dispatchFrom?: string; dispatchTo?: string;
     },
     viewer: OrderViewer = { canSeeCustomer: false },
+    now: Date = new Date(),
   ) {
     // Calendar dates are read in the organisation's day (IST), inclusive.
     const dayStart = (d: string) => new Date(`${d}T00:00:00+05:30`);
@@ -777,18 +876,29 @@ export class ShopifyService {
                       { shippingCity: { contains: query.search, mode: 'insensitive' as const } }]
                    : [])] }
         : {}),
+      ...(query.priority ? { orderPriority: query.priority as never } : {}),
+      ...dispatchFilter(query, now),
     };
 
     // Whitelisted by the contract; a stable tie-break keeps paging consistent
-    // when many orders share a value.
-    const sortBy = (query.sortBy ?? 'orderedAt') as 'orderedAt' | 'orderName' | 'customerRef' | 'totalAmount' | 'status';
+    // when many orders share a value. With no choice made, the CRM's order:
+    // VIP first, then by the earliest promised dispatch, then newest.
     const dir = query.sortDir ?? 'desc';
-    const orderBy: Prisma.ShopifyOrderOrderByWithRelationInput[] = [
-      sortBy === 'totalAmount' || sortBy === 'customerRef' || sortBy === 'orderName'
-        ? { [sortBy]: { sort: dir, nulls: 'last' } }
-        : { [sortBy]: dir },
-      { id: dir },
-    ];
+    const earliestDispatch = { expectedDispatchDate: { sort: 'asc', nulls: 'last' } } as const;
+    const orderBy: Prisma.ShopifyOrderOrderByWithRelationInput[] =
+      !query.sortBy
+        ? [{ orderPriority: 'asc' }, earliestDispatch, { orderedAt: 'desc' }, { id: 'desc' }]
+        : query.sortBy === 'orderPriority'
+          ? [{ orderPriority: dir }, earliestDispatch, { id: dir }]
+          : query.sortBy === 'expectedDispatchDate'
+            ? [{ expectedDispatchDate: { sort: dir, nulls: 'last' } }, { orderPriority: 'asc' }, { id: dir }]
+            : [
+                ['totalAmount', 'customerRef', 'orderName'].includes(query.sortBy)
+                  ? { [query.sortBy]: { sort: dir, nulls: 'last' } }
+                  : { [query.sortBy]: dir },
+                { id: dir },
+              ];
+    const today = istToday(now);
 
     const [rows, total] = await Promise.all([
       this.prisma.shopifyOrder.findMany({
@@ -813,11 +923,20 @@ export class ShopifyService {
     ]);
 
     return paginated(
-      rows.map(({ email, phone, customerExternalId, shippingCity, shippingProvince, shippingZip, shippingCountry, ...o }) => ({
+      rows.map(({
+        email, phone, customerExternalId, shippingCity, shippingProvince, shippingZip, shippingCountry,
+        crmRemarks, crmRemarksUpdatedById, dispatchDateUpdatedById, priorityUpdatedById,
+        dispatchDateOriginalValue, dispatchDateChangeReason, priorityReason,
+        expectedDispatchDate, shopifyDispatchDate, ...o
+      }) => ({
         ...o,
         ...(viewer.canSeeCustomer
           ? { email, phone, shippingCity, shippingProvince, shippingZip, shippingCountry }
           : {}),
+        expectedDispatchDate: ymdOf(expectedDispatchDate),
+        shopifyDispatchDate: ymdOf(shopifyDispatchDate),
+        dispatchState: dispatchState(ymdOf(expectedDispatchDate), today, isDispatchSettled(o)),
+        hasCrmRemarks: Boolean(crmRemarks),
         demandQty: o.lines
           .reduce((a, l) => a.plus(qty(l.manufacturingQty.toFixed())), qty('0'))
           .toFixed(4),
@@ -848,7 +967,21 @@ export class ShopifyService {
       this.prisma.shopifyOrder.groupBy({ by: ['channel'], where: { organizationId }, _count: { _all: true } }),
     ]);
     const sorted = <T extends { count: number }>(xs: T[]) => xs.sort((a, b) => b.count - a.count);
+    const now = new Date();
+    const [priorities, ...dispatchCounts] = await Promise.all([
+      this.prisma.shopifyOrder.groupBy({ by: ['orderPriority'], where, _count: { _all: true } }),
+      ...(['TODAY', 'TOMORROW', 'NEXT_7_DAYS', 'OVERDUE', 'NONE'] as const).map((preset) =>
+        this.prisma.shopifyOrder.count({ where: { ...where, ...dispatchFilter({ dispatch: preset }, now) } })),
+    ]);
+    const RANK = ['VIP', 'HIGH', 'MEDIUM', 'NORMAL'];
     return {
+      priorities: priorities
+        .map((r) => ({ value: r.orderPriority as string, count: r._count._all }))
+        .sort((a, b) => RANK.indexOf(a.value) - RANK.indexOf(b.value)),
+      dispatch: {
+        today: dispatchCounts[0], tomorrow: dispatchCounts[1], next7Days: dispatchCounts[2],
+        overdue: dispatchCounts[3], none: dispatchCounts[4],
+      },
       statuses: sorted(statuses.map((r) => ({ value: r.status as string, count: r._count._all }))),
       // Orders Unicommerce has not reported on yet are a real, filterable state.
       shipmentStatuses: sorted(shipments.map((r) => ({ value: r.externalShipmentStatus ?? 'NONE', count: r._count._all }))),
@@ -968,6 +1101,7 @@ export class ShopifyService {
       externalShipmentStatus: order.externalShipmentStatus,
       externalStatusSyncedAt: order.externalStatusSyncedAt?.toISOString() ?? null,
       unicommerceSaleOrderCode: order.unicommerceSaleOrderCode,
+      crm: await this.crmView(order),
       shopify: {
         orderId: details.orderId ?? order.externalId,
         legacyId: details.legacyId,
@@ -1093,6 +1227,62 @@ export class ShopifyService {
         };
       }),
     };
+  }
+
+  /**
+   * Priority, dispatch date and remarks as the order page shows them, with
+   * who changed each and what Shopify says beside the effective date.
+   */
+  async crmView(order: {
+    expectedDispatchDate: Date | null; dispatchDateSource: string; dispatchDateLocked: boolean;
+    dispatchDateUpdatedById: string | null; dispatchDateUpdatedAt: Date | null;
+    dispatchDateOriginalValue: string | null; dispatchDateChangeReason: string | null;
+    shopifyDispatchDate: Date | null; shopifyDispatchSource: string | null; shopifyDispatchText: string | null;
+    shopifyDispatchIssue: string | null; orderPriority: string; prioritySource: string;
+    priorityUpdatedById: string | null; priorityUpdatedAt: Date | null; priorityReason: string | null;
+    crmRemarks: string | null; crmRemarksUpdatedById: string | null; crmRemarksUpdatedAt: Date | null;
+    status: string; externalShipmentStatus: string | null;
+  }) {
+    const ids = [order.dispatchDateUpdatedById, order.priorityUpdatedById, order.crmRemarksUpdatedById]
+      .filter((x): x is string => Boolean(x));
+    const users = ids.length
+      ? await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } })
+      : [];
+    const name = (id: string | null) => (id ? users.find((u) => u.id === id)?.fullName ?? null : null);
+    const expected = ymdOf(order.expectedDispatchDate);
+    const fromShopify = ymdOf(order.shopifyDispatchDate);
+    return {
+      expectedDispatchDate: expected,
+      dispatchDateSource: order.dispatchDateSource,
+      dispatchDateLocked: order.dispatchDateLocked,
+      dispatchState: dispatchState(expected, istToday(), isDispatchSettled(order)),
+      dispatchDateUpdatedBy: name(order.dispatchDateUpdatedById),
+      dispatchDateUpdatedAt: order.dispatchDateUpdatedAt?.toISOString() ?? null,
+      dispatchDateOriginalValue: order.dispatchDateOriginalValue,
+      dispatchDateChangeReason: order.dispatchDateChangeReason,
+      shopify: {
+        date: fromShopify, source: order.shopifyDispatchSource,
+        text: order.shopifyDispatchText, issue: order.shopifyDispatchIssue,
+      },
+      // The CRM has a date and Shopify now says a different one: shown, never resolved silently.
+      conflict: order.dispatchDateLocked && fromShopify !== null && fromShopify !== expected,
+      priority: order.orderPriority,
+      prioritySource: order.prioritySource,
+      priorityUpdatedBy: name(order.priorityUpdatedById),
+      priorityUpdatedAt: order.priorityUpdatedAt?.toISOString() ?? null,
+      priorityReason: order.priorityReason,
+      remarks: order.crmRemarks,
+      remarksUpdatedBy: name(order.crmRemarksUpdatedById),
+      remarksUpdatedAt: order.crmRemarksUpdatedAt?.toISOString() ?? null,
+    };
+  }
+
+  /** The order query, plus any approved CRM metafields. */
+  private withCrmFields(query: string): string {
+    const { dispatchMetafield: d, priorityMetafield: p } = this.client.crmConfig();
+    const field = (alias: string, f: { namespace: string; key: string } | null) =>
+      f ? `${alias}: metafield(namespace: "${f.namespace}", key: "${f.key}") { value }` : '';
+    return query.replace('__CRM_FIELDS__', [field('crmDispatch', d), field('crmPriority', p)].filter(Boolean).join('\n    '));
   }
 
   /**

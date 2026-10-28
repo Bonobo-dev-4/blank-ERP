@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/app/auth-context';
 import { SwitchFacilityButton } from '@/components/app/switch-facility';
+import { DispatchDateCell, PRIORITIES, PriorityPicker, type DispatchState, type OrderPriority } from '@/components/app/order-crm';
 import { fmtDateTime, fmtMoneyCompact, fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Button, Card, EmptyState, ErrorPanel, LoadingBlock, PageHeader, Stat, StatusBadge,
@@ -30,22 +31,53 @@ interface Order {
   shippingCity?: string | null; shippingZip?: string | null;
   tags: string[]; cancelledAt: string | null;
   lines: Line[]; demandQty: string; unmappedLineCount: number;
+  orderPriority: OrderPriority; expectedDispatchDate: string | null; dispatchState: DispatchState;
+  dispatchDateSource: string; shopifyDispatchIssue: string | null; hasCrmRemarks: boolean;
 }
 interface Page { data: Order[]; page: number; pageSize: number; total: number; totalPages: number }
 interface Facet { value: string; count: number }
-interface Facets { statuses: Facet[]; shipmentStatuses: Facet[]; locations: Facet[]; channels: Facet[] }
+interface Facets {
+  statuses: Facet[]; shipmentStatuses: Facet[]; locations: Facet[]; channels: Facet[];
+  priorities: Facet[];
+  dispatch: { today: number; tomorrow: number; next7Days: number; overdue: number; none: number };
+}
+
+const DISPATCH_OPTIONS: { value: string; label: string }[] = [
+  { value: 'TODAY', label: 'Today' },
+  { value: 'TOMORROW', label: 'Tomorrow' },
+  { value: 'NEXT_3_DAYS', label: 'Next 3 days' },
+  { value: 'NEXT_7_DAYS', label: 'Next 7 days' },
+  { value: 'THIS_WEEK', label: 'This week' },
+  { value: 'THIS_MONTH', label: 'This month' },
+  { value: 'OVERDUE', label: 'Overdue' },
+  { value: 'NONE', label: 'No dispatch date' },
+  { value: 'CUSTOM', label: 'Custom range…' },
+];
 
 /** Everything the list can be narrowed or ordered by — mirrored in the URL. */
 interface ListParams {
   q: string; status: string; ship: string; channel: string; loc: string;
   from: string; to: string; bespoke: boolean; unmapped: boolean;
+  prio: string; disp: string; dfrom: string; dto: string;
+  /** Empty means the CRM default: priority, then earliest dispatch, then newest. */
   sort: string; dir: 'asc' | 'desc'; page: number; size: number;
 }
 
 const DEFAULTS: ListParams = {
   q: '', status: '', ship: '', channel: '', loc: '', from: '', to: '',
-  bespoke: false, unmapped: false, sort: 'orderedAt', dir: 'desc', page: 1, size: 25,
+  bespoke: false, unmapped: false, prio: '', disp: '', dfrom: '', dto: '',
+  sort: '', dir: 'desc', page: 1, size: 25,
 };
+
+/** One-click views the CRM team uses most. */
+const SAVED_VIEWS: { key: string; label: string; patch: Partial<ListParams>; count?: (f: Facets) => number | undefined }[] = [
+  { key: 'vip', label: 'VIP Orders', patch: { prio: 'VIP', disp: '' }, count: (f) => f.priorities.find((x) => x.value === 'VIP')?.count ?? 0 },
+  { key: 'high', label: 'High Priority', patch: { prio: 'HIGH', disp: '' }, count: (f) => f.priorities.find((x) => x.value === 'HIGH')?.count ?? 0 },
+  { key: 'medium', label: 'Medium Priority', patch: { prio: 'MEDIUM', disp: '' }, count: (f) => f.priorities.find((x) => x.value === 'MEDIUM')?.count ?? 0 },
+  { key: 'today', label: 'Dispatch Today', patch: { disp: 'TODAY', prio: '' }, count: (f) => f.dispatch.today },
+  { key: 'overdue', label: 'Dispatch Overdue', patch: { disp: 'OVERDUE', prio: '' }, count: (f) => f.dispatch.overdue },
+  { key: 'upcoming', label: 'Upcoming Dispatch', patch: { disp: 'NEXT_7_DAYS', prio: '' }, count: (f) => f.dispatch.next7Days },
+];
 
 function readUrl(): ListParams {
   if (typeof window === 'undefined') return DEFAULTS;
@@ -64,6 +96,10 @@ function readUrl(): ListParams {
     to: sp.get('to') ?? '',
     bespoke: sp.get('bespoke') === '1',
     unmapped: sp.get('unmapped') === '1',
+    prio: sp.get('prio') ?? '',
+    disp: sp.get('disp') ?? '',
+    dfrom: sp.get('dfrom') ?? '',
+    dto: sp.get('dto') ?? '',
     sort: sp.get('sort') ?? DEFAULTS.sort,
     dir: sp.get('dir') === 'asc' ? 'asc' : 'desc',
     page: num('page', 1),
@@ -83,6 +119,10 @@ function writeUrl(p: ListParams) {
   if (p.to) sp.set('to', p.to);
   if (p.bespoke) sp.set('bespoke', '1');
   if (p.unmapped) sp.set('unmapped', '1');
+  if (p.prio) sp.set('prio', p.prio);
+  if (p.disp) sp.set('disp', p.disp);
+  if (p.disp === 'CUSTOM' && p.dfrom) sp.set('dfrom', p.dfrom);
+  if (p.disp === 'CUSTOM' && p.dto) sp.set('dto', p.dto);
   if (p.sort !== DEFAULTS.sort || p.dir !== DEFAULTS.dir) { sp.set('sort', p.sort); sp.set('dir', p.dir); }
   if (p.page > 1) sp.set('page', String(p.page));
   if (p.size !== DEFAULTS.size) sp.set('size', String(p.size));
@@ -138,7 +178,11 @@ export function OrderList({
     to: p.to || undefined,
     customised: p.bespoke ? 'true' : undefined,
     unmapped: p.unmapped ? 'true' : undefined,
-    sortBy: p.sort,
+    priority: p.prio || undefined,
+    dispatch: p.disp || undefined,
+    dispatchFrom: p.disp === 'CUSTOM' ? p.dfrom || undefined : undefined,
+    dispatchTo: p.disp === 'CUSTOM' ? p.dto || undefined : undefined,
+    sortBy: p.sort || undefined,
     sortDir: p.dir,
   };
 
@@ -175,7 +219,21 @@ export function OrderList({
   };
 
   const f = facets.data;
+  const dispatchCount: Record<string, number | undefined> = {
+    TODAY: f?.dispatch.today, TOMORROW: f?.dispatch.tomorrow, NEXT_7_DAYS: f?.dispatch.next7Days,
+    OVERDUE: f?.dispatch.overdue, NONE: f?.dispatch.none,
+  };
   const selects = [
+    {
+      key: 'prio', label: 'Priority', value: p.prio,
+      options: PRIORITIES.map((x) => ({ value: x.value, label: x.label, count: f?.priorities.find((c) => c.value === x.value)?.count ?? 0 })),
+      onChange: (v: string) => update({ prio: v }),
+    },
+    {
+      key: 'disp', label: 'Dispatch', value: p.disp,
+      options: DISPATCH_OPTIONS.map((x) => ({ ...x, count: dispatchCount[x.value] })),
+      onChange: (v: string) => update({ disp: v, ...(v !== 'CUSTOM' ? { dfrom: '', dto: '' } : {}) }),
+    },
     {
       key: 'status', label: 'Status', value: p.status,
       options: (f?.statuses ?? []).map((x) => ({ value: x.value, label: humanise(x.value), count: x.count })),
@@ -253,6 +311,33 @@ export function OrderList({
         </div>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Saved views">
+        <button
+          type="button"
+          onClick={() => update({ prio: '', disp: '', dfrom: '', dto: '' })}
+          aria-pressed={!p.prio && !p.disp}
+          className={`h-8 rounded-full border px-3 text-[12.5px] font-medium transition-colors ${!p.prio && !p.disp ? 'glass-raised border-transparent text-ink' : 'border-line text-ink-muted hover:text-ink'}`}
+        >
+          All orders
+        </button>
+        {SAVED_VIEWS.map((v) => {
+          const active = Object.entries(v.patch).every(([k, val]) => p[k as keyof ListParams] === val);
+          const n = f && v.count ? v.count(f) : undefined;
+          return (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => update({ ...v.patch, dfrom: '', dto: '' })}
+              aria-pressed={active}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-colors ${active ? 'glass-raised border-transparent text-ink' : 'border-line text-ink-muted hover:text-ink'} ${v.key === 'overdue' && n ? 'text-danger' : ''}`}
+            >
+              {v.label}
+              {n !== undefined ? <span className="num text-[11.5px] opacity-70">{n.toLocaleString('en-IN')}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
       <Card material="dense" className="overflow-hidden">
         <div className="border-b border-line px-4 py-3.5">
           <FilterBar
@@ -264,15 +349,24 @@ export function OrderList({
             ]}
             dateRange={{ from: p.from, to: p.to, onChange: (r) => update({ from: r.from, to: r.to }) }}
             resultLabel={data ? `${fmtQty(String(data.total), 0)} orders${isFetching ? ' · updating…' : ''}` : undefined}
+            extra={p.disp === 'CUSTOM' ? (
+              <span className="inline-flex flex-wrap items-center gap-1.5 text-[12.5px] text-ink-muted">
+                Dispatch from
+                <input type="date" value={p.dfrom} max={p.dto || undefined} onChange={(e) => update({ dfrom: e.target.value })} className="h-9 rounded-lg border border-line-strong bg-surface px-2 text-[13px] text-ink" aria-label="Dispatch from" />
+                to
+                <input type="date" value={p.dto} min={p.dfrom || undefined} onChange={(e) => update({ dto: e.target.value })} className="h-9 rounded-lg border border-line-strong bg-surface px-2 text-[13px] text-ink" aria-label="Dispatch to" />
+              </span>
+            ) : undefined}
             onClear={() => { setSearchDraft(''); setP({ ...DEFAULTS, sort: p.sort, dir: p.dir, size: p.size }); }}
           />
+          <ActiveChips p={p} update={update} onSearchClear={() => setSearchDraft('')} />
         </div>
 
         {isLoading ? <LoadingBlock label="Loading orders" /> : null}
         {error ? <div className="p-4"><ErrorPanel error={error} onRetry={() => void refetch()} /></div> : null}
 
         {data && data.data.length === 0 ? (
-          data.total === 0 && !p.q && !p.status && !p.ship && !p.loc && !p.from && !p.to && !p.bespoke && !p.unmapped && !p.channel ? (
+          data.total === 0 && !p.q && !p.status && !p.ship && !p.loc && !p.from && !p.to && !p.bespoke && !p.unmapped && !p.channel && !p.prio && !p.disp ? (
             <EmptyState
               title="No orders imported yet"
               description="Run an import from Integrations. With no date it backfills history; set a date to pull recent orders."
@@ -294,6 +388,8 @@ export function OrderList({
                 <thead className="text-[12px] text-ink-muted">
                   <tr>
                     <SortTh label="Order" sortKey="orderName" sort={sort} onSort={onSort} />
+                    <SortTh label="Priority" sortKey="orderPriority" sort={sort} onSort={onSort} />
+                    <SortTh label="Dispatch" sortKey="expectedDispatchDate" sort={sort} onSort={onSort} />
                     <th scope="col" className="px-3 py-2.5 text-left font-semibold">Channel</th>
                     <SortTh label="Customer" sortKey="customerRef" sort={sort} onSort={onSort} />
                     <th scope="col" className="px-3 py-2.5 text-right font-semibold">Lines</th>
@@ -321,6 +417,15 @@ export function OrderList({
                           {o.orderName ?? o.orderNumber}
                         </Link>
                         {o.isCustomised ? <Badge tone="violet" className="ml-2">bespoke</Badge> : null}
+                      </td>
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <PriorityPicker orderId={o.id} value={o.orderPriority} />
+                      </td>
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <DispatchDateCell orderId={o.id} date={o.expectedDispatchDate} state={o.dispatchState} source={o.dispatchDateSource} />
+                        {o.shopifyDispatchIssue ? (
+                          <span className="ml-1 text-[11px] font-medium text-warn" title="The Shopify note's dispatch date needs review">review</span>
+                        ) : null}
                       </td>
                       <td className="px-3 py-2">
                         <Badge tone="outline">{humanise(o.channel)}</Badge>
@@ -381,6 +486,43 @@ export function OrderList({
           </>
         ) : null}
       </Card>
+    </div>
+  );
+}
+
+/** The filters in force, each removable on its own. */
+function ActiveChips({
+  p, update, onSearchClear,
+}: { p: ListParams; update: (patch: Partial<ListParams>) => void; onSearchClear: () => void }) {
+  const chips: { key: string; label: string; clear: () => void }[] = [];
+  if (p.q) chips.push({ key: 'q', label: `Search: ${p.q}`, clear: () => { onSearchClear(); update({ q: '' }); } });
+  if (p.prio) chips.push({ key: 'prio', label: PRIORITIES.find((x) => x.value === p.prio)?.label ?? p.prio, clear: () => update({ prio: '' }) });
+  if (p.disp) {
+    const base = DISPATCH_OPTIONS.find((x) => x.value === p.disp)?.label.replace('…', '') ?? p.disp;
+    const range = p.disp === 'CUSTOM' ? ` ${p.dfrom || '…'} – ${p.dto || '…'}` : '';
+    chips.push({ key: 'disp', label: `Dispatch: ${base}${range}`, clear: () => update({ disp: '', dfrom: '', dto: '' }) });
+  }
+  if (p.status) chips.push({ key: 'status', label: `Status: ${humanise(p.status)}`, clear: () => update({ status: '' }) });
+  if (p.ship) chips.push({ key: 'ship', label: `Shipping: ${shipLabel(p.ship)}`, clear: () => update({ ship: '' }) });
+  if (p.channel) chips.push({ key: 'channel', label: `Channel: ${humanise(p.channel)}`, clear: () => update({ channel: '', loc: '' }) });
+  if (p.loc) chips.push({ key: 'loc', label: `Store: ${p.loc}`, clear: () => update({ loc: '' }) });
+  if (p.from || p.to) chips.push({ key: 'dates', label: `Placed ${p.from || '…'} – ${p.to || '…'}`, clear: () => update({ from: '', to: '' }) });
+  if (p.bespoke) chips.push({ key: 'bespoke', label: 'Bespoke only', clear: () => update({ bespoke: false }) });
+  if (p.unmapped) chips.push({ key: 'unmapped', label: 'Has unmapped lines', clear: () => update({ unmapped: false }) });
+  if (chips.length === 0) return null;
+  return (
+    <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Active filters">
+      {chips.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          onClick={c.clear}
+          className="inline-flex h-7 items-center gap-1 rounded-full border border-brand/40 bg-brand-soft px-2.5 text-[12px] font-medium text-ink hover:border-brand"
+          aria-label={`Remove filter ${c.label}`}
+        >
+          {c.label} <span aria-hidden className="text-ink-muted">×</span>
+        </button>
+      ))}
     </div>
   );
 }

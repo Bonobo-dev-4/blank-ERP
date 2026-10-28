@@ -11,7 +11,8 @@ import type { AppConfig } from './config/configuration';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // rawBody: Shopify webhooks are verified against the exact bytes received.
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   const config = app.get(ConfigService<AppConfig, true>);
 
   const prefix = config.get('API_GLOBAL_PREFIX', { infer: true });

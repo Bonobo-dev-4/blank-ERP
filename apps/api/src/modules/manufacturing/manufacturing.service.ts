@@ -10,7 +10,9 @@ import type {
   AuthenticatedUser, CreateManufacturingOrderRequest, ReleaseManufacturingOrderRequest,
   ReserveMaterialRequest, UpdateManufacturingOrderRequest,
 } from '@dnd/contracts';
+import type { OrderPriority } from '@dnd/domain';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { crmForManufacturingOrders, moIdsWithOrderPriority } from '../order-crm/crm-lookup';
 import { AuditService } from '../../common/services/audit.service';
 import { IdempotencyService } from '../../common/services/idempotency.service';
 import { DOC_SCOPES, NumberingService } from '../../common/services/numbering.service';
@@ -71,10 +73,14 @@ export class ManufacturingService {
     query: {
       page: number; pageSize: number; sortDir: 'asc' | 'desc'; sortBy?: string; search?: string;
       status?: string; productId?: string; priority?: string; overdueOnly?: boolean; dueBefore?: string;
+      orderPriority?: OrderPriority;
     },
   ) {
     const where: Prisma.ManufacturingOrderWhereInput = {
       organizationId,
+      ...(query.orderPriority
+        ? { id: { in: await moIdsWithOrderPriority(this.prisma, organizationId, query.orderPriority) } }
+        : {}),
       ...(query.status ? { status: query.status as never } : {}),
       ...(query.productId ? { productId: query.productId } : {}),
       ...(query.priority ? { priority: query.priority as never } : {}),
@@ -100,7 +106,9 @@ export class ManufacturingService {
       this.prisma.manufacturingOrder.count({ where }),
     ]);
 
-    return paginated(rows.map((o) => this.decorateOrder(o)), total, query);
+    // The customer promise behind each order: shown to production, never acted on automatically.
+    const crm = await crmForManufacturingOrders(this.prisma, organizationId, rows.map((o) => o.id));
+    return paginated(rows.map((o) => ({ ...this.decorateOrder(o), crm: crm.get(o.id) ?? null })), total, query);
   }
 
   async get(organizationId: string, id: string) {
@@ -127,8 +135,10 @@ export class ManufacturingService {
       throw new NotFoundException({ code: 'MANUFACTURING_ORDER_NOT_FOUND', message: 'Manufacturing order not found' });
     }
 
+    const crm = await crmForManufacturingOrders(this.prisma, organizationId, [order.id]);
     return {
       ...this.decorateOrder(order),
+      crm: crm.get(order.id) ?? null,
       // Quantities are formatted at the column's own scale here rather than
       // left to the generic serialiser, which emits the shortest exact string
       // ("2.5", not "2.5000"). The snapshot is the authoritative record of what

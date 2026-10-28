@@ -12,12 +12,14 @@ import {
 import { Tabs } from '@/components/ui/tabs';
 import { FilterBar, SortTh, useTableControls } from '@/components/ui/table-controls';
 import { SwitchFacilityButton } from '@/components/app/switch-facility';
+import { DispatchDateText, PriorityBadge, type DispatchState, type OrderPriority } from '@/components/app/order-crm';
 
 type Route = 'DISPATCH' | 'SWITCH_FACILITY' | 'MANUFACTURE' | 'NEEDS_CHECK';
 
 interface Line {
   demandId: string; demandNo: string; orderRef: string | null; channel: string;
   orderId: string | null; orderLineId: string | null;
+  crm: { priority: OrderPriority; dispatchDate: string | null; dispatchState: DispatchState } | null;
   sku: string; productName: string | null; size: string | null; color: string | null;
   isMapped: boolean; status: string; priority: string; requiredByDate: string | null;
   openQty: string; route: Route;
@@ -216,6 +218,7 @@ export default function FulfilmentBoardPage() {
                         >
                           <td className="px-3 py-1.5 pl-3.5">
                             <span className="font-mono text-[12px]">{l.orderRef ?? l.demandNo}</span>
+                            {l.crm && l.crm.priority !== 'NORMAL' ? <span className="ml-1.5 align-middle"><PriorityBadge priority={l.crm.priority} compact /></span> : null}
                             <div className="text-[12px] text-ink-subtle">{humanise(l.channel)}</div>
                           </td>
                           <td className="px-3 py-1.5">
@@ -241,7 +244,9 @@ export default function FulfilmentBoardPage() {
                             ) : l.reason}
                           </td>
                           <td className="px-3 py-1.5 text-ink-muted">
-                            {l.requiredByDate ? fmtDate(l.requiredByDate) : '—'}
+                            {l.crm?.dispatchDate
+                              ? <DispatchDateText date={l.crm.dispatchDate} state={l.crm.dispatchState} />
+                              : l.requiredByDate ? fmtDate(l.requiredByDate) : '—'}
                           </td>
                           <td className="px-3 py-1.5 text-right">
                             {l.isRejectedForDispatch ? (

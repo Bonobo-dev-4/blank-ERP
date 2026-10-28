@@ -78,6 +78,7 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   p('demand.import', 'Trigger an order import'),
   p('demand.view_customer', "See a customer's contact details and addresses on orders"),
   p('demand.approve', 'Approve demand for manufacturing', true),
+  p('demand.manage_crm', 'Set order priority, expected dispatch dates and CRM remarks'),
   p('demand.switch_facility', "Move an order item to another Unicommerce fulfilment facility", true),
 
   // --- manufacturing -------------------------------------------------------
@@ -143,6 +144,7 @@ export const ROLE_CODES = [
   'JOB_WORKER_COORDINATOR',
   'FINANCE_VIEWER',
   'MANAGEMENT_VIEWER',
+  'CRM_EXECUTIVE',
 ] as const;
 export type RoleCode = (typeof ROLE_CODES)[number];
 
@@ -169,7 +171,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleCode, readonly string[]>> = {
   SUPER_ADMIN: PERMISSION_CODES,
 
   PRODUCTION_HEAD: [
-    ...READ_ONLY_CORE, 'demand.read', 'demand.view_customer', 'demand.approve', 'demand.switch_facility',
+    ...READ_ONLY_CORE, 'demand.read', 'demand.view_customer', 'demand.approve', 'demand.switch_facility', 'demand.manage_crm',
     'manufacturing.write',
     'manufacturing.release', 'manufacturing.release_with_shortage', 'manufacturing.cancel',
     'manufacturing.split', 'mrp.run', 'mrp.reserve', 'production.assign',
@@ -232,6 +234,10 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleCode, readonly string[]>> = {
   FINANCE_VIEWER: [...READ_ONLY_CORE, 'purchasing.read', 'reports.view_costing', 'reports.export', 'sync.read'],
 
   MANAGEMENT_VIEWER: [...READ_ONLY_CORE, 'purchasing.read', 'demand.read', 'demand.view_customer', 'sync.read', 'job_workers.read', 'reports.view_costing', 'reports.export'],
+
+  // The team that talks to customers: sees orders and who placed them, and
+  // owns the promises - priority, dispatch date, remarks. No stock, no money.
+  CRM_EXECUTIVE: ['demand.read', 'demand.view_customer', 'demand.manage_crm', 'products.read', 'reports.read'],
 };
 
 export const ROLE_LABELS: Readonly<Record<RoleCode, string>> = {
@@ -250,6 +256,7 @@ export const ROLE_LABELS: Readonly<Record<RoleCode, string>> = {
   JOB_WORKER_COORDINATOR: 'Job Worker Coordinator',
   FINANCE_VIEWER: 'Finance Viewer',
   MANAGEMENT_VIEWER: 'Management Viewer',
+  CRM_EXECUTIVE: 'CRM Executive',
 };
 
 /** Every permission a set of roles grants, de-duplicated. */

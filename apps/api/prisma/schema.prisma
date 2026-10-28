@@ -2972,7 +2972,6 @@ model ShopifyOrder {
   status                 ExternalOrderStatus @default(OPEN)
   currency               String?
   totalAmount            Decimal?            @db.Decimal(18, 2)
-  requiredByDate         DateTime?
   customerRef            String?
   /// Customer contact and ship-to, lifted out of `rawPayload` so they can be
   /// searched. Personal data: only readers with demand.view_customer see them.
@@ -3011,14 +3010,46 @@ model ShopifyOrder {
   /// Unicommerce sale order code, once matched and verified by order number.
   unicommerceSaleOrderCode String?
 
+  /// The dispatch date promised to the customer, a calendar date in India.
+  expectedDispatchDate      DateTime?           @db.Date
+  dispatchDateSource        DispatchDateSource  @default(UNASSIGNED)
+  dispatchDateUpdatedById   String?             @db.Uuid
+  dispatchDateUpdatedAt     DateTime?
+  /// What the date was before the CRM first overrode it ("2026-11-05 from
+  /// Shopify note: Dispatch by 5th Nov"), so an override never erases its origin.
+  dispatchDateOriginalValue String?
+  dispatchDateChangeReason  String?
+  /// Set by any CRM edit. A locked date is never changed by Shopify sync.
+  dispatchDateLocked        Boolean             @default(false)
+  /// What Shopify currently says, kept beside the effective date so a
+  /// disagreement with the CRM is visible rather than silently resolved.
+  shopifyDispatchDate       DateTime?           @db.Date
+  shopifyDispatchSource     DispatchDateSource?
+  shopifyDispatchText       String?
+  /// CONFLICTING_DATES / AMBIGUOUS_DATE / INVALID_DATE - needs a person.
+  shopifyDispatchIssue      String?
+
+  orderPriority         OrderPriority @default(NORMAL)
+  /// CRM_MANUAL / SHOPIFY_TAG / SHOPIFY_METAFIELD / DEFAULT.
+  prioritySource        String        @default("DEFAULT")
+  priorityUpdatedById   String?       @db.Uuid
+  priorityUpdatedAt     DateTime?
+  priorityReason        String?
+  crmRemarks            String?
+  crmRemarksUpdatedById String?       @db.Uuid
+  crmRemarksUpdatedAt   DateTime?
+
   lines            ShopifyOrderLine[]
   facilitySwitches FacilitySwitchOperation[]
+  crmChanges       OrderCrmChange[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId, channel, orderedAt])
   @@index([organizationId, status])
   @@index([organizationId, isCustomised, orderedAt])
   @@index([organizationId, shippingZip])
+  @@index([organizationId, orderPriority, expectedDispatchDate])
+  @@index([organizationId, expectedDispatchDate])
   @@map("shopify_orders")
 }
 
@@ -3495,4 +3526,47 @@ model UnicommerceOrderItem {
   @@index([shopifyOrderLineId])
   @@index([shopifyOrderId])
   @@map("unicommerce_order_items")
+}
+
+// -----------------------------------------------------------------------------
+// CRM: order priority and expected dispatch date
+// -----------------------------------------------------------------------------
+
+/// Declaration order is the ranking: sorting ascending puts VIP first.
+enum OrderPriority {
+  VIP
+  HIGH
+  MEDIUM
+  NORMAL
+}
+
+enum DispatchDateSource {
+  CRM_MANUAL
+  SHOPIFY_METAFIELD
+  SHOPIFY_CUSTOM_ATTRIBUTE
+  SHOPIFY_NOTE
+  UNASSIGNED
+}
+
+/// Every change to an order's priority, dispatch date or CRM remarks, by a
+/// person or by Shopify sync. Append-only at the database.
+model OrderCrmChange {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  shopifyOrderId String   @db.Uuid
+  /// EXPECTED_DISPATCH_DATE / PRIORITY / CRM_REMARKS
+  field          String
+  previousValue  String?
+  newValue       String?
+  /// CRM_MANUAL, or the Shopify source that changed it.
+  source         String
+  reason         String?
+  changedById    String?  @db.Uuid
+  changedAt      DateTime @default(now())
+
+  shopifyOrder ShopifyOrder @relation(fields: [shopifyOrderId], references: [id], onDelete: Restrict)
+
+  @@index([shopifyOrderId, changedAt])
+  @@index([organizationId, changedAt])
+  @@map("order_crm_changes")
 }

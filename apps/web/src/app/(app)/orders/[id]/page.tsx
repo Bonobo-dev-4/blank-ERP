@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowUpRight, Check, Copy, ExternalLink, Lock, RefreshCw, Tr
 import { api } from '@/lib/api';
 import { useAuth } from '@/components/app/auth-context';
 import { FacilitySwitchHistory, SwitchFacilityButton } from '@/components/app/switch-facility';
+import { CrmDispatchCard, PriorityPicker, type OrderCrm } from '@/components/app/order-crm';
 import { fmtDateTime, fmtMoney, fmtQty, humanise } from '@/lib/utils';
 import {
   Badge, Button, Card, CardBody, CardHeader, DescList, EmptyState, ErrorPanel,
@@ -65,6 +66,7 @@ interface Order {
     orderId: string; legacyId: string | null; adminUrl: string | null;
     confirmationNumber: string | null; sourceName: string | null;
   };
+  crm: OrderCrm;
   customerHidden: boolean;
   customer: {
     id: string | null; legacyId: string | null; name: string | null; email: string | null;
@@ -131,6 +133,7 @@ export default function OrderDetailPage() {
         description={`${humanise(data.channel)}${data.posLocationName ? ` · ${data.posLocationName}` : ''} · placed ${fmtDateTime(data.orderedAt)}`}
         actions={
           <div className="flex items-center gap-2">
+            <PriorityPicker orderId={data.id} value={data.crm.priority} />
             {data.isCustomised ? <Badge tone="warn">bespoke</Badge> : null}
             <StatusBadge status={data.status} />
             {canRefresh ? (
@@ -188,6 +191,8 @@ export default function OrderDetailPage() {
           ) : null}
         </CardBody>
       </Card>
+
+      <CrmDispatchCard orderId={data.id} crm={data.crm} note={data.note} />
 
       <CustomerPanels order={data} />
 

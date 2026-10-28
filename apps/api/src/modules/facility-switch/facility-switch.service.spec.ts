@@ -53,7 +53,7 @@ function makeDb(opts: { demand?: boolean } = {}) {
     shopifyOrder: {
       findFirst: jest.fn(async () => ({
         id: ORDER, organizationId: ORG, externalId: `gid://shopify/Order/${SO}`, orderName: '#170717', orderNumber: '170717',
-        orderedAt: new Date(), requiredByDate: null, unicommerceSaleOrderCode: SO,
+        orderedAt: new Date(), expectedDispatchDate: null, orderPriority: 'NORMAL', unicommerceSaleOrderCode: SO,
         lines: [{
           id: LINE, externalLineId: `gid://shopify/LineItem/${ITEM}`, externalVariantId: 'gid://shopify/ProductVariant/49295244427434',
           externalSku: 'DD-KUR-L', title: 'Kurta', orderedQty: new Prisma.Decimal(1), cancelledQty: new Prisma.Decimal(0),

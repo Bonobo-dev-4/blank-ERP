@@ -56,7 +56,7 @@ export interface LiveOrder {
 type OrderRow = Prisma.ShopifyOrderGetPayload<{
   select: {
     id: true; organizationId: true; externalId: true; orderName: true; orderNumber: true; orderedAt: true;
-    requiredByDate: true; unicommerceSaleOrderCode: true;
+    expectedDispatchDate: true; orderPriority: true; unicommerceSaleOrderCode: true;
     lines: {
       select: {
         id: true; externalLineId: true; externalVariantId: true; externalSku: true; title: true;
@@ -781,7 +781,7 @@ export class FacilitySwitchService {
       where: { organizationId, id },
       select: {
         id: true, organizationId: true, externalId: true, orderName: true, orderNumber: true, orderedAt: true,
-        requiredByDate: true, unicommerceSaleOrderCode: true,
+        expectedDispatchDate: true, orderPriority: true, unicommerceSaleOrderCode: true,
         lines: {
           select: {
             id: true, externalLineId: true, externalVariantId: true, externalSku: true, title: true,
@@ -800,7 +800,8 @@ export class FacilitySwitchService {
     return {
       id: line.id, title: line.title, sku: line.externalSku, priority: line.priority,
       orderedQty: line.orderedQty.toFixed(), openQty: openQty(line),
-      requiredByDate: order.requiredByDate?.toISOString() ?? null,
+      requiredByDate: order.expectedDispatchDate?.toISOString().slice(0, 10) ?? null,
+      orderPriority: order.orderPriority,
     };
   }
 

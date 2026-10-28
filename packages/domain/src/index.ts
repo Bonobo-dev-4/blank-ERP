@@ -43,3 +43,6 @@ export * from './forecasting/replenishment';
 export * from './integrations/unicommerce';
 export * from './integrations/shopify-product';
 export * from './fulfilment/route';
+export * from './crm/dispatch-date';
+export * from './crm/order-priority';
+export * from './crm/crm-sync';

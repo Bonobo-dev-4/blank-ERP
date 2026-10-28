@@ -15,6 +15,7 @@ import {
 import { CodeCell } from '@/components/ui/data-table';
 import { ConfirmDialog, Dialog, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '@/components/app/auth-context';
+import { DispatchDateText, PriorityBadge, type DispatchState, type OrderPriority } from '@/components/app/order-crm';
 
 interface SnapshotLine {
   id: string; lineNo: number; materialCode: string; materialName: string; uom: string;
@@ -37,6 +38,8 @@ interface MoDetail {
   shortageOverrideReason: string | null;
   plannedMaterialCost: string; plannedTotalCost: string;
   isEditable: boolean; isOverdue: boolean; hasBomSnapshot: boolean;
+  /** Shown to production for context; nothing here reorders or changes the order. */
+  crm: { priority: OrderPriority; dispatchDate: string | null; dispatchState: DispatchState; orderCount: number } | null;
   product: { id: string; styleCode: string; name: string; category: string } | null;
   bomVersion: { id: string; version: number; status: string; bom: { id: string; bomCode: string } } | null;
   route: { id: string; code: string; name: string } | null;
@@ -589,6 +592,15 @@ export default function ManufacturingOrderDetailPage() {
           <DescList
             items={[
               { label: 'Priority', value: humanise(data.priority) },
+              ...(data.crm
+                ? [
+                    { label: 'Customer order priority', value: <PriorityBadge priority={data.crm.priority} /> },
+                    {
+                      label: `Promised dispatch${data.crm.orderCount > 1 ? ` (earliest of ${data.crm.orderCount} orders)` : ''}`,
+                      value: <DispatchDateText date={data.crm.dispatchDate} state={data.crm.dispatchState} />,
+                    },
+                  ]
+                : []),
               { label: 'Production type', value: humanise(data.productionType) },
               { label: 'Route', value: data.route?.name ?? '—' },
               { label: 'Planned start', value: fmtDate(data.plannedStartDate) },

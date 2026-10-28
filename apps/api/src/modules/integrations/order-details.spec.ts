@@ -124,7 +124,10 @@ describe('order list and personal data', () => {
 
 describe('refreshing orders by id', () => {
   function refreshSetup(nodes: unknown[]) {
-    const client = { query: jest.fn().mockResolvedValue({ nodes }), describe: () => ({ shopDomain: '' }) };
+    const client = {
+      query: jest.fn().mockResolvedValue({ nodes }), describe: () => ({ shopDomain: '' }),
+      crmConfig: () => ({ dispatchMetafield: null, priorityMetafield: null, priorityTagMap: new Map() }),
+    };
     const audit = { record: jest.fn() };
     const service = new ShopifyService({} as never, client as never, audit as never);
     const upsert = jest.spyOn(service as never as { upsertOrder: () => Promise<string> }, 'upsertOrder')

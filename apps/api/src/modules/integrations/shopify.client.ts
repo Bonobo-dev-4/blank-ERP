@@ -1,6 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { throttleDelayMs, type ShopifyThrottleState } from '@dnd/domain';
+import { parsePriorityTagMap, throttleDelayMs, type OrderPriority, type ShopifyThrottleState } from '@dnd/domain';
 
 export interface ShopifyGraphqlResponse<T> {
   readonly data?: T;
@@ -56,6 +56,24 @@ export class ShopifyClient {
       shopDomain: String(this.config.get('SHOPIFY_SHOP_DOMAIN') ?? '').trim(),
       apiVersion: String(this.config.get('SHOPIFY_ADMIN_API_VERSION') ?? '2025-07').trim(),
       accessToken: String(this.config.get('SHOPIFY_ADMIN_ACCESS_TOKEN') ?? '').trim(),
+    };
+  }
+
+  /** The Shopify sources approved for CRM fields. Empty when none are. */
+  crmConfig(): {
+    dispatchMetafield: { namespace: string; key: string } | null;
+    priorityMetafield: { namespace: string; key: string } | null;
+    priorityTagMap: ReadonlyMap<string, OrderPriority>;
+  } {
+    const field = (k: string) => {
+      const v = String(this.config.get(k) ?? '').trim();
+      const m = /^([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/.exec(v);
+      return m ? { namespace: m[1]!, key: m[2]! } : null;
+    };
+    return {
+      dispatchMetafield: field('SHOPIFY_DISPATCH_DATE_METAFIELD'),
+      priorityMetafield: field('SHOPIFY_PRIORITY_METAFIELD'),
+      priorityTagMap: parsePriorityTagMap(String(this.config.get('SHOPIFY_PRIORITY_TAGS') ?? '')),
     };
   }
 

@@ -447,3 +447,49 @@ Before writing the connector:
 
 The last item is a design decision, not a lookup. Phase 4 should not start until
 it has an answer.
+
+## CRM dispatch dates and priority (28 Oct 2026)
+
+**Expected dispatch date** is an order-level calendar date in Asia/Kolkata
+(`ShopifyOrder.expectedDispatchDate`, `@db.Date`). Precedence:
+
+1. **CRM** (`PATCH /api/orders/:id/dispatch-date`). Locks the order: Shopify sync
+   never changes a CRM date. Changing or clearing an existing date needs a reason.
+   "Use Shopify's date" (`POST …/dispatch-date/use-shopify`) is the only unlock.
+2. An approved order **metafield** (`SHOPIFY_DISPATCH_DATE_METAFIELD=namespace.key`).
+   None is configured: the store's four order metafields hold no dispatch date.
+3. A **checkout attribute** whose key names dispatch (not delivery).
+4. The **order note**, read only where a "dispatch" label is followed by a date.
+
+What Shopify says is always stored beside the effective date
+(`shopifyDispatch*`), so a disagreement with the CRM shows instead of being
+resolved silently.
+
+**Note parsing** (`@dnd/domain` `extractDispatchDateFromText`), measured on the
+store: 179 of 1,064 notes mention dispatch; the common forms are
+`Dispatch By Date 24-10-2026` and `Dispatch by 16th October`. Rules:
+numeric dates are day-first (DD/MM/YYYY) or ISO; two-digit years are refused as
+ambiguous; a day and month without a year take the year from the order date
+(never more than ~10 months ahead, else flagged); "delivery" is never read; two
+different dispatch dates in one note are flagged `CONFLICTING_DATES` for the CRM.
+First backfill: 154 dates read, 20 flagged as conflicting (revised promises).
+
+**Priority**: `VIP`, `HIGH`, `MEDIUM`, `NORMAL` (`ShopifyOrder.orderPriority`;
+declaration order is the ranking). CRM-set (`PATCH /api/orders/:id/priority`)
+and authoritative. Shopify can set it only through approved tags or an approved
+metafield (`SHOPIFY_PRIORITY_TAGS="VIP:VIP,express-shipping:HIGH"`,
+`SHOPIFY_PRIORITY_METAFIELD`); none are configured, and no current tag implies
+priority.
+
+**History**: `order_crm_changes`, append-only at the database, records every
+change by a person or by sync. `GET /api/orders/:id/crm-history`.
+
+**Syncing**: the import, "Refresh from Shopify", the periodic resync, and the
+`orders/*` webhook at `POST /api/integrations/shopify/webhooks/orders` (HMAC
+verified with `SHOPIFY_WEBHOOK_SECRET`; register it in Shopify against the
+deployed URL) all apply the same rules. `POST /api/order-crm/rescan` re-reads
+stored Shopify data without calling Shopify.
+
+**Manufacturing** shows, never acts on, the promise: demand, the fulfilment
+board and production orders carry the highest linked priority and the earliest
+open dispatch date; demand's needed-by date follows the earliest promise.

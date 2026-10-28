@@ -1,3 +1,4 @@
+import { ORDER_PRIORITIES } from '@dnd/domain';
 import { BadRequestException, Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { DemandChannel, DemandStatus, Priority } from '@prisma/client';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -33,6 +34,7 @@ export class DemandController {
     @Query('priority') priority?: string,
     @Query('search') search?: string,
     @Query('mapped') mapped?: string,
+    @Query('orderPriority') orderPriority?: string,
     @Query('sortBy') sortBy?: string,
     @Query('sortDir') sortDir?: string,
     @Query('page') page?: string,
@@ -53,6 +55,7 @@ export class DemandController {
       priority: oneOf(priority, Object.values(Priority), 'priority'),
       search: search?.slice(0, 200) || undefined,
       mapped: mapped === 'true' ? true : mapped === 'false' ? false : undefined,
+      orderPriority: oneOf(orderPriority, ORDER_PRIORITIES, 'order priority'),
       sortBy: oneOf(sortBy, DEMAND_SORT_KEYS, 'sort column'),
       sortDir: sortDir === 'desc' ? 'desc' : 'asc',
       page: Number(page) || 1,

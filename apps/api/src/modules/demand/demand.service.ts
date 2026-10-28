@@ -3,7 +3,9 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   Decimal, dec, demandFingerprint, reconcileIncomingDemand,
 } from '@dnd/domain';
+import type { OrderPriority } from '@dnd/domain';
 import { shopifySource } from '../fulfilment/fulfilment.service';
+import { crmForDemands, demandIdsWithOrderPriority } from '../order-crm/crm-lookup';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { IdempotencyService } from '../../common/services/idempotency.service';
 
@@ -38,6 +40,8 @@ export class DemandService {
     query: {
       status?: string; channel?: string; priority?: string; search?: string; mapped?: boolean;
       sortBy?: DemandSortKey; sortDir?: 'asc' | 'desc'; page?: number; pageSize?: number;
+      /** The CRM priority of the orders the demand serves. */
+      orderPriority?: OrderPriority;
     },
   ) {
     const page = Math.max(1, query.page ?? 1);
@@ -48,6 +52,9 @@ export class DemandService {
       ...(query.status ? { status: query.status as never } : {}),
       ...(query.channel ? { channel: query.channel as never } : {}),
       ...(query.priority ? { priority: query.priority as never } : {}),
+      ...(query.orderPriority
+        ? { id: { in: await demandIdsWithOrderPriority(this.prisma, organizationId, query.orderPriority) } }
+        : {}),
       ...(query.mapped === true ? { productVariantId: { not: null } } : {}),
       ...(query.mapped === false ? { productVariantId: null } : {}),
       ...(q
@@ -104,6 +111,7 @@ export class DemandService {
       this.prisma.manufacturingDemand.groupBy({ by: ['priority'], where: { organizationId }, _count: { _all: true } }),
     ]);
 
+    const crm = await crmForDemands(this.prisma, organizationId, rows.map((d) => d.id));
     return {
       data: rows.map((d) => ({
         id: d.id,
@@ -127,6 +135,7 @@ export class DemandService {
         requiredByDate: d.requiredByDate?.toISOString() ?? null,
         decisionReason: d.decisionReason,
         createdAt: d.createdAt.toISOString(),
+        crm: crm.get(d.id) ?? null,
         sources: d.sourceMappings.map((m) => ({
           system: m.sourceSystem,
           docNo: m.sourceDocNo,
@@ -173,7 +182,7 @@ export class DemandService {
           take,
           select: {
             id: true, orderNumber: true, orderName: true, channel: true, orderedAt: true,
-            requiredByDate: true, isCustomised: true,
+            expectedDispatchDate: true, isCustomised: true,
             lines: {
               select: {
                 id: true, externalSku: true, productVariantId: true,
@@ -285,7 +294,8 @@ export class DemandService {
                     // Unmapped SKUs still become demand. Dropping them would
                     // hide a real shortfall behind a mapping gap.
                     status: line.productVariantId ? 'NEW' : 'NEEDS_MAPPING',
-                    requiredByDate: order.requiredByDate,
+                    // The demand is needed by the date promised to the customer.
+                    requiredByDate: order.expectedDispatchDate,
                     dedupeFingerprint: fingerprint,
                     decisionReason: decision.reason,
                   },

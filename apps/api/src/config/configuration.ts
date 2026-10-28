@@ -43,6 +43,15 @@ const envSchema = z.object({
   SHOPIFY_ADMIN_API_VERSION: z.string().default('2025-07'),
   SHOPIFY_ADMIN_ACCESS_TOKEN: z.string().optional(),
   SHOPIFY_WEBHOOK_SECRET: z.string().optional(),
+  /**
+   * Approved Shopify sources for CRM fields. Empty means "not read": nothing
+   * is inferred from fields the business has not approved.
+   *   SHOPIFY_DISPATCH_DATE_METAFIELD / SHOPIFY_PRIORITY_METAFIELD: namespace.key
+   *   SHOPIFY_PRIORITY_TAGS: "tag:PRIORITY" pairs, e.g. "VIP:VIP,express-shipping:HIGH"
+   */
+  SHOPIFY_DISPATCH_DATE_METAFIELD: z.string().trim().regex(/^$|^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, 'Use namespace.key').optional(),
+  SHOPIFY_PRIORITY_METAFIELD: z.string().trim().regex(/^$|^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, 'Use namespace.key').optional(),
+  SHOPIFY_PRIORITY_TAGS: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().optional(),

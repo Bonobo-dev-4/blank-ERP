@@ -10,6 +10,7 @@ import {
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/components/app/auth-context';
 import { fmtDate, fmtQty, humanise } from '@/lib/utils';
+import { PriorityBadge, fmtDispatchDate, type OrderPriority } from '@/components/app/order-crm';
 
 /* ----------------------------------------------------------------- types */
 
@@ -29,7 +30,10 @@ interface Options {
   order: { id: string; orderName: string; saleOrderCode: string | null; saleOrderStatus: string | null; found: boolean; displayMatches: boolean };
   items: Item[];
   selectedItemCode: string | null;
-  line: { id: string; title: string | null; sku: string | null; priority: string; orderedQty: string; openQty: string; requiredByDate: string | null } | null;
+  line: {
+    id: string; title: string | null; sku: string | null; priority: string; orderPriority: string;
+    orderedQty: string; openQty: string; requiredByDate: string | null;
+  } | null;
   production: {
     demand: { id: string; demandNo: string; status: string; priority: string; requiredByDate: string | null } | null;
     orders: { moNo: string; status: string; stage: string | null }[];
@@ -425,8 +429,8 @@ function OrderSummary({ data, item }: { data: Options; item: Item | null }) {
           { label: 'Item', value: item?.itemName ?? data.line?.title ?? '—' },
           { label: 'Unfulfilled', value: data.line ? `${fmtQty(data.line.openQty, 0)} of ${fmtQty(data.line.orderedQty, 0)}` : '—' },
           { label: 'Manufacturing', value: mo ? `${mo.moNo} · ${mo.stage ?? humanise(mo.status)}` : data.production?.demand ? `${data.production.demand.demandNo} · ${humanise(data.production.demand.status)}` : 'None' },
-          { label: 'Expected dispatch', value: data.production?.demand?.requiredByDate ? fmtDate(data.production.demand.requiredByDate) : data.line?.requiredByDate ? fmtDate(data.line.requiredByDate) : '—' },
-          { label: 'Priority', value: humanise(data.production?.demand?.priority ?? data.line?.priority ?? 'NORMAL') },
+          { label: 'Expected dispatch', value: data.line?.requiredByDate ? fmtDispatchDate(data.line.requiredByDate) : data.production?.demand?.requiredByDate ? fmtDispatchDate(data.production.demand.requiredByDate.slice(0, 10)) : '—' },
+          { label: 'Priority', value: data.line?.orderPriority ? <PriorityBadge priority={data.line.orderPriority as OrderPriority} /> : humanise(data.production?.demand?.priority ?? 'NORMAL') },
         ]}
       />
     </Section>

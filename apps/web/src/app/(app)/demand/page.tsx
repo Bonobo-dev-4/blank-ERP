@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/primitives';
 import { FilterBar, SortTh, nextSort, type SortState } from '@/components/ui/table-controls';
 import { SwitchFacilityButton } from '@/components/app/switch-facility';
+import { DispatchDateText, PRIORITIES, PriorityBadge, type DispatchState, type OrderPriority } from '@/components/app/order-crm';
 
 interface Demand {
   id: string; demandNo: string; channel: string; sku: string | null; productName: string | null;
@@ -19,6 +20,8 @@ interface Demand {
   requestedQty: string; manufacturingQty: string; allocatedQty: string; openQty: string;
   status: string; priority: string; requiredByDate: string | null;
   decisionReason: string | null; createdAt: string;
+  /** The customer promise behind this demand: highest priority, earliest open dispatch. */
+  crm: { priority: OrderPriority; dispatchDate: string | null; dispatchState: DispatchState; orderCount: number } | null;
   sources: {
     system: string; docNo: string | null; qty: string; isPrimary: boolean;
     orderId: string | null; orderLineId: string | null;
@@ -41,6 +44,7 @@ export default function DemandPage() {
   const [status, setStatusRaw] = React.useState(() => fromUrl('status'));
   const [channel, setChannelRaw] = React.useState(() => fromUrl('channel'));
   const [priority, setPriorityRaw] = React.useState(() => fromUrl('priority'));
+  const [orderPriority, setOrderPriorityRaw] = React.useState(() => fromUrl('orderPriority'));
   const [unmappedOnly, setUnmappedRaw] = React.useState(false);
   const [searchDraft, setSearchDraft] = React.useState(() => fromUrl('q'));
   const [search, setSearch] = React.useState(searchDraft);
@@ -52,6 +56,7 @@ export default function DemandPage() {
   const setStatus = (v: string) => { setStatusRaw(v); setPage(1); };
   const setChannel = (v: string) => { setChannelRaw(v); setPage(1); };
   const setPriority = (v: string) => { setPriorityRaw(v); setPage(1); };
+  const setOrderPriority = (v: string) => { setOrderPriorityRaw(v); setPage(1); };
   const setUnmapped = (v: boolean) => { setUnmappedRaw(v); setPage(1); };
   React.useEffect(() => {
     const t = window.setTimeout(() => { setSearch(searchDraft.trim()); setPage(1); }, 300);
@@ -61,6 +66,7 @@ export default function DemandPage() {
   const params = {
     page, pageSize: 25,
     status: status || undefined, channel: channel || undefined, priority: priority || undefined,
+    orderPriority: orderPriority || undefined,
     search: search || undefined, mapped: unmappedOnly ? 'false' : undefined,
     sortBy: sort?.key, sortDir: sort?.dir,
   };
@@ -70,9 +76,9 @@ export default function DemandPage() {
     placeholderData: keepPreviousData,
   });
   const onSort = (key: string, firstDir: 'asc' | 'desc') => { setSort((cur) => nextSort(cur, key, firstDir)); setPage(1); };
-  const filtersActive = Boolean(status || channel || priority || search || unmappedOnly);
+  const filtersActive = Boolean(status || channel || priority || orderPriority || search || unmappedOnly);
   const clearAll = () => {
-    setStatusRaw(''); setChannelRaw(''); setPriorityRaw(''); setUnmappedRaw(false); setSearchDraft(''); setSearch(''); setPage(1);
+    setStatusRaw(''); setChannelRaw(''); setPriorityRaw(''); setOrderPriorityRaw(''); setUnmappedRaw(false); setSearchDraft(''); setSearch(''); setPage(1);
   };
   const opts = (counts?: Record<string, number>) =>
     Object.entries(counts ?? {}).sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, label: humanise(value), count }));
@@ -157,7 +163,8 @@ export default function DemandPage() {
                 selects={[
                   { key: 'status', label: 'Status', value: status, options: opts(data.byStatus), onChange: setStatus },
                   { key: 'channel', label: 'Channel', value: channel, options: opts(data.byChannel), onChange: setChannel },
-                  { key: 'priority', label: 'Priority', value: priority, options: opts(data.byPriority), onChange: setPriority },
+                  { key: 'orderPriority', label: 'Order priority', value: orderPriority, options: PRIORITIES.map((x) => ({ value: x.value, label: x.label })), onChange: setOrderPriority },
+                  { key: 'priority', label: 'Production priority', value: priority, options: opts(data.byPriority), onChange: setPriority },
                 ]}
                 toggles={[{ key: 'unmapped', label: 'Unmapped only', checked: unmappedOnly, onChange: setUnmapped }]}
                 resultLabel={`${fmtQty(String(data.total), 0)} rows${isFetching ? ' · updating…' : ''}`}
@@ -190,7 +197,8 @@ export default function DemandPage() {
                         <th className="px-3 py-1.5 text-right font-semibold">Open</th>
                         <SortTh label="Status" sortKey="status" sort={sort} onSort={onSort} />
                         <th className="px-3 py-1.5 text-left font-semibold">Sources</th>
-                        <SortTh label="Needed" sortKey="requiredByDate" sort={sort} onSort={onSort} />
+                        <th className="px-3 py-1.5 text-left font-semibold">Order priority</th>
+                        <SortTh label="Dispatch by" sortKey="requiredByDate" sort={sort} onSort={onSort} />
                         <th className="w-10 px-2 py-1.5"><span className="sr-only">Actions</span></th>
                       </tr>
                     </thead>
@@ -213,8 +221,13 @@ export default function DemandPage() {
                           <td className="px-3 py-1.5 text-[12px] text-ink-muted">
                             {d.sources.map((s) => s.docNo ?? s.system).join(', ') || '—'}
                           </td>
-                          <td className="px-3 py-1.5 text-ink-muted">
-                            {d.requiredByDate ? fmtDate(d.requiredByDate) : '—'}
+                          <td className="px-3 py-1.5">
+                            {d.crm ? <PriorityBadge priority={d.crm.priority} compact /> : <span className="text-ink-subtle">—</span>}
+                          </td>
+                          <td className="px-3 py-1.5">
+                            {d.crm
+                              ? <DispatchDateText date={d.crm.dispatchDate} state={d.crm.dispatchState} />
+                              : <span className="text-ink-muted">{d.requiredByDate ? fmtDate(d.requiredByDate) : '—'}</span>}
                           </td>
                           <td className="px-2 py-1">
                             {(() => {

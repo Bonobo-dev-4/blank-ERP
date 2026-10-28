@@ -10,11 +10,14 @@ import { fmtDate, fmtQty, humanise } from '@/lib/utils';
 import { Badge, Button, ErrorPanel, NativeSelect, PageHeader, StatusBadge } from '@/components/ui/primitives';
 import { CodeCell, DataTable, StackedCell } from '@/components/ui/data-table';
 import { useAuth } from '@/components/app/auth-context';
+import { DispatchDateText, PRIORITIES as ORDER_PRIORITIES, PriorityBadge, type DispatchState, type OrderPriority } from '@/components/app/order-crm';
 
 export interface MoRow {
   id: string; moNo: string; status: string; priority: string; productionType: string;
   dueDate: string | null; plannedStartDate: string | null; releasedAt: string | null;
   isOverdue: boolean; isEditable: boolean; hasBomSnapshot: boolean;
+  /** The customer orders this MO serves: highest CRM priority, earliest open dispatch. */
+  crm: { priority: OrderPriority; dispatchDate: string | null; dispatchState: DispatchState; orderCount: number } | null;
   product: { id: string; styleCode: string; name: string; category: string } | null;
   rollup: {
     orderedQty: string; releasedQty: string; inwardedQty: string;
@@ -101,6 +104,18 @@ export default function ManufacturingOrdersPage() {
         ),
       },
       {
+        id: 'orderPriority', header: 'Order priority',
+        cell: ({ row }) => (row.original.crm
+          ? <PriorityBadge priority={row.original.crm.priority} compact />
+          : <span className="text-ink-subtle">—</span>),
+      },
+      {
+        id: 'dispatch', header: 'Dispatch by',
+        cell: ({ row }) => (row.original.crm?.dispatchDate
+          ? <DispatchDateText date={row.original.crm.dispatchDate} state={row.original.crm.dispatchState} />
+          : <span className="text-ink-subtle">—</span>),
+      },
+      {
         id: 'dueDate', header: 'Due', accessorKey: 'dueDate',
         cell: ({ row }) => (
           <span className={row.original.isOverdue ? 'font-medium text-danger' : 'text-ink-muted'}>
@@ -163,6 +178,17 @@ export default function ManufacturingOrdersPage() {
               <option value="">Any priority</option>
               {PRIORITIES.map((p) => (
                 <option key={p} value={p}>{humanise(p)}</option>
+              ))}
+            </NativeSelect>
+            <NativeSelect
+              value={String(state.filters.orderPriority ?? '')}
+              onChange={(e) => state.setFilter('orderPriority', e.target.value || undefined)}
+              className="w-auto"
+              aria-label="Order priority"
+            >
+              <option value="">Any order priority</option>
+              {ORDER_PRIORITIES.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
               ))}
             </NativeSelect>
             <label className="flex items-center gap-1.5 whitespace-nowrap text-[12px] text-ink-muted">

@@ -192,4 +192,6 @@ export const manufacturingOrderListQuery = paginationQuery.extend({
   priority: priority.optional(),
   overdueOnly: z.coerce.boolean().optional(),
   dueBefore: isoDate.optional(),
+  /** CRM priority of the customer orders this manufacturing order serves. */
+  orderPriority: z.enum(['VIP', 'HIGH', 'MEDIUM', 'NORMAL']).optional(),
 });

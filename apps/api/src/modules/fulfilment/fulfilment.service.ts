@@ -4,6 +4,7 @@ import {
   type FulfilmentRoute, type RouteDecision,
 } from '@dnd/domain';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { crmForDemands } from '../order-crm/crm-lookup';
 import { UnicommerceClient, UC_PATHS } from '../integrations/unicommerce.client';
 import { SUPPLIED_FACILITY_CODES } from '../integrations/unicommerce.service';
 
@@ -149,6 +150,7 @@ export class FulfilmentService {
       && stockByFacility.has(home)
       && !options.facilities;
 
+    const crm = await crmForDemands(this.prisma, organizationId, demands.map((d) => d.id));
     const lines = demands.map((d) => {
       const sku = d.productVariant?.sku ?? d.externalSku ?? '';
       const open = Decimal.max(
@@ -176,6 +178,7 @@ export class FulfilmentService {
         demandNo: d.demandNo,
         orderRef: d.sourceMappings[0]?.sourceDocNo ?? null,
         ...shopifySource(d.sourceMappings[0]),
+        crm: crm.get(d.id) ?? null,
         channel: d.channel,
         sku,
         productName: d.productVariant?.product?.name ?? null,
