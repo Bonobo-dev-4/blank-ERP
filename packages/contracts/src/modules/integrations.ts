@@ -23,6 +23,10 @@ export const importShopifyOrdersRequest = z.object({
   // 100 orders with full detail stays under Shopify's 1,000-point query ceiling.
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   maxPages: z.coerce.number().int().min(1).max(100).default(10),
+  /** Orders placed on or after this date (India), however long ago they were updated. */
+  placedFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD').nullish(),
+  /** The `after` a previous run returned, to continue it. */
+  after: z.string().max(500).nullish(),
 });
 export type ImportShopifyOrdersRequest = z.infer<typeof importShopifyOrdersRequest>;
 

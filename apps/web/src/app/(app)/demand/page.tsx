@@ -85,9 +85,12 @@ export default function DemandPage() {
 
   const promote = useMutation({
     mutationFn: () =>
-      api.post<{ result: { ordersScanned: number; created: number; attached: number; updated: number; ignored: number; skippedNoDemand: number } }>(
+      api.post<{ result: {
+        ordersScanned: number; created: number; attached: number; updated: number; ignored: number;
+        skippedNoDemand: number; remaining?: number; upToDate?: boolean;
+      } }>(
         '/demand/promote/shopify',
-        { idempotencyKey: key(), ...(since ? { since } : {}), limit: 500 },
+        { idempotencyKey: key(), ...(since ? { since } : {}), limit: 1000 },
       ),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['demand'] }); },
   });
@@ -108,7 +111,7 @@ export default function DemandPage() {
         />
         <CardBody>
           <div className="flex flex-wrap items-end gap-3">
-            <Field label="Orders placed since" className="w-[180px]" hint="Blank scans the most recent 500">
+            <Field label="Orders placed since" className="w-[180px]" hint="Up to 1,000 orders a run; run again for more">
               <Input type="date" value={since} onChange={(e) => setSince(e.target.value)} />
             </Field>
             <Button onClick={() => promote.mutate()} disabled={promote.isPending}>
@@ -116,8 +119,17 @@ export default function DemandPage() {
             </Button>
           </div>
           {promote.error ? <div className="mt-3"><ErrorPanel error={promote.error} /></div> : null}
-          {promote.data ? (
+          {promote.data?.result.upToDate && promote.data.result.ordersScanned === 0 ? (
             <div className="mt-3 rounded-lg border border-line bg-surface-muted px-3.5 py-2.5 text-[12.5px]">
+              Up to date — every line still owed in this window is already demand.
+            </div>
+          ) : promote.data ? (
+            <div className="mt-3 rounded-lg border border-line bg-surface-muted px-3.5 py-2.5 text-[12.5px]">
+              {promote.data.result.remaining ? (
+                <div className="mb-1 font-medium text-warn">
+                  {promote.data.result.remaining.toLocaleString('en-IN')} more orders still to promote — press the button again.
+                </div>
+              ) : null}
               Scanned {promote.data.result.ordersScanned} orders —{' '}
               <span className="font-medium">{promote.data.result.created} new</span>,{' '}
               {promote.data.result.attached} attached to existing demand,{' '}

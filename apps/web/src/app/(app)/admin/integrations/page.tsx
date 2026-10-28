@@ -43,10 +43,61 @@ export default function IntegrationsPage() {
 
 /* -------------------------------------------------------------------------- */
 
+interface ImportBatch {
+  imported: number; pages: number; lineCount: number; skippedStale: number;
+  unmappedSkuCount: number; hasMore: boolean; after: string | null;
+}
+
+/**
+ * An import run of as many batches as it takes. Each batch is its own short
+ * request (up to 2,000 orders), so a large backfill never hangs on one call,
+ * shows progress, and can stop between batches and carry on later.
+ */
+function useOrderImport() {
+  const [state, setState] = React.useState({
+    running: false, done: false, batches: 0, imported: 0, lines: 0, skippedStale: 0, unmapped: 0,
+    after: null as string | null, key: '', error: null as unknown,
+  });
+  const stopRef = React.useRef(false);
+
+  const start = async ({ placedFrom, since }: { placedFrom: string; since: string }) => {
+    const key = `${placedFrom}|${since}`;
+    // Pressing Import again after a stop carries on from where it stopped.
+    const resume = !state.done && state.after && state.key === key ? state.after : null;
+    stopRef.current = false;
+    setState((s) => (resume ? { ...s, running: true, error: null } : {
+      running: true, done: false, batches: 0, imported: 0, lines: 0, skippedStale: 0, unmapped: 0, after: null, key, error: null,
+    }));
+    let after = resume;
+    try {
+      for (;;) {
+        const r = await api.post<ImportBatch>('/integrations/shopify/orders/import', {
+          pageSize: 100, maxPages: 20,
+          ...(placedFrom ? { placedFrom } : {}),
+          ...(since ? { since: `${since}T00:00:00+05:30` } : {}),
+          ...(after ? { after } : {}),
+        });
+        after = r.after;
+        setState((s) => ({
+          ...s, batches: s.batches + 1, imported: s.imported + r.imported, lines: s.lines + r.lineCount,
+          skippedStale: s.skippedStale + r.skippedStale, unmapped: Math.max(s.unmapped, r.unmappedSkuCount), after,
+        }));
+        if (!r.hasMore) { setState((s) => ({ ...s, running: false, done: true })); return; }
+        if (stopRef.current) { setState((s) => ({ ...s, running: false })); return; }
+      }
+    } catch (error) {
+      setState((s) => ({ ...s, running: false, error }));
+    }
+  };
+
+  return { state, start, stop: () => { stopRef.current = true; } };
+}
+
 function ShopifyPanel() {
   const qc = useQueryClient();
-  const [limit, setLimit] = React.useState('50');
+  const [placedFrom, setPlacedFrom] = React.useState('');
   const [since, setSince] = React.useState('');
+  const run = useOrderImport();
 
   const status = useQuery({
     queryKey: ['integrations', 'shopify', 'status'],
@@ -57,17 +108,13 @@ function ShopifyPanel() {
     mutationFn: () => api.post<{ checks: Check[] }>('/integrations/shopify/verify', { idempotencyKey: key() }),
   });
 
-  const importOrders = useMutation({
-    mutationFn: () =>
-      api.post<{ imported: number; pages: number; lineCount: number; skippedStale: number; unmappedSkus: string[] }>(
-        '/integrations/shopify/orders/import',
-        { idempotencyKey: key(), limit: Number(limit) || 50, ...(since ? { since } : {}) },
-      ),
-    onSuccess: () => {
+  React.useEffect(() => {
+    if (run.state.done) {
       void qc.invalidateQueries({ queryKey: ['shopify-orders'] });
+      void qc.invalidateQueries({ queryKey: ['order-facets'] });
       void qc.invalidateQueries({ queryKey: ['dashboard'] });
-    },
-  });
+    }
+  }, [run.state.done, qc]);
 
   return (
     <Card>
@@ -90,40 +137,44 @@ function ShopifyPanel() {
               <Button onClick={() => verify.mutate()} disabled={verify.isPending}>
                 <PlugZap /> {verify.isPending ? 'Checking…' : 'Test connection'}
               </Button>
-              <Field label="Orders per page" className="w-[130px]">
-                <Input value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="numeric" />
+              <Field label="Orders placed from" className="w-[170px]" hint="Every order placed on or after">
+                <Input type="date" value={placedFrom} onChange={(e) => setPlacedFrom(e.target.value)} disabled={run.state.running} />
               </Field>
-              <Field label="Updated since" className="w-[170px]" hint="Leave blank to backfill history">
-                <Input type="date" value={since} onChange={(e) => setSince(e.target.value)} />
+              <Field label="Or updated since" className="w-[170px]" hint="Only orders changed since">
+                <Input type="date" value={since} onChange={(e) => setSince(e.target.value)} disabled={run.state.running} />
               </Field>
-              <Button variant="primary" onClick={() => importOrders.mutate()} disabled={importOrders.isPending}>
-                <Download /> {importOrders.isPending ? 'Importing…' : 'Import orders'}
-              </Button>
+              {run.state.running ? (
+                <Button variant="default" onClick={run.stop}>Stop after this batch</Button>
+              ) : (
+                <Button variant="primary" onClick={() => run.start({ placedFrom, since })}>
+                  <Download /> Import orders
+                </Button>
+              )}
             </div>
 
-            {!since ? (
-              <p className="text-[12px] text-ink-muted">
-                With no date, the importer walks forward from the oldest order — correct for a backfill,
-                but it returns history rather than current demand. Set a date to pull recent orders.
-              </p>
-            ) : null}
+            <p className="text-[12px] text-ink-muted">
+              {placedFrom
+                ? 'Imports every order placed on or after that date, in batches until all are in. Orders already here are refreshed, never duplicated.'
+                : since
+                  ? 'Imports orders changed since that date — including older orders that were edited.'
+                  : 'With no date, picks up where the last import stopped.'}
+            </p>
 
             {verify.error ? <ErrorPanel error={verify.error} /> : null}
             {verify.data ? <Checks checks={verify.data.checks} /> : null}
 
-            {importOrders.error ? <ErrorPanel error={importOrders.error} /> : null}
-            {importOrders.data ? (
-              <div className="rounded-lg border border-line bg-surface-muted px-3.5 py-2.5 text-[12.5px]">
-                Imported <span className="num font-medium">{fmtInt(importOrders.data.imported)}</span> orders
-                across {importOrders.data.pages} {importOrders.data.pages === 1 ? 'page' : 'pages'},{' '}
-                <span className="num">{fmtInt(importOrders.data.lineCount)}</span> lines.
-                {importOrders.data.skippedStale > 0 ? (
-                  <> {importOrders.data.skippedStale} skipped as stale versions.</>
-                ) : null}
-                {importOrders.data.unmappedSkus.length > 0 ? (
+            {run.state.error ? <ErrorPanel error={run.state.error} /> : null}
+            {run.state.batches > 0 ? (
+              <div className="rounded-lg border border-line bg-surface-muted px-3.5 py-2.5 text-[12.5px]" aria-live="polite">
+                {run.state.running ? 'Importing… ' : run.state.done ? 'Done. ' : 'Stopped. '}
+                <span className="num font-medium">{fmtInt(run.state.imported)}</span> orders,{' '}
+                <span className="num">{fmtInt(run.state.lines)}</span> lines in {run.state.batches}{' '}
+                {run.state.batches === 1 ? 'batch' : 'batches'}.
+                {run.state.skippedStale > 0 ? <> {fmtInt(run.state.skippedStale)} skipped as stale versions.</> : null}
+                {!run.state.running && !run.state.done && run.state.after ? <> More remain — press Import orders to carry on.</> : null}
+                {run.state.unmapped > 0 ? (
                   <div className="mt-1 text-warn">
-                    {importOrders.data.unmappedSkus.length} SKUs are not mapped to a product variant, so
-                    their demand cannot reach manufacturing yet.
+                    {fmtInt(run.state.unmapped)} SKUs are not mapped to a product variant, so their demand cannot reach manufacturing yet.
                   </div>
                 ) : null}
               </div>

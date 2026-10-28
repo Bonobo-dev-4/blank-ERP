@@ -3,6 +3,7 @@ import {
   Decimal, dec, routeDemandLine, tallyRoutes,
   type FulfilmentRoute, type RouteDecision,
 } from '@dnd/domain';
+import type { DemandStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { crmForDemands } from '../order-crm/crm-lookup';
 import { UnicommerceClient, UC_PATHS } from '../integrations/unicommerce.client';
@@ -82,15 +83,18 @@ export class FulfilmentService {
     organizationId: string,
     options: { facilities?: readonly string[]; limit?: number; skipStockCheck?: boolean } = {},
   ) {
-    const limit = Math.min(500, Math.max(1, options.limit ?? 200));
+    const limit = Math.min(2000, Math.max(1, options.limit ?? 200));
     const config = this.client.describe();
     const home = config.defaultFacility;
 
+    const openWhere = {
+      organizationId,
+      status: { notIn: ['CANCELLED', 'NOT_REQUIRED', 'FULLY_ALLOCATED'] as DemandStatus[] },
+    };
+    // How many lines are open in all, so a board showing the first N says so.
+    const totalOpen = await this.prisma.manufacturingDemand.count({ where: openWhere });
     const demands = await this.prisma.manufacturingDemand.findMany({
-      where: {
-        organizationId,
-        status: { notIn: ['CANCELLED', 'NOT_REQUIRED', 'FULLY_ALLOCATED'] },
-      },
+      where: openWhere,
       select: {
         id: true, demandNo: true, channel: true, externalSku: true,
         manufacturingQty: true, allocatedQty: true, status: true, priority: true,
@@ -111,7 +115,7 @@ export class FulfilmentService {
 
     if (demands.length === 0) {
       return {
-        home, stockChecked: false, facilitiesChecked: [], facilitiesUnreadable: [],
+        home, stockChecked: false, facilitiesChecked: [], facilitiesUnreadable: [], totalOpen,
         tally: { dispatch: 0, switchFacility: 0, manufacture: 0, needsCheck: 0 },
         lines: [],
       };
@@ -204,6 +208,7 @@ export class FulfilmentService {
 
     return {
       home,
+      totalOpen,
       stockChecked,
       facilitiesChecked: [...stockByFacility.keys()],
       facilitiesUnreadable: unreadable,

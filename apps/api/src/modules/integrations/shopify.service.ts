@@ -470,17 +470,33 @@ export class ShopifyService {
   async importOrders(
     organizationId: string,
     actorUserId: string,
-    options: { since?: string | null; maxPages?: number; pageSize?: number } = {},
+    options: {
+      since?: string | null; maxPages?: number; pageSize?: number;
+      /** Orders PLACED on or after this calendar date (Asia/Kolkata), whenever last updated. */
+      placedFrom?: string | null;
+      /** Continue a previous run from where it stopped. */
+      after?: string | null;
+    } = {},
   ) {
     const pageSize = Math.min(options.pageSize ?? 50, 100);
     const maxPages = Math.min(options.maxPages ?? 10, 100);
+    // A placed-from import is a backfill: it ignores the incremental cursor,
+    // which would otherwise skip orders placed in the window but not updated
+    // since the last run.
     const since = options.since
       ? new Date(options.since)
-      : await this.lastImportedAt(organizationId);
+      : options.placedFrom ? null : await this.lastImportedAt(organizationId);
+    const placedFrom = options.placedFrom && /^\d{4}-\d{2}-\d{2}$/.test(options.placedFrom)
+      ? `${options.placedFrom}T00:00:00+05:30`
+      : null;
 
-    const filter = since ? `updated_at:>'${since.toISOString()}'` : null;
+    const filter = [
+      since ? `updated_at:>'${since.toISOString()}'` : null,
+      placedFrom ? `created_at:>='${placedFrom}'` : null,
+    ].filter(Boolean).join(' AND ') || null;
 
-    let cursor: string | null = null;
+    let cursor: string | null = options.after ?? null;
+    let hasMore = false;
     let pages = 0;
     let imported = 0;
     let skippedStale = 0;
@@ -508,9 +524,9 @@ export class ShopifyService {
       }
 
       pages += 1;
-      if (!data.orders.pageInfo.hasNextPage) break;
+      hasMore = data.orders.pageInfo.hasNextPage && Boolean(data.orders.pageInfo.endCursor);
+      if (!hasMore) break;
       cursor = data.orders.pageInfo.endCursor;
-      if (!cursor) break;
     }
 
     await this.audit.record({
@@ -518,13 +534,18 @@ export class ShopifyService {
       entityType: 'ShopifyOrder', entityId: organizationId,
       context: {
         since: since?.toISOString() ?? null,
-        pages, imported, skippedStale, lineCount,
+        placedFrom: options.placedFrom ?? null,
+        pages, imported, skippedStale, lineCount, hasMore,
         unmappedSkuCount: unmappedSkus.size,
       },
     });
 
     return {
       since: since?.toISOString() ?? null,
+      placedFrom: options.placedFrom ?? null,
+      // More orders match than this run took: pass `after` to carry on.
+      hasMore,
+      after: hasMore ? cursor : null,
       pages,
       imported,
       skippedStale,

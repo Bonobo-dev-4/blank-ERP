@@ -172,14 +172,41 @@ export class DemandService {
       { organizationId, scope: 'demand.promoteShopify', key: body.idempotencyKey, payload: body, entityType: 'ManufacturingDemand' },
       async () => {
         const take = Math.min(1000, Math.max(1, body.limit ?? 500));
-        const orders = await this.prisma.shopifyOrder.findMany({
-          where: {
-            organizationId,
-            status: { not: 'CANCELLED' },
-            ...(body.since ? { orderedAt: { gte: new Date(body.since) } } : {}),
-          },
+        const window: Prisma.ShopifyOrderWhereInput = {
+          organizationId,
+          status: { not: 'CANCELLED' },
+          ...(body.since ? { orderedAt: { gte: new Date(body.since) } } : {}),
+        };
+        // Work only on orders with something still to do: a line still owed
+        // that is not demand yet, or whose owed quantity has changed since it
+        // was promoted. So each run moves on, instead of rescanning the newest
+        // orders (mostly shipped) every time.
+        const owing = await this.prisma.shopifyOrder.findMany({
+          where: { ...window, lines: { some: { manufacturingQty: { gt: 0 } } } },
           orderBy: { orderedAt: 'desc' },
-          take,
+          select: { id: true, lines: { where: { manufacturingQty: { gt: 0 } }, select: { id: true, manufacturingQty: true } } },
+        });
+        const promoted = await this.prisma.demandSourceMapping.findMany({
+          where: { organizationId, sourceSystem: 'SHOPIFY', sourceDocType: 'ORDER', sourceDocId: { in: owing.map((o) => o.id) } },
+          select: { sourceDocId: true, sourceLineId: true, sourceLineQty: true },
+        });
+        const promotedQty = new Map(promoted.map((m) => [`${m.sourceDocId}:${m.sourceLineId}`, m.sourceLineQty.toFixed()]));
+        const pending = owing.filter((o) => o.lines.some((l) => {
+          const was = promotedQty.get(`${o.id}:${l.id}`);
+          return was === undefined || !dec(was).equals(dec(l.manufacturingQty.toFixed()));
+        }));
+        const remaining = Math.max(0, pending.length - take);
+
+        if (pending.length === 0 && owing.length > 0) {
+          return {
+            result: { ordersScanned: 0, created: 0, attached: 0, updated: 0, ignored: 0, skippedNoDemand: 0, remaining: 0, upToDate: true },
+            entityId: null,
+          };
+        }
+
+        const orders = await this.prisma.shopifyOrder.findMany({
+          where: { id: { in: pending.slice(0, take).map((o) => o.id) } },
+          orderBy: { orderedAt: 'desc' },
           select: {
             id: true, orderNumber: true, orderName: true, channel: true, orderedAt: true,
             expectedDispatchDate: true, isCustomised: true,
@@ -195,7 +222,7 @@ export class DemandService {
         if (orders.length === 0) {
           throw new BadRequestException({
             code: 'NO_ORDERS_TO_PROMOTE',
-            message: 'No imported orders match. Import orders first, or widen the date.',
+            message: 'No order in this window still owes the customer anything. Import orders first, or widen the date.',
           });
         }
 
@@ -330,6 +357,9 @@ export class DemandService {
           result: {
             ordersScanned: orders.length,
             created, attached, updated, ignored, skippedNoDemand,
+            // Orders still waiting for another run.
+            remaining,
+            upToDate: remaining === 0,
           },
           entityId: null,
         };

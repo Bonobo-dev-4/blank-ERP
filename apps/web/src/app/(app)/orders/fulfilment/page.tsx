@@ -28,7 +28,7 @@ interface Line {
   isRejectedForDispatch: boolean; rejectedReason: string | null; homeAvailableQty: string;
 }
 interface Board {
-  home: string; stockChecked: boolean;
+  home: string; stockChecked: boolean; totalOpen?: number;
   facilitiesChecked: string[]; facilitiesUnreadable: string[]; isSearchComplete?: boolean;
   tally: { dispatch: number; switchFacility: number; manufacture: number; needsCheck: number };
   lines: Line[];
@@ -61,7 +61,7 @@ export default function FulfilmentBoardPage() {
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['fulfilment-board'],
-    queryFn: () => api.get<Board>('/fulfilment/board?limit=200'),
+    queryFn: () => api.get<Board>('/fulfilment/board?limit=1000'),
     staleTime: 60_000,
   });
 
@@ -124,6 +124,12 @@ export default function FulfilmentBoardPage() {
 
       {data ? (
         <>
+          {data.totalOpen !== undefined && data.totalOpen > data.lines.length ? (
+            <p className="glass rounded-xl px-3.5 py-2.5 text-[12.5px] text-ink">
+              Showing the {data.lines.length.toLocaleString('en-IN')} lines due soonest of{' '}
+              {data.totalOpen.toLocaleString('en-IN')} open. Lines further out appear as these are dispatched or made.
+            </p>
+          ) : null}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {TABS.map((t) => (
               <button key={t.route} onClick={() => setTab(t.route)} className="text-left">
