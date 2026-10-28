@@ -60,6 +60,17 @@ const envSchema = z.object({
   ASSISTANT_PROVIDER: z.enum(['anthropic', 'openai']).optional(),
 
   UNICOMMERCE_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  /**
+   * The operator's names for the same settings; they win when set.
+   * UC_WRITE_ENABLED replaces INTEGRATION_ALLOW_EXTERNAL_WRITES for Unicommerce,
+   * and writes stay refused unless UC_WRITE_CONFIRMATION_REQUIRED is true.
+   */
+  UC_BASE_URL: z.string().optional(),
+  UC_AUTH_HEADER: z.string().regex(/^$|^[A-Za-z0-9-]{1,64}$/, 'A header name').optional(),
+  UC_PROXY_SECRET: z.string().optional(),
+  UC_READ_ENABLED: z.enum(['true', 'false', '']).optional(),
+  UC_WRITE_ENABLED: z.enum(['true', 'false', '']).optional(),
+  UC_WRITE_CONFIRMATION_REQUIRED: z.enum(['true', 'false', '']).optional(),
   UNICOMMERCE_BASE_URL: z.string().optional(),
   UNICOMMERCE_CLIENT_ID: z.string().optional(),
   UNICOMMERCE_CLIENT_SECRET: z.string().optional(),

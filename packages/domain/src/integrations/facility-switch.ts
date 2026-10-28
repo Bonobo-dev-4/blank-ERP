@@ -252,7 +252,7 @@ export function evaluateFacilitySwitch(input: SwitchEligibilityInput): SwitchEli
     : 'No other switch is running for this item.');
 
   if (!input.writes.env) {
-    add('WRITES_ENABLED', 'FAIL', 'Writes to Unicommerce are switched off for this ERP (INTEGRATION_ALLOW_EXTERNAL_WRITES). An administrator has to enable them deliberately.');
+    add('WRITES_ENABLED', 'FAIL', 'Writes to Unicommerce are switched off for this ERP (UC_WRITE_ENABLED). An administrator has to enable them deliberately.');
   } else if (!input.writes.connection) {
     add('WRITES_ENABLED', 'FAIL', 'The Unicommerce connection is read-only. An administrator has to allow writes on it.');
   } else add('WRITES_ENABLED', 'PASS', 'Writes are enabled.');

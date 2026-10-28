@@ -267,6 +267,37 @@ export class AdminService {
     return { organization: org, integrations, documentSequences: sequences };
   }
 
+  /**
+   * The per-connection write gate. Only a person with admin.manage_settings
+   * changes it, with a reason, and the audit log keeps who and why. It does not
+   * by itself write anything: Unicommerce writes also need UC_WRITE_ENABLED,
+   * and each one is confirmed by a person.
+   */
+  async setIntegrationWriteAccess(
+    organizationId: string,
+    actorUserId: string,
+    id: string,
+    body: { allow: boolean; reason: string },
+  ) {
+    return this.prisma.inTransaction(async (tx) => {
+      const before = await tx.integrationConnection.findFirst({
+        where: { id, organizationId },
+        select: { id: true, provider: true, allowExternalWrites: true },
+      });
+      if (!before) throw new NotFoundException({ code: 'INTEGRATION_NOT_FOUND', message: 'Integration not found' });
+      const after = await tx.integrationConnection.update({
+        where: { id },
+        data: { allowExternalWrites: body.allow },
+        select: { id: true, provider: true, isEnabled: true, allowExternalWrites: true },
+      });
+      await this.audit.record({
+        organizationId, actorUserId, action: 'UPDATE', entityType: 'IntegrationConnection', entityId: id,
+        context: { field: 'allowExternalWrites', from: before.allowExternalWrites, to: body.allow, provider: before.provider, reason: body.reason },
+      }, tx);
+      return after;
+    });
+  }
+
   async updateSettings(
     organizationId: string,
     actorUserId: string,

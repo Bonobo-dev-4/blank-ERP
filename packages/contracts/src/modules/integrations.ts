@@ -89,3 +89,10 @@ export type SetOrderPriorityRequest = z.infer<typeof setOrderPriorityRequest>;
 export const setCrmRemarksRequest = z.object({
   remarks: z.string().trim().max(2000).nullable(),
 });
+
+/** Turning a connection's external writes on or off is deliberate and explained. */
+export const integrationWriteAccessRequest = z.object({
+  allow: z.boolean(),
+  reason: z.string().trim().min(5, 'Say why, in a few words').max(500),
+});
+export type IntegrationWriteAccessRequest = z.infer<typeof integrationWriteAccessRequest>;

@@ -11,8 +11,39 @@ export interface UnicommerceConfig {
   readonly password: string;
   readonly clientId: string;
   readonly proxySecret: string;
+  /** The header the proxy reads its shared secret from. */
+  readonly proxyHeader: string;
   readonly defaultFacility: string;
+  /** The write switch is on AND every write needs a person's confirmation. */
   readonly allowExternalWrites: boolean;
+  readonly writeSwitch: boolean;
+  readonly writeConfirmationRequired: boolean;
+}
+
+/**
+ * The operator's names (UC_*) take precedence over the ERP's original ones
+ * (UNICOMMERCE_*, INTEGRATION_ALLOW_EXTERNAL_WRITES), so the one block that
+ * configures the proxy everywhere else configures it here too.
+ *
+ * Writes need UC_WRITE_ENABLED=true and, deliberately, confirmation left on:
+ * every write this ERP can make is confirmed by a person, and a configuration
+ * asking otherwise is refused rather than half-honoured.
+ */
+export function resolveUnicommerceSettings(read: (key: string) => unknown) {
+  const get = (k: string): string => String(read(k) ?? '').trim();
+  const first = (...keys: string[]) => keys.map(get).find((v) => v.length > 0) ?? '';
+  const header = get('UC_AUTH_HEADER');
+  const writeSwitch = first('UC_WRITE_ENABLED', 'INTEGRATION_ALLOW_EXTERNAL_WRITES') === 'true';
+  const writeConfirmationRequired = get('UC_WRITE_CONFIRMATION_REQUIRED') !== 'false';
+  return {
+    enabled: first('UC_READ_ENABLED', 'UNICOMMERCE_ENABLED') === 'true',
+    baseUrl: first('UC_BASE_URL', 'UNICOMMERCE_BASE_URL').replace(/\/+$/, ''),
+    proxySecret: first('UC_PROXY_SECRET', 'UNICOMMERCE_PROXY_SECRET'),
+    proxyHeader: /^[A-Za-z0-9-]{1,64}$/.test(header) ? header : 'X-Proxy-Secret',
+    writeSwitch,
+    writeConfirmationRequired,
+    allowExternalWrites: writeSwitch && writeConfirmationRequired,
+  };
 }
 
 /**
@@ -97,16 +128,14 @@ export class UnicommerceClient {
       const raw = String(this.config.get(k) ?? '').trim();
       return raw.length > 0 ? raw : d;
     };
+    const uc = resolveUnicommerceSettings((k) => this.config.get(k));
     return {
-      enabled: get('UNICOMMERCE_ENABLED', 'false') === 'true',
-      baseUrl: get('UNICOMMERCE_BASE_URL').replace(/\/+$/, ''),
+      ...uc,
       username: get('UNICOMMERCE_USERNAME'),
       password: get('UNICOMMERCE_PASSWORD'),
       // Uniware's documented default trusted client for the password grant.
       clientId: get('UNICOMMERCE_CLIENT_ID', 'my-trusted-client'),
-      proxySecret: get('UNICOMMERCE_PROXY_SECRET'),
       defaultFacility: get('UNICOMMERCE_DEFAULT_FACILITY_CODE'),
-      allowExternalWrites: get('INTEGRATION_ALLOW_EXTERNAL_WRITES', 'false') === 'true',
     };
   }
 
@@ -114,6 +143,7 @@ export class UnicommerceClient {
   describe(): {
     enabled: boolean; baseUrl: string; defaultFacility: string; hasCredentials: boolean;
     usesProxy: boolean; isPlaintextTransport: boolean; allowExternalWrites: boolean;
+    writeConfirmationRequired: boolean;
     isConfigured: boolean; missing: string[];
   } {
     const c = this.resolveConfig();
@@ -134,6 +164,7 @@ export class UnicommerceClient {
       // has to make knowingly rather than discover. See decisions.md §29.
       isPlaintextTransport: c.baseUrl.startsWith('http://'),
       allowExternalWrites: c.allowExternalWrites,
+      writeConfirmationRequired: c.writeConfirmationRequired,
       isConfigured: missing.length === 0,
       missing,
     };
@@ -162,7 +193,7 @@ export class UnicommerceClient {
       accept: 'application/json',
       authorization: `Bearer ${token}`,
     };
-    if (config.proxySecret) headers['X-Proxy-Secret'] = config.proxySecret;
+    if (config.proxySecret) headers[config.proxyHeader] = config.proxySecret;
     const facilityCode = facility ?? config.defaultFacility;
     if (facilityCode) headers.Facility = facilityCode;
 
@@ -255,7 +286,9 @@ export class UnicommerceClient {
     if (!config.allowExternalWrites) {
       throw new ServiceUnavailableException({
         code: 'UNICOMMERCE_WRITES_DISABLED',
-        message: 'Writes to Unicommerce are switched off for this ERP (INTEGRATION_ALLOW_EXTERNAL_WRITES=false).',
+        message: config.writeSwitch
+          ? 'Writes to Unicommerce need UC_WRITE_CONFIRMATION_REQUIRED=true: every write from this ERP is confirmed by a person.'
+          : 'Writes to Unicommerce are switched off for this ERP (UC_WRITE_ENABLED is not true).',
         details: { path: UC_PATHS.facilitySwitch },
       });
     }
@@ -276,7 +309,7 @@ export class UnicommerceClient {
       authorization: `Bearer ${token}`,
       Facility: facilityHeader,
     };
-    if (config.proxySecret) headers['X-Proxy-Secret'] = config.proxySecret;
+    if (config.proxySecret) headers[config.proxyHeader] = config.proxySecret;
 
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), SWITCH_TIMEOUT_MS);
@@ -321,7 +354,7 @@ export class UnicommerceClient {
     url.searchParams.set('password', config.password);
 
     const headers: Record<string, string> = { accept: 'application/json' };
-    if (config.proxySecret) headers['X-Proxy-Secret'] = config.proxySecret;
+    if (config.proxySecret) headers[config.proxyHeader] = config.proxySecret;
 
     const res = await fetch(url, { method: 'GET', headers });
     const body = (await res.json().catch(() => null)) as

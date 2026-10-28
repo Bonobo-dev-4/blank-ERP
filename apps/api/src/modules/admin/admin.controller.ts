@@ -2,7 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs
 import type { Prisma } from '@prisma/client';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  PERMISSION_CODES, createUserRequest, paginationQuery, updateUserRequest,
+  PERMISSION_CODES, createUserRequest, integrationWriteAccessRequest, paginationQuery, updateUserRequest,
   type AuthenticatedUser,
 } from '@dnd/contracts';
 import { z } from 'zod';
@@ -109,6 +109,22 @@ export class AdminController {
   @ApiOperation({ summary: 'Organisation settings, integration status and document sequences' })
   getSettings(@OrgId() orgId: string) {
     return this.admin.getSettings(orgId);
+  }
+
+  @Patch('integrations/:id/write-access')
+  @RequirePermissions('admin.manage_settings')
+  @ApiOperation({
+    summary: "Allow or stop a connection's external writes",
+    description: 'The per-connection gate. A reason is required and audited. For Unicommerce, writes also need UC_WRITE_ENABLED and are each confirmed by a person.',
+  })
+  @ApiZodBody(integrationWriteAccessRequest)
+  setWriteAccess(
+    @OrgId() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(integrationWriteAccessRequest) body: z.infer<typeof integrationWriteAccessRequest>,
+  ) {
+    return this.admin.setIntegrationWriteAccess(orgId, user.id, id, body);
   }
 
   @Patch('settings')

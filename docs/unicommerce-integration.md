@@ -50,7 +50,31 @@ UNICOMMERCE_DEFAULT_FACILITY_CODE=""
 INTEGRATION_ALLOW_EXTERNAL_WRITES=false   master switch for ALL external writes
 ```
 
+### Proxy configuration (29 Oct 2026)
+
+The ERP now reaches Unicommerce through `https://uc-proxy.dashanddot.com/uc`
+(TLS; the previous route was plain HTTP to an IP — the §29 cleartext concern is
+closed for this deployment). Configured by the operator's `UC_*` names, which
+take precedence over the originals:
+
+| `UC_*` | replaces | meaning |
+|---|---|---|
+| `UC_BASE_URL` | `UNICOMMERCE_BASE_URL` | proxy base, `/uc` prefix included |
+| `UC_AUTH_HEADER` | — (was fixed `X-Proxy-Secret`) | header carrying the proxy secret |
+| `UC_PROXY_SECRET` | `UNICOMMERCE_PROXY_SECRET` | the proxy's shared secret |
+| `UC_READ_ENABLED` | `UNICOMMERCE_ENABLED` | connector on/off |
+| `UC_WRITE_ENABLED` | `INTEGRATION_ALLOW_EXTERNAL_WRITES` | environment write switch |
+| `UC_WRITE_CONFIRMATION_REQUIRED` | — | must stay `true`; `false` refuses all writes |
+
+Verified read-only on 29 Oct: sign-in, `facility/get` and `saleOrder/search`
+through the new proxy succeed; the previous secret is refused by it.
+
 ### Three independent gates on every external write
+
+(Unicommerce writes today are facility switches only — §8h. They need
+`UC_WRITE_ENABLED=true` with confirmation required, **Allow writes** on the
+connection in Admin → Settings — an administrator's audited action — and a
+person confirming each switch.)
 
 A push happens only when **all three** are true:
 

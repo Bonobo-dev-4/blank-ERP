@@ -157,7 +157,7 @@ export class SyncService {
     if (!config.allowExternalWrites) {
       blockers.push({
         code: 'EXTERNAL_WRITES_DISABLED',
-        detail: 'INTEGRATION_ALLOW_EXTERNAL_WRITES is false. External inventory changes need explicit authorisation.',
+        detail: 'Unicommerce writes are off (UC_WRITE_ENABLED). External inventory changes need explicit authorisation.',
       });
     }
     blockers.push({

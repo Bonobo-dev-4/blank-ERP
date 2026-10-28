@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
+import { resolveUnicommerceSettings } from './modules/integrations/unicommerce.client';
 import type { AppConfig } from './config/configuration';
 
 async function bootstrap(): Promise<void> {
@@ -77,8 +78,11 @@ async function bootstrap(): Promise<void> {
 
   logger.log(`API listening on http://localhost:${port}/${prefix}`);
   logger.log(`OpenAPI docs at   http://localhost:${port}/${prefix}/docs`);
-  if (!config.get('INTEGRATION_ALLOW_EXTERNAL_WRITES', { infer: true })) {
-    logger.warn('External inventory writes are DISABLED (INTEGRATION_ALLOW_EXTERNAL_WRITES=false)');
+  const ucWrites = resolveUnicommerceSettings((k) => config.get(k as keyof AppConfig));
+  if (!ucWrites.allowExternalWrites) {
+    logger.warn('Unicommerce writes are DISABLED (UC_WRITE_ENABLED is not true, or confirmation is off)');
+  } else {
+    logger.warn('Unicommerce writes are ENABLED: facility switches, each confirmed by a person');
   }
 }
 
